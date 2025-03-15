@@ -81,7 +81,7 @@ export function parseTableInfo(code: string[]): TableInfo[] {
         acc.currentDescription = ''
       }
       // detect foreign key constraint
-      if (line.includes('.references')) {
+      if (line.includes('.references') || line.includes('relations')) {
         const lastField = acc.tempFields[acc.tempFields.length - 1]
         if (lastField) {
           lastField.description = '(FK) ' + lastField.description
