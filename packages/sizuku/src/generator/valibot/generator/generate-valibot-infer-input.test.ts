@@ -48,7 +48,7 @@ const generateValibotInferInputTestCases: {
       schema: { name: 'PascalCase' },
       type: { name: 'PascalCase', export: true },
     },
-    expected: `export type User = v.InferInput<typeof UserSchema>`,
+    expected: 'export type User = v.InferInput<typeof UserSchema>',
   },
 ]
 

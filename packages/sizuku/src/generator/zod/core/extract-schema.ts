@@ -7,6 +7,21 @@ type Acc = {
 }
 
 /**
+ * Check if line contains metadata
+ */
+const isMetadataComment = (line: string): boolean => {
+  return line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')
+}
+
+/**
+ * Check if line is a non-comment line
+ */
+const isNonCommentLine = (line: string): boolean => {
+  const trimmed = line.trim()
+  return trimmed !== '' && !trimmed.startsWith('///')
+}
+
+/**
  * Extract schemas from lines of code
  * @function extractSchemas
  * @param lines - Lines of code
@@ -21,13 +36,12 @@ export function extractSchemas(lines: string[]): Schema[] {
     // extract schema
     const schemaMatch = line.match(/export const (\w+)\s*=/)
     if (schemaMatch) {
-      const newSchemas = acc.currentSchema ? [...acc.schemas, acc.currentSchema] : acc.schemas
-      const newAcc: Acc = {
-        currentSchema: { name: schemaMatch[1], fields: [] },
-        pendingDescription: undefined,
-        schemas: newSchemas,
+      if (acc.currentSchema) {
+        acc.schemas.push(acc.currentSchema)
       }
-      return process(i + 1, newAcc)
+      acc.currentSchema = { name: schemaMatch[1], fields: [] }
+      acc.pendingDescription = undefined
+      return process(i + 1, acc)
     }
     // process comment
     if (line.trim().startsWith('///')) {
@@ -36,10 +50,7 @@ export function extractSchemas(lines: string[]): Schema[] {
       if (zodComment && acc.currentSchema) {
         // find next field definition line
         const remainingCandidates = lines.slice(i + 1)
-        const foundRelative = remainingCandidates.findIndex((candidate) => {
-          const trimmed = candidate.trim()
-          return trimmed !== '' && !trimmed.startsWith('///')
-        })
+        const foundRelative = remainingCandidates.findIndex(isNonCommentLine)
         if (foundRelative !== -1) {
           const j = i + 1 + foundRelative
           const candidate = lines[j].trim()
@@ -50,27 +61,19 @@ export function extractSchemas(lines: string[]): Schema[] {
               definition: zodComment[1].replace('@', ''),
               description: acc.pendingDescription,
             }
-            const newCurrentSchema: Schema = {
-              ...acc.currentSchema,
-              fields: [...acc.currentSchema.fields, newField],
-            }
-            const newAcc: Acc = {
-              currentSchema: newCurrentSchema,
-              pendingDescription: undefined,
-              schemas: acc.schemas,
-            }
-            return process(i + 1, newAcc)
+            acc.currentSchema.fields.push(newField)
+            acc.pendingDescription = undefined
+            return process(i + 1, acc)
           }
         }
       } else {
         // comments other than metadata are pending
-        if (!line.includes('@z.') && !line.includes('@v.') && !line.includes('@relation.')) {
+        if (!isMetadataComment(line)) {
           const commentText = line.replace('///', '').trim()
-          const newPending = acc.pendingDescription
+          acc.pendingDescription = acc.pendingDescription
             ? `${acc.pendingDescription} ${commentText}`
             : commentText
-          const newAcc: Acc = { ...acc, pendingDescription: newPending }
-          return process(i + 1, newAcc)
+          return process(i + 1, acc)
         }
       }
       return process(i + 1, acc)
@@ -84,21 +87,17 @@ export function extractSchemas(lines: string[]): Schema[] {
           definition: '',
           description: acc.pendingDescription,
         }
-        const newCurrentSchema: Schema = {
-          ...acc.currentSchema,
-          fields: [...acc.currentSchema.fields, newField],
-        }
-        const newAcc: Acc = {
-          currentSchema: newCurrentSchema,
-          pendingDescription: undefined,
-          schemas: acc.schemas,
-        }
-        return process(i + 1, newAcc)
+        acc.currentSchema.fields.push(newField)
+        acc.pendingDescription = undefined
+        return process(i + 1, acc)
       }
     }
     return process(i + 1, acc)
   }
 
   const finalAcc = process(0, { currentSchema: null, pendingDescription: undefined, schemas: [] })
-  return finalAcc.currentSchema ? [...finalAcc.schemas, finalAcc.currentSchema] : finalAcc.schemas
+  if (finalAcc.currentSchema) {
+    finalAcc.schemas.push(finalAcc.currentSchema)
+  }
+  return finalAcc.schemas
 }

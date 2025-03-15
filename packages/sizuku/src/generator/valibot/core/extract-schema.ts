@@ -7,6 +7,13 @@ type Acc = {
 }
 
 /**
+ * Check if line contains metadata
+ */
+const isMetadataComment = (line: string): boolean => {
+  return line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')
+}
+
+/**
  * Extract schemas from lines of code
  * @function extractSchemas
  * @param lines - Lines of code
@@ -21,18 +28,17 @@ export function extractSchemas(lines: string[]): Schema[] {
     // extract schema name
     const schemaMatch = line.match(/export const (\w+)\s*=/)
     if (schemaMatch) {
-      const newSchemas = acc.currentSchema ? [...acc.schemas, acc.currentSchema] : acc.schemas
-      const newAcc: Acc = {
-        currentSchema: { name: schemaMatch[1], fields: [] },
-        pendingDescription: undefined,
-        schemas: newSchemas,
+      if (acc.currentSchema) {
+        acc.schemas.push(acc.currentSchema)
       }
-      return process(i + 1, newAcc)
+      acc.currentSchema = { name: schemaMatch[1], fields: [] }
+      acc.pendingDescription = undefined
+      return process(i + 1, acc)
     }
     // handle comment line
     if (line.trim().startsWith('///')) {
       // detect valibot comment
-      const valibotComment = line.match(/\/\/\/\s*@(v\.[^]+?)(?=\n|$)/)
+      const valibotComment = line.match(/\/\/\/\s*@(v\.[^\n]+)/)
       if (valibotComment && acc.currentSchema) {
         // find next field definition line
         const remainingCandidates = lines.slice(i + 1)
@@ -47,30 +53,22 @@ export function extractSchemas(lines: string[]): Schema[] {
           if (fieldMatch) {
             const newField = {
               name: fieldMatch[1],
-              definition: valibotComment[1].replace('@', ''),
+              definition: valibotComment[1],
               description: acc.pendingDescription,
             }
-            const newCurrentSchema: Schema = {
-              ...acc.currentSchema,
-              fields: [...acc.currentSchema.fields, newField],
-            }
-            const newAcc: Acc = {
-              currentSchema: newCurrentSchema,
-              pendingDescription: undefined,
-              schemas: acc.schemas,
-            }
-            return process(i + 1, newAcc)
+            acc.currentSchema.fields.push(newField)
+            acc.pendingDescription = undefined
+            return process(i + 1, acc)
           }
         }
       } else {
         // ignore comment line except metadata
-        if (!line.includes('@z.') && !line.includes('@v.') && !line.includes('@relation.')) {
+        if (!isMetadataComment(line)) {
           const commentText = line.replace('///', '').trim()
-          const newPending = acc.pendingDescription
+          acc.pendingDescription = acc.pendingDescription
             ? `${acc.pendingDescription} ${commentText}`
             : commentText
-          const newAcc: Acc = { ...acc, pendingDescription: newPending }
-          return process(i + 1, newAcc)
+          return process(i + 1, acc)
         }
       }
       return process(i + 1, acc)
@@ -84,21 +82,17 @@ export function extractSchemas(lines: string[]): Schema[] {
           definition: '',
           description: acc.pendingDescription,
         }
-        const newCurrentSchema: Schema = {
-          ...acc.currentSchema,
-          fields: [...acc.currentSchema.fields, newField],
-        }
-        const newAcc: Acc = {
-          currentSchema: newCurrentSchema,
-          pendingDescription: undefined,
-          schemas: acc.schemas,
-        }
-        return process(i + 1, newAcc)
+        acc.currentSchema.fields.push(newField)
+        acc.pendingDescription = undefined
+        return process(i + 1, acc)
       }
     }
     return process(i + 1, acc)
   }
 
   const finalAcc = process(0, { currentSchema: null, pendingDescription: undefined, schemas: [] })
-  return finalAcc.currentSchema ? [...finalAcc.schemas, finalAcc.currentSchema] : finalAcc.schemas
+  if (finalAcc.currentSchema) {
+    finalAcc.schemas.push(finalAcc.currentSchema)
+  }
+  return finalAcc.schemas
 }

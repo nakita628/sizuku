@@ -7,6 +7,11 @@ type FieldInfo = {
   line: number
 }
 
+type ExtendedAccumulator = AccumulatorType & {
+  tempFields: FieldInfo[]
+  currentTableStartLine: number
+}
+
 /**
  * Parse table info from code
  * @function parseTableInfo
@@ -14,10 +19,7 @@ type FieldInfo = {
  * @returns The parsed table info
  */
 export function parseTableInfo(code: string[]): TableInfo[] {
-  const initialAccumulator: AccumulatorType & {
-    tempFields: FieldInfo[]
-    currentTableStartLine: number
-  } = {
+  const initialAccumulator: ExtendedAccumulator = {
     tables: [],
     currentTable: null,
     currentDescription: '',
@@ -25,13 +27,12 @@ export function parseTableInfo(code: string[]): TableInfo[] {
     currentTableStartLine: 0,
   }
 
-  const result = code.reduce((acc, line, index) => {
+  const result = code.reduce<ExtendedAccumulator>((acc, line, index) => {
     // extract description
     const descriptionMatch = line.match(/\/\/\/\s*([^@].*)/)
     if (
       descriptionMatch &&
-      !line.includes('@z.') &&
-      !line.includes('@v.') &&
+      !(line.includes('@z.') || line.includes('@v.')) &&
       !line.includes('@relation')
     ) {
       acc.currentDescription = descriptionMatch[1]?.trim() ?? null
@@ -41,7 +42,6 @@ export function parseTableInfo(code: string[]): TableInfo[] {
     // extract table name
     const tableMatch = line.match(/export const (\w+)\s*=\s*mysqlTable/)
     if (tableMatch) {
-      // process fields of the previous table
       if (acc.currentTable && acc.tempFields.length > 0) {
         acc.currentTable.fields = acc.tempFields.map((field) => ({
           name: field.name,
@@ -55,38 +55,46 @@ export function parseTableInfo(code: string[]): TableInfo[] {
         name: tableMatch[1],
         fields: [],
       }
-      acc.currentTableStartLine = index
-      // reset tempFields
       acc.tempFields = []
+      acc.currentTableStartLine = index
       return acc
     }
 
     // field info extraction
-    if (acc.currentTable) {
-      const fieldMatch = line.match(/^\s*([^:]+):\s*([^(]+)\(/)
-      if (fieldMatch) {
-        const [_, fieldName, fieldType] = fieldMatch
-        const description =
-          (line.includes('.primaryKey()') ? '(PK) ' : '') + (acc.currentDescription || '')
+    if (!acc.currentTable) {
+      return acc
+    }
 
-        acc.tempFields = [
-          ...acc.tempFields,
-          {
-            name: fieldName.trim(),
-            type: fieldType.trim(),
-            description,
-            line: index,
-          },
-        ]
-        acc.currentDescription = ''
-      }
-      // detect foreign key constraint
-      if (line.includes('.references') || line.includes('relations')) {
-        const lastField = acc.tempFields[acc.tempFields.length - 1]
-        if (lastField) {
-          lastField.description = '(FK) ' + lastField.description
+    const fieldMatch = line.match(/^\s*([^:]+):\s*([^(]+)\(/)
+    if (fieldMatch) {
+      const [_, fieldName, fieldType] = fieldMatch
+      const description = line.includes('.primaryKey()')
+        ? `(PK) ${acc.currentDescription || ''}`
+        : acc.currentDescription || ''
+
+      acc.tempFields.push({
+        name: fieldName.trim(),
+        type: fieldType.trim(),
+        description,
+        line: index,
+      })
+      acc.currentDescription = ''
+      return acc
+    }
+
+    // detect foreign key constraint
+    if (line.includes('.references') || line.includes('relations')) {
+      const lastIndex = acc.tempFields.length - 1
+      if (lastIndex >= 0) {
+        const lastField = acc.tempFields[lastIndex]
+        acc.tempFields[lastIndex] = {
+          name: lastField.name,
+          type: lastField.type,
+          description: `(FK) ${lastField.description}`,
+          line: lastField.line,
         }
       }
+      return acc
     }
 
     return acc
