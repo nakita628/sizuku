@@ -1,5 +1,6 @@
 /**
  * Remove duplicate relations
+ * @function removeDuplicateRelations
  * @param relations - The relations to remove duplicates from
  * @returns The relations without duplicates
  */
