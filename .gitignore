@@ -4,10 +4,5 @@ pnpm-lock.yaml
 dist
 coverage
 .env
-migrations
-dev.db
-dev.db-journal
-cache
-pet-store
 .DS_Store
 local.db
