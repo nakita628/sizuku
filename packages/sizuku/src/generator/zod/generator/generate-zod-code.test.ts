@@ -14,34 +14,34 @@ const generateZodCodeTestCases: {
         {
           name: 'id',
           definition: 'z.string().uuid()',
-          description: 'Unique identifier for the user.'
+          description: 'Unique identifier for the user.',
         },
         {
           name: 'username',
           definition: 'z.string()',
-          description: 'Username of the user.'
+          description: 'Username of the user.',
         },
         {
           name: 'email',
           definition: 'z.string().email()',
-          description: 'Email address of the user.'
+          description: 'Email address of the user.',
         },
         {
           name: 'password',
           definition: 'z.string().min(8).max(100)',
-          description: 'Password for the user.'
+          description: 'Password for the user.',
         },
         {
           name: 'createdAt',
           definition: 'z.date()',
-          description: 'Timestamp when the user was created.'
+          description: 'Timestamp when the user was created.',
         },
         {
           name: 'updatedAt',
           definition: 'z.date()',
-          description: 'Timestamp when the user was last updated.'
-        }
-      ]
+          description: 'Timestamp when the user was last updated.',
+        },
+      ],
     },
     config: {
       schema: {
@@ -69,34 +69,34 @@ export type User = z.infer<typeof UserSchema>
         {
           name: 'id',
           definition: 'z.string().uuid()',
-          description: 'Unique identifier for the user.'
+          description: 'Unique identifier for the user.',
         },
         {
           name: 'username',
           definition: 'z.string()',
-          description: 'Username of the user.'
+          description: 'Username of the user.',
         },
         {
           name: 'email',
           definition: 'z.string().email()',
-          description: 'Email address of the user.'
+          description: 'Email address of the user.',
         },
         {
           name: 'password',
           definition: 'z.string().min(8).max(100)',
-          description: 'Password for the user.'
+          description: 'Password for the user.',
         },
         {
           name: 'createdAt',
           definition: 'z.date()',
-          description: 'Timestamp when the user was created.'
+          description: 'Timestamp when the user was created.',
         },
         {
           name: 'updatedAt',
           definition: 'z.date()',
-          description: 'Timestamp when the user was last updated.'
-        }
-      ]
+          description: 'Timestamp when the user was last updated.',
+        },
+      ],
     },
     config: {
       schema: {

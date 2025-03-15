@@ -15,34 +15,34 @@ const generateValibotInferInputTestCases: {
         {
           name: 'id',
           definition: 'v.pipe(v.string(), v.uuid())',
-          description: 'Unique identifier for the user.'
+          description: 'Unique identifier for the user.',
         },
         {
           name: 'username',
           definition: 'v.string()',
-          description: 'Username of the user.'
+          description: 'Username of the user.',
         },
         {
           name: 'email',
           definition: 'v.pipe(v.string(), v.email())',
-          description: 'Email address of the user.'
+          description: 'Email address of the user.',
         },
         {
           name: 'password',
           definition: 'v.pipe(v.string(), v.minLength(8), v.maxLength(100))',
-          description: 'Password for the user.'
+          description: 'Password for the user.',
         },
         {
           name: 'createdAt',
           definition: 'v.date()',
-          description: 'Timestamp when the user was created.'
+          description: 'Timestamp when the user was created.',
         },
         {
           name: 'updatedAt',
           definition: 'v.date()',
-          description: 'Timestamp when the user was last updated.'
-        }
-      ]
+          description: 'Timestamp when the user was last updated.',
+        },
+      ],
     },
     config: {
       schema: { name: 'PascalCase' },
