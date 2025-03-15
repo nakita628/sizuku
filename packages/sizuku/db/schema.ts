@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm'
 import { mysqlTable, varchar, timestamp, unique } from 'drizzle-orm/mysql-core'
 
 export const user = mysqlTable('user', {
-  /// (PK) Unique identifier for the user.
+  /// Unique identifier for the user.
   /// @z.string().uuid()
   /// @v.pipe(v.string(), v.uuid())
   id: varchar('id', { length: 36 }).primaryKey(),
@@ -33,11 +33,11 @@ export const user = mysqlTable('user', {
 
 /// @relation user.id post.userId one-to-many
 export const post = mysqlTable('post', {
-  /// (PK) Unique identifier for the post.
+  /// Unique identifier for the post.
   /// @z.string().uuid()
   /// @v.pipe(v.string(), v.uuid())
   id: varchar('id', { length: 36 }).primaryKey(),
-  /// (FK) ID of the user who created the post.
+  /// ID of the user who created the post.
   /// @z.string().uuid()
   /// @v.pipe(v.string(), v.uuid())
   userId: varchar('user_id', { length: 36 })
@@ -65,17 +65,17 @@ export const post = mysqlTable('post', {
 export const likes = mysqlTable(
   'likes',
   {
-    /// (PK) Unique identifier for the like.
+    /// Unique identifier for the like.
     /// @z.string().uuid()
     /// @v.pipe(v.string(), v.uuid())
     id: varchar('id', { length: 36 }).primaryKey(),
-    /// (FK) ID of the post that is liked.
+    /// ID of the post that is liked.
     /// @z.string().uuid()
     /// @v.pipe(v.string(), v.uuid())
     postId: varchar('post_id', { length: 36 })
       .notNull()
       .references(() => post.id, { onDelete: 'cascade' }),
-    /// (FK) ID of the user who liked the post.
+    /// ID of the user who liked the post.
     /// @z.string().uuid()
     /// @v.pipe(v.string(), v.uuid())
     userId: varchar('user_id', { length: 36 })
