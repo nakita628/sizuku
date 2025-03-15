@@ -4,8 +4,6 @@ Welcome to **Sizuku**! This tool takes annotations in your code comments and tur
 
 ## What Can Sizuku Do for You?
 
-## What Can Sizuku Do for You?
-
 - **Mermaid ER Diagrams:** Easily see your database tables and how they relate to one another with a clear, visual diagram generated in Mermaid syntax.
 - **ER Definitions:** Automatically create comprehensive documentation of your database schema, including detailed column definitions, relationships, and more.
 - **Validation Schemas:** Generate type-safe validation schemas using either [Zod](https://zod.dev/) or [Valibot](https://valibot.dev/) based on your code annotations (`@z` for Zod, `@v` for Valibot).
