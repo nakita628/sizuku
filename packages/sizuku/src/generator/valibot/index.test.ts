@@ -17,11 +17,7 @@ describe('Sizuku Valibot Generator', () => {
       expect(fs.existsSync(`${testDir}/index.ts`)).toBe(true)
 
       const result = fs.readFileSync(`${testDir}/index.ts`, 'utf-8')
-
-      console.log('--------------------------------')
-      console.log(result)
-      console.log('--------------------------------')
-
+      
       const expected = `import * as v from 'valibot'
 
 export const UserSchema = v.object({
