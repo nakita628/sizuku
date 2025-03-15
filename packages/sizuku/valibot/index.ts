@@ -2,7 +2,7 @@ import * as v from 'valibot'
 
 export const UserSchema = v.object({
   /**
-   * (PK) Unique identifier for the user.
+   * Unique identifier for the user.
    */
   id: v.pipe(v.string(), v.uuid()),
   /**
@@ -29,11 +29,11 @@ export const UserSchema = v.object({
 
 export const PostSchema = v.object({
   /**
-   * (PK) Unique identifier for the post.
+   * Unique identifier for the post.
    */
   id: v.pipe(v.string(), v.uuid()),
   /**
-   * (FK) ID of the user who created the post.
+   * ID of the user who created the post.
    */
   userId: v.pipe(v.string(), v.uuid()),
   /**
@@ -52,15 +52,15 @@ export const PostSchema = v.object({
 
 export const LikesSchema = v.object({
   /**
-   * (PK) Unique identifier for the like.
+   * Unique identifier for the like.
    */
   id: v.pipe(v.string(), v.uuid()),
   /**
-   * (FK) ID of the post that is liked.
+   * ID of the post that is liked.
    */
   postId: v.pipe(v.string(), v.uuid()),
   /**
-   * (FK) ID of the user who liked the post.
+   * ID of the user who liked the post.
    */
   userId: v.pipe(v.string(), v.uuid()),
   /**

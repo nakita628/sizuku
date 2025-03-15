@@ -15,7 +15,7 @@ const generateValibotInferInputTestCases: {
         {
           name: 'id',
           definition: 'v.pipe(v.string(), v.uuid())',
-          description: '(PK) Unique identifier for the user.'
+          description: 'Unique identifier for the user.'
         },
         {
           name: 'username',

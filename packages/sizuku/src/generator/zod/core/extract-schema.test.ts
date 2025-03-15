@@ -5,7 +5,7 @@ const extractSchemasTestCases = [
   {
     lines: [
       "export const user = mysqlTable('user', {",
-      '  /// (PK) Unique identifier for the user.',
+      '  /// Unique identifier for the user.',
       '  /// @z.string().uuid()',
       '  /// @v.pipe(v.string(), v.uuid())',
       "  id: varchar('id', { length: 36 }).primaryKey(),",
@@ -36,11 +36,11 @@ const extractSchemasTestCases = [
       '',
       '/// @relation user.id post.userId one-to-many',
       "export const post = mysqlTable('post', {",
-      '  /// (PK) Unique identifier for the post.',
+      '  /// Unique identifier for the post.',
       '  /// @z.string().uuid()',
       '  /// @v.pipe(v.string(), v.uuid())',
       "  id: varchar('id', { length: 36 }).primaryKey(),",
-      '  /// (FK) ID of the user who created the post.',
+      '  /// ID of the user who created the post.',
       '  /// @z.string().uuid()',
       '  /// @v.pipe(v.string(), v.uuid())',
       "  userId: varchar('user_id', { length: 36 })",
@@ -68,17 +68,17 @@ const extractSchemasTestCases = [
       'export const likes = mysqlTable(',
       "  'likes',",
       '  {',
-      '    /// (PK) Unique identifier for the like.',
+      '    /// Unique identifier for the like.',
       '    /// @z.string().uuid()',
       '    /// @v.pipe(v.string(), v.uuid())',
       "    id: varchar('id', { length: 36 }).primaryKey(),",
-      '    /// (FK) ID of the post that is liked.',
+      '    /// ID of the post that is liked.',
       '    /// @z.string().uuid()',
       '    /// @v.pipe(v.string(), v.uuid())',
       "    postId: varchar('post_id', { length: 36 })",
       '      .notNull()',
       "      .references(() => post.id, { onDelete: 'cascade' }),",
-      '    /// (FK) ID of the user who liked the post.',
+      '    /// ID of the user who liked the post.',
       '    /// @z.string().uuid()',
       '    /// @v.pipe(v.string(), v.uuid())',
       "    userId: varchar('user_id', { length: 36 })",
@@ -93,7 +93,7 @@ const extractSchemasTestCases = [
       '  },',
       '  (t) => [unique().on(t.userId, t.postId)],',
       ')',
-      ''
+      '',
     ],
     expected: [
       {
@@ -102,7 +102,7 @@ const extractSchemasTestCases = [
           {
             name: 'id',
             definition: 'z.string().uuid()',
-            description: '(PK) Unique identifier for the user.',
+            description: 'Unique identifier for the user.',
           },
           {
             name: 'username',
@@ -137,12 +137,12 @@ const extractSchemasTestCases = [
           {
             name: 'id',
             definition: 'z.string().uuid()',
-            description: '(PK) Unique identifier for the post.',
+            description: 'Unique identifier for the post.',
           },
           {
             name: 'userId',
             definition: 'z.string().uuid()',
-            description: '(FK) ID of the user who created the post.',
+            description: 'ID of the user who created the post.',
           },
           {
             name: 'content',
@@ -167,17 +167,17 @@ const extractSchemasTestCases = [
           {
             name: 'id',
             definition: 'z.string().uuid()',
-            description: '(PK) Unique identifier for the like.',
+            description: 'Unique identifier for the like.',
           },
           {
             name: 'postId',
             definition: 'z.string().uuid()',
-            description: '(FK) ID of the post that is liked.',
+            description: 'ID of the post that is liked.',
           },
           {
             name: 'userId',
             definition: 'z.string().uuid()',
-            description: '(FK) ID of the user who liked the post.',
+            description: 'ID of the user who liked the post.',
           },
           {
             name: 'createdAt',

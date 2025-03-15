@@ -17,12 +17,12 @@ describe('Sizuku Zod Generator', () => {
       expect(fs.existsSync(`${testDir}/index.ts`)).toBe(true)
 
       const result = fs.readFileSync(`${testDir}/index.ts`, 'utf-8')
-      
+
       const expected = `import { z } from 'zod'
 
 export const UserSchema = z.object({
   /**
-   * (PK) Unique identifier for the user.
+   * Unique identifier for the user.
    */
   id: z.string().uuid(),
   /**
@@ -49,11 +49,11 @@ export const UserSchema = z.object({
 
 export const PostSchema = z.object({
   /**
-   * (PK) Unique identifier for the post.
+   * Unique identifier for the post.
    */
   id: z.string().uuid(),
   /**
-   * (FK) ID of the user who created the post.
+   * ID of the user who created the post.
    */
   userId: z.string().uuid(),
   /**
@@ -72,15 +72,15 @@ export const PostSchema = z.object({
 
 export const LikesSchema = z.object({
   /**
-   * (PK) Unique identifier for the like.
+   * Unique identifier for the like.
    */
   id: z.string().uuid(),
   /**
-   * (FK) ID of the post that is liked.
+   * ID of the post that is liked.
    */
   postId: z.string().uuid(),
   /**
-   * (FK) ID of the user who liked the post.
+   * ID of the user who liked the post.
    */
   userId: z.string().uuid(),
   /**

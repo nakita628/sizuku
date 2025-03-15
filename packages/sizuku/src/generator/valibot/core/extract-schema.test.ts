@@ -93,100 +93,100 @@ const extractSchemasTestCases = [
       '  },',
       '  (t) => [unique().on(t.userId, t.postId)],',
       ')',
-      ''
+      '',
     ],
     expected: [
       {
-        "name": "user",
-        "fields": [
+        name: 'user',
+        fields: [
           {
-            "name": "id",
-            "definition": "v.pipe(v.string(), v.uuid())",
-            "description": "(PK) Unique identifier for the user."
+            name: 'id',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: '(PK) Unique identifier for the user.',
           },
           {
-            "name": "username",
-            "definition": "v.string()",
-            "description": "Username of the user."
+            name: 'username',
+            definition: 'v.string()',
+            description: 'Username of the user.',
           },
           {
-            "name": "email",
-            "definition": "v.pipe(v.string(), v.email())",
-            "description": "Email address of the user."
+            name: 'email',
+            definition: 'v.pipe(v.string(), v.email())',
+            description: 'Email address of the user.',
           },
           {
-            "name": "password",
-            "definition": "v.pipe(v.string(), v.minLength(8), v.maxLength(100))",
-            "description": "Password for the user."
+            name: 'password',
+            definition: 'v.pipe(v.string(), v.minLength(8), v.maxLength(100))',
+            description: 'Password for the user.',
           },
           {
-            "name": "createdAt",
-            "definition": "v.date()",
-            "description": "Timestamp when the user was created."
+            name: 'createdAt',
+            definition: 'v.date()',
+            description: 'Timestamp when the user was created.',
           },
           {
-            "name": "updatedAt",
-            "definition": "v.date()",
-            "description": "Timestamp when the user was last updated."
-          }
-        ]
+            name: 'updatedAt',
+            definition: 'v.date()',
+            description: 'Timestamp when the user was last updated.',
+          },
+        ],
       },
       {
-        "name": "post",
-        "fields": [
+        name: 'post',
+        fields: [
           {
-            "name": "id",
-            "definition": "v.pipe(v.string(), v.uuid())",
-            "description": "(PK) Unique identifier for the post."
+            name: 'id',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: '(PK) Unique identifier for the post.',
           },
           {
-            "name": "userId",
-            "definition": "v.pipe(v.string(), v.uuid())",
-            "description": "(FK) ID of the user who created the post."
+            name: 'userId',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: '(FK) ID of the user who created the post.',
           },
           {
-            "name": "content",
-            "definition": "v.string()",
-            "description": "Content of the post."
+            name: 'content',
+            definition: 'v.string()',
+            description: 'Content of the post.',
           },
           {
-            "name": "createdAt",
-            "definition": "v.date()",
-            "description": "Timestamp when the post was created."
+            name: 'createdAt',
+            definition: 'v.date()',
+            description: 'Timestamp when the post was created.',
           },
           {
-            "name": "updatedAt",
-            "definition": "v.date()",
-            "description": "Timestamp when the post was last updated."
-          }
-        ]
+            name: 'updatedAt',
+            definition: 'v.date()',
+            description: 'Timestamp when the post was last updated.',
+          },
+        ],
       },
       {
-        "name": "likes",
-        "fields": [
+        name: 'likes',
+        fields: [
           {
-            "name": "id",
-            "definition": "v.pipe(v.string(), v.uuid())",
-            "description": "(PK) Unique identifier for the like."
+            name: 'id',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: '(PK) Unique identifier for the like.',
           },
           {
-            "name": "postId",
-            "definition": "v.pipe(v.string(), v.uuid())",
-            "description": "(FK) ID of the post that is liked."
+            name: 'postId',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: '(FK) ID of the post that is liked.',
           },
           {
-            "name": "userId",
-            "definition": "v.pipe(v.string(), v.uuid())",
-            "description": "(FK) ID of the user who liked the post."
+            name: 'userId',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: '(FK) ID of the user who liked the post.',
           },
           {
-            "name": "createdAt",
-            "definition": "v.date()",
-            "description": "Timestamp when the like was created."
-          }
-        ]
-      }
-    ]
+            name: 'createdAt',
+            definition: 'v.date()',
+            description: 'Timestamp when the like was created.',
+          },
+        ],
+      },
+    ],
   },
 ]
 
