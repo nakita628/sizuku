@@ -13,9 +13,6 @@ type Acc = {
  * @returns Schemas
  */
 export function extractSchemas(lines: string[]): Schema[] {
-  console.log('--------------------------------')
-  console.log(lines)
-  console.log('--------------------------------')
   const process = (i: number, acc: Acc): Acc => {
     if (i >= lines.length) {
       return acc
