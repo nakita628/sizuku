@@ -473,3 +473,4 @@ We welcome feedback and contributions to improve the tool!
 
 ## License
 
+Distributed under the MIT License. See [LICENSE](https://github.com/nakita628/hono-takibi?tab=MIT-1-ov-file) for more information.
