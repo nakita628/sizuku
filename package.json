@@ -1,0 +1,13 @@
+{
+  "name": "sizuku-monorepo",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -F sizuku build",
+    "fmt": "pnpm biome format --write ./",
+    "lint": "pnpm biome lint"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4"
+  }
+}
