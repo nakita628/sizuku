@@ -1,4 +1,0 @@
-{
-  "input": "db/schema.ts",
-  "output": "mermaid-er/ER.md"
-}

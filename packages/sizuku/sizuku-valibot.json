@@ -6,7 +6,5 @@
     "name": "PascalCase",
     "export": false
   },
-  "comment": true,
-  "input": "db/schema.ts",
-  "output": "valibot/index.ts"
+  "comment": true
 }

@@ -5,7 +5,10 @@
   "scripts": {
     "build": "pnpm -F sizuku build",
     "fmt": "pnpm biome format --write ./",
-    "lint": "pnpm biome lint"
+    "lint": "pnpm biome lint",
+    "typecheck": "pnpm -F sizuku typecheck",
+    "test": "pnpm -F sizuku test",
+    "coverage": "pnpm -F sizuku coverage"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4"
