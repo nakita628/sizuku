@@ -1,10 +1,22 @@
 {
   "name": "sizuku",
   "version": "0.0.1",
-  "private": true,
   "license": "MIT",
+  "keywords": ["drizzle", "zod", "valibot", "mermaid"],
+  "homepage": "https://github.com/nakita628/sizuku",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nakita628/sizuku.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nakita628/sizuku/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": ["dist"],
   "bin": {
     "sizuku-zod": "dist/generator/zod/index.js",
     "sizuku-valibot": "dist/generator/valibot/index.js",
