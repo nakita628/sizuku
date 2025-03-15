@@ -11,6 +11,7 @@
     "sizuku-mermaid-er": "dist/generator/mermaid-er/index.js"
   },
   "scripts": {
+    "deps": "rm -rf node_modules && pnpm install",
     "demo-er": "sizuku-mermaid-er db/schema.ts -o mermaid-er/ER.md",
     "demo-z": "sizuku-zod db/schema.ts -o zod/index.ts",
     "demo-v": "sizuku-valibot db/schema.ts -o valibot/index.ts",
