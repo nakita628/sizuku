@@ -13,15 +13,12 @@ Welcome to **Sizuku**! This tool takes annotations in your code comments and tur
 ## Getting Started
 
 ### Installation
+
 ```bash
 npm install -D sizuku
 ```
 
 ## Usage
-
-```bash
-npm install -D sizuku
-```
 
 ### Example
 
