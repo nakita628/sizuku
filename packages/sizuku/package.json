@@ -11,14 +11,15 @@
     "sizuku-mermaid-er": "dist/generator/mermaid-er/index.js"
   },
   "scripts": {
+    "demo-er": "sizuku-mermaid-er db/schema.ts -o mermaid-er/ER.md",
     "demo-z": "sizuku-zod db/schema.ts -o zod/index.ts",
     "demo-v": "sizuku-valibot db/schema.ts -o valibot/index.ts",
-    "demo-er": "sizuku-mermaid-er db/schema.ts -o mermaid-er/ER.md",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "dev": "pnpm --filter sizuku-test dev",
     "test": "vitest run",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "release": "npm pkg fix && npm publish"
   },
   "devDependencies": {
     "@types/node": "^22.13.8",
