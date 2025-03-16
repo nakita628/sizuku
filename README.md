@@ -1,13 +1,12 @@
 # Sizuku
 
-Welcome to **Sizuku**! This tool takes annotations in your code comments and turns them into useful documentation and validation artifacts automatically. Whether you’re looking to visualize your database schema, generate detailed ER documentation, or create type-safe validation schemas, Sizuku has got you covered.
+**[Sizuku](https://www.npmjs.com/package/sizuku)** is a tool that generates Valibot validation schemas and ER diagrams from commented [Drizzle](https://orm.drizzle.team/) schemas.
 
-## What Can Sizuku Do for You?
+## Features
 
-- **Mermaid ER Diagrams:** Easily see your database tables and how they relate to one another with a clear, visual diagram generated in Mermaid syntax.
-- **ER Definitions:** Automatically create comprehensive documentation of your database schema, including detailed column definitions, relationships, and more.
-- **Validation Schemas:** Generate type-safe validation schemas using either [Zod](https://zod.dev/) or [Valibot](https://valibot.dev/) based on your code annotations (`@z` for Zod, `@v` for Valibot).
-- **Clear Relationship Definitions:** Use the `@relation` annotation in your code to explicitly define how tables are linked (e.g., one-to-many, many-to-many). This ensures that both your ER diagrams and documentation accurately reflect your database relationships.
+- 💎 Automatically generates [Zod](https://zod.dev/) schemas from your Drizzle schema
+- 🤖 Automatically generates [Valibot](https://valibot.dev/) schemas from your Drizzle schema
+- 📊 Creates [Mermaid](https://mermaid.js.org/) ER diagrams
 
 
 ## Getting Started
@@ -117,42 +116,6 @@ export const likes = mysqlTable(
   },
   (t) => [unique().on(t.userId, t.postId)],
 )
-```
-
-### Mermaid ER
-
-```bash
-npx sizuku-mermaid-er path/to/db/schema.ts -o path/to/output.md
-```
-
-output:
-
-```mermaid
-erDiagram
-    user ||--o{ post : "(id) - (userId)"
-    post ||--o{ likes : "(id) - (postId)"
-    user ||--o{ likes : "(id) - (userId)"
-    user {
-        varchar id "(PK) Unique identifier for the user."
-        varchar username "Username of the user."
-        varchar email "Email address of the user."
-        varchar password "Password for the user."
-        timestamp createdAt "Timestamp when the user was created."
-        timestamp updatedAt "Timestamp when the user was last updated."
-    }
-    post {
-        varchar id "(PK) Unique identifier for the post."
-        varchar userId "(FK) ID of the user who created the post."
-        varchar content "Content of the post."
-        timestamp createdAt "Timestamp when the post was created."
-        timestamp updatedAt "Timestamp when the post was last updated."
-    }
-    likes {
-        varchar id "(PK) Unique identifier for the like."
-        varchar postId "(FK) ID of the post that is liked."
-        varchar userId "(FK) ID of the user who liked the post."
-        timestamp createdAt "Timestamp when the like was created."
-    }
 ```
 
 ### Zod
@@ -317,30 +280,43 @@ export const LikesSchema = v.object({
 })
 ```
 
-## Configuration
+### Mermaid ER
 
-### sizuku-mermaid-er.json
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `input` | `string` | `""` | Input file path |
-| `output` | `string` | `""` | Output file path |
-
-> **⚠️** When using a configuration file, command line arguments are not required. The configuration file settings take precedence over command line arguments.
->
-> When you have configured `sizuku-mermaid-er.json`, you can simply run:
-> ```bash
-> npx sizuku-mermaid-er
-> ```
-
-#### Example
-
-```json
-{
-  "input": "db/schema.ts",
-  "output": "mermaid-er/ER.md"
-}
+```bash
+npx sizuku-mermaid-er path/to/db/schema.ts -o path/to/output.md
 ```
+
+output:
+
+```mermaid
+erDiagram
+    user ||--o{ post : "(id) - (userId)"
+    post ||--o{ likes : "(id) - (postId)"
+    user ||--o{ likes : "(id) - (userId)"
+    user {
+        varchar id "(PK) Unique identifier for the user."
+        varchar username "Username of the user."
+        varchar email "Email address of the user."
+        varchar password "Password for the user."
+        timestamp createdAt "Timestamp when the user was created."
+        timestamp updatedAt "Timestamp when the user was last updated."
+    }
+    post {
+        varchar id "(PK) Unique identifier for the post."
+        varchar userId "(FK) ID of the user who created the post."
+        varchar content "Content of the post."
+        timestamp createdAt "Timestamp when the post was created."
+        timestamp updatedAt "Timestamp when the post was last updated."
+    }
+    likes {
+        varchar id "(PK) Unique identifier for the like."
+        varchar postId "(FK) ID of the post that is liked."
+        varchar userId "(FK) ID of the user who liked the post."
+        timestamp createdAt "Timestamp when the like was created."
+    }
+```
+
+## Configuration
 
 ### sizuku-zod.json
 
@@ -399,30 +375,30 @@ export const LikesSchema = v.object({
 
 #### Schema Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `"PascalCase"` \| `"camelCase"` | `"PascalCase"` | Naming convention for generated schema variables |
-| `export` | `boolean` | `false` | When true, exports all schema definitions |
+| Option   | Type                            | Default        | Description                                |
+|----------|---------------------------------|----------------|--------------------------------------------|
+| `name`   | `"PascalCase"` \| `"camelCase"` | `"PascalCase"` | Naming convention for generated schema variables                                                                                                  |
+| `export` | `boolean`                       | `false`         | When true, exports all schema definitions |
 
 #### Type Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `"PascalCase"` \| `"camelCase"` | `"PascalCase"` | Naming convention for generated type definitions |
-| `export` | `boolean` | `false` | When true, exports all type definitions |
+| Option   | Type                            | Default        | Description                             |
+|----------|---------------------------------|----------------|-----------------------------------------|
+| `name`   | `"PascalCase"` \| `"camelCase"` | `"PascalCase"` | Naming convention for generated type definitions                                                                                             |
+| `export` | `boolean`                       | `false`        | When true, exports all type definitions |
 
 #### Comment Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `boolean` | `false` | If enabled, includes the element's original name in TSDoc comments. |
+| Option | Type           | Default | Description                                                         |
+|--------|----------------|---------|---------------------------------------------------------------------|
+| `name` | `boolean`      | `false` | If enabled, includes the element's original name in TSDoc comments. |
 
 #### Input and Output
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `input` | `string` | `""` | Input file path |
-| `output` | `string` | `""` | Output file path |
+| Option | Type | Default     | Description |
+|--------|------|-------------|-------------|
+| `input` | `string` | `""`   | Input file path |
+| `output` | `string` | `""`  | Output file path |
 
 #### Examples
 
@@ -443,28 +419,39 @@ export const LikesSchema = v.object({
 
 > **⚠️** When using a configuration file, command line arguments are not required. The configuration file settings take precedence over command line arguments.
 >
-> When you have configured `sizuku-zod.json`, you can simply run:
+> When you have configured `sizuku-valibot.json`, you can simply run:
 > ```bash
 > npx sizuku-valibot
+> ```
+
+### sizuku-mermaid-er.json
+
+| Option | Type | Default    | Description      |
+|--------|-------------------|------------------|
+| `input` | `string` | `""`  | Input file path  |
+| `output` | `string` | `""` | Output file path |
+
+#### Example
+
+```json
+{
+  "input": "db/schema.ts",
+  "output": "mermaid-er/ER.md"
+}
+```
+
+> **⚠️** When using a configuration file, command line arguments are not required. The configuration file settings take precedence over command line arguments.
+>
+> When you have configured `sizuku-mermaid-er.json`, you can simply run:
+> ```bash
+> npx sizuku-mermaid-er
 > ```
 
 This project is in **early development** and being maintained by a developer with about 2 years of experience. While I'm doing my best to create a useful tool:
 
 ### ⚠️ WARNING: Potential Breaking Changes Without Notice
 
-**This package is in active development and may introduce breaking changes without prior notice.**
-Specifically:
-- Query parameter coercion behavior may change
-- Schema generation logic might be updated
-- Output code structure could be modified
-- Example value handling might be altered
-
-We strongly recommend:
-- Pinning to exact versions in production
-- Testing thoroughly when updating versions
-- Reviewing generated code after updates
-
-We welcome feedback and contributions to improve the tool!
+**This package is in active development and may introduce breaking changes without prior notice.
 
 ## License
 
