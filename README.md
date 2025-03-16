@@ -426,10 +426,10 @@ erDiagram
 
 ### sizuku-mermaid-er.json
 
-| Option | Type | Default    | Description      |
-|--------|-------------------|------------------|
-| `input` | `string` | `""`  | Input file path  |
-| `output` | `string` | `""` | Output file path |
+| Option   | Type     | Default    | Description      |
+|----------|----------|------------|------------------|
+| `input`  | `string` | `""`       | Input file path  |
+| `output` | `string` | `""`       | Output file path |
 
 #### Example
 
