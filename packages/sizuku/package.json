@@ -33,7 +33,7 @@
     "dev": "pnpm --filter sizuku-test dev",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "release": "npm pkg fix && npm publish"
+    "release": "npm pkg fix && pnpm build && npm publish"
   },
   "devDependencies": {
     "@types/node": "^22.13.8",
