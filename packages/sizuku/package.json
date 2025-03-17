@@ -3,12 +3,7 @@
   "version": "0.0.4",
   "description": "Sizuku is a tool that generates validation schemas for Zod and Valibot, as well as ER diagrams, from Drizzle schemas annotated with comments.",
   "license": "MIT",
-  "keywords": [
-    "drizzle",
-    "zod",
-    "valibot",
-    "mermaid"
-  ],
+  "keywords": ["drizzle", "zod", "valibot", "mermaid"],
   "homepage": "https://github.com/nakita628/sizuku",
   "publishConfig": {
     "access": "public"
@@ -22,9 +17,7 @@
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "bin": {
     "sizuku-zod": "dist/generator/zod/index.js",
     "sizuku-valibot": "dist/generator/valibot/index.js",
