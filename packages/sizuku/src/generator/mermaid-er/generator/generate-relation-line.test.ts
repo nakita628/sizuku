@@ -14,7 +14,7 @@ const generateRelationLineTestCases: {
       toField: 'userId',
       type: 'one-to-many',
     },
-    expected: '    user ||--o{ post : "(id) - (userId)"',
+    expected: '    user ||--|{ post : "(id) - (userId)"',
   },
   {
     relation: {
@@ -24,7 +24,7 @@ const generateRelationLineTestCases: {
       toField: 'postId',
       type: 'one-to-many',
     },
-    expected: '    post ||--o{ likes : "(id) - (postId)"',
+    expected: '    post ||--|{ likes : "(id) - (postId)"',
   },
   {
     relation: {
@@ -34,7 +34,7 @@ const generateRelationLineTestCases: {
       toField: 'userId',
       type: 'one-to-many',
     },
-    expected: '    user ||--o{ likes : "(id) - (userId)"',
+    expected: '    user ||--|{ likes : "(id) - (userId)"',
   },
 ]
 
