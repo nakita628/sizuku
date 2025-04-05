@@ -1,4 +1,4 @@
-import { CARDINALITY_MAP } from '..'
+import { buildRelationLine } from '../relationship/build-relation-line'
 import type { Relation } from '../type'
 
 /**
@@ -7,7 +7,8 @@ import type { Relation } from '../type'
  * @returns The generated relation line
  */
 export function generateRelationLine(relation: Relation): string {
-  const cardinality = CARDINALITY_MAP[relation.type]
+  const cardinality = buildRelationLine(relation.type)
+
   if (!cardinality) {
     throw new Error(`Unknown relation type: ${relation.type}`)
   }
