@@ -1,5 +1,3 @@
-import { isRelation } from './is-relation'
-
 /**
  * Parse a relation line
  * @param line - The line to parse
@@ -10,11 +8,6 @@ export function parseRelationLine(line: string) {
   const relationMatch = line.match(/@relation\s+(\w+)\.(\w+)\s+(\w+)\.(\w+)\s+(\w+-to-\w+)/)
   if (relationMatch) {
     const [_, fromModel, fromField, toModel, toField, type] = relationMatch
-
-    // Validate the relation type
-    if (!isRelation(type)) {
-      throw new Error(`Unknown relation type: ${type}`)
-    }
 
     return {
       fromModel,
