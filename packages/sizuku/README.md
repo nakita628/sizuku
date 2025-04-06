@@ -290,9 +290,9 @@ output:
 
 ```mermaid
 erDiagram
-    user ||--|{ post : "(id) - (userId)"
-    post ||--|{ likes : "(id) - (postId)"
-    user ||--|{ likes : "(id) - (userId)"
+    user ||--}| post : "(id) - (userId)"
+    post ||--}| likes : "(id) - (postId)"
+    user ||--}| likes : "(id) - (userId)"
     user {
         varchar id "(PK) Unique identifier for the user."
         varchar username "Username of the user."
