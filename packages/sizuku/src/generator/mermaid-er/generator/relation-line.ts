@@ -1,12 +1,12 @@
-import { buildRelationLine } from '../relationship/build-relation-line'
-import type { Relation } from '../type'
+import { buildRelationLine } from '../relationship/build-relation-line.js'
+import type { Relation } from '../type/index.js'
 
 /**
  * Generate a relation line for a relation
  * @param relation - The relation to generate a line for
  * @returns The generated relation line
  */
-export function generateRelationLine(relation: Relation): string {
+export function relationLine(relation: Relation): string {
   const cardinality = buildRelationLine(relation.type)
 
   if (!cardinality) {

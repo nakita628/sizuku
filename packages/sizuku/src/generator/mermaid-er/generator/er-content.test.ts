@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generateERContent } from './generate-er-content'
+import { erContent } from '.'
 import type { Relation, TableInfo } from '../type'
 
 const generateERContentTestCases: {
@@ -157,7 +157,7 @@ describe('generateERContent', () => {
   it.concurrent.each(generateERContentTestCases)(
     'generateERContent($relations, $tables) -> $expected',
     ({ relations, tables, expected }) => {
-      const result = generateERContent(relations, tables)
+      const result = erContent(relations, tables)
       expect(result).toEqual(expected)
     },
   )

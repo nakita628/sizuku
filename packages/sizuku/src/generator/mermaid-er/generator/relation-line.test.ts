@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generateRelationLine } from './generate-relation-line'
+import { relationLine } from '.'
 import type { Relation } from '../type'
 
 const generateRelationLineTestCases: {
@@ -42,7 +42,7 @@ describe('generateRelationLine', () => {
   it.concurrent.each(generateRelationLineTestCases)(
     'generateRelationLine($relation) -> $expected',
     ({ relation, expected }) => {
-      const result = generateRelationLine(relation)
+      const result = relationLine(relation)
       expect(result).toEqual(expected)
     },
   )
