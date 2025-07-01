@@ -1,5 +1,5 @@
-import type { Relation } from '../type'
-import { parseRelationLine } from '../validator/parse-relation-line'
+import type { Relation } from '../type/index.js'
+import { parseRelationLine } from '../validator/parse-relation-line.js'
 
 /**
  * Extracts relations from the given code.

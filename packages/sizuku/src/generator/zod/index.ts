@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import type { Config } from '../../common/config'
+import type { Config } from '../../shared/config/index.js'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { extractSchemas } from './core/extract-schema'
-import { generateZodCode } from './generator/generate-zod-code'
-import { formatCode } from '../../common/format'
-import { getConfig } from './config'
+import { extractSchemas } from './core/extract-schema.js'
+import { generateZodCode } from './generator/zod-code.js'
+import { formatCode } from '../../shared/format/index.js'
+import { getConfig } from './config/index.js'
 import { argv } from 'node:process'
 const IMPORT_ZOD = 'import { z } from "zod"' as const
 

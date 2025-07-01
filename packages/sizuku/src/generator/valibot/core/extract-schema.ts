@@ -1,98 +1,141 @@
-import type { Schema } from '../../../common/type'
+import type { Schema } from '../../../shared/types.js'
+import { Project, Node } from 'ts-morph'
 
-type Acc = {
-  currentSchema: Schema | null
-  pendingDescription?: string
-  schemas: Schema[]
+/**
+ * Check if comment contains metadata
+ */
+const isMetadataComment = (text: string): boolean => {
+  return text.includes('@z.') || text.includes('@v.') || text.includes('@relation.')
 }
 
 /**
- * Check if line contains metadata
+ * Extract field comments that appear before a specific line position
  */
-const isMetadataComment = (line: string): boolean => {
-  return line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')
+const extractFieldComments = (sourceText: string, fieldStartPos: number): string[] => {
+  const beforeField = sourceText.substring(0, fieldStartPos)
+  const lines = beforeField.split('\n')
+
+  const reverseIndex = lines
+    .map((line, index) => ({ line: line.trim(), index }))
+    .reverse()
+    .reduce<{ commentLines: string[]; shouldStop: boolean }>(
+      (acc, { line, index }) => {
+        if (acc.shouldStop) return acc
+
+        if (line.startsWith('///')) {
+          return {
+            commentLines: [line, ...acc.commentLines],
+            shouldStop: false,
+          }
+        }
+
+        if (line === '') {
+          return acc
+        }
+
+        return { ...acc, shouldStop: true }
+      },
+      { commentLines: [], shouldStop: false },
+    )
+
+  return reverseIndex.commentLines
+}
+
+/**
+ * Parse comment lines and extract Valibot definition and description
+ */
+const parseFieldComments = (
+  commentLines: string[],
+): { valibotDefinition: string; description: string | undefined } => {
+  const cleanLines = commentLines
+    .map((line) => line.replace(/^\/\/\/\s*/, '').trim())
+    .filter((line) => line.length > 0)
+
+  const valibotDefinition =
+    cleanLines.find((line) => line.startsWith('@v.'))?.replace(/^@/, '') ?? ''
+
+  const descriptionLines = cleanLines.filter((line) => !isMetadataComment(line))
+  const description = descriptionLines.length > 0 ? descriptionLines.join(' ') : undefined
+
+  return { valibotDefinition, description }
+}
+
+/**
+ * Extract field information from object property
+ */
+const extractFieldFromProperty = (
+  property: Node,
+  sourceText: string,
+): Schema['fields'][0] | null => {
+  if (!Node.isPropertyAssignment(property)) return null
+
+  const fieldName = property.getName()
+  if (!fieldName) return null
+
+  const fieldStartPos = property.getStart()
+  const commentLines = extractFieldComments(sourceText, fieldStartPos)
+  const { valibotDefinition, description } = parseFieldComments(commentLines)
+
+  return {
+    name: fieldName,
+    definition: valibotDefinition,
+    description,
+  }
+}
+
+/**
+ * Extract schema from variable declaration
+ */
+const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Schema | null => {
+  if (!Node.isVariableDeclaration(declaration)) return null
+
+  const name = declaration.getName()
+  if (!name) return null
+
+  const initializer = declaration.getInitializer()
+  if (!Node.isCallExpression(initializer)) {
+    return { name, fields: [] }
+  }
+
+  const args = initializer.getArguments()
+  if (args.length < 2) return { name, fields: [] }
+
+  const objectLiteral = args[1]
+  if (!Node.isObjectLiteralExpression(objectLiteral)) {
+    return { name, fields: [] }
+  }
+
+  const fields = objectLiteral
+    .getProperties()
+    .map((prop) => extractFieldFromProperty(prop, sourceText))
+    .filter((field): field is NonNullable<typeof field> => field !== null)
+
+  return { name, fields }
 }
 
 /**
  * Extract schemas from lines of code
- * @function extractSchemas
  * @param lines - Lines of code
  * @returns Schemas
  */
 export function extractSchemas(lines: string[]): Schema[] {
-  const process = (i: number, acc: Acc): Acc => {
-    if (i >= lines.length) {
-      return acc
-    }
-    const line = lines[i]
-    // extract schema name
-    const schemaMatch = line.match(/export const (\w+)\s*=/)
-    if (schemaMatch) {
-      if (acc.currentSchema) {
-        acc.schemas.push(acc.currentSchema)
-      }
-      acc.currentSchema = { name: schemaMatch[1], fields: [] }
-      acc.pendingDescription = undefined
-      return process(i + 1, acc)
-    }
-    // handle comment line
-    if (line.trim().startsWith('///')) {
-      // detect valibot comment
-      const valibotComment = line.match(/\/\/\/\s*@(v\.[^\n]+)/)
-      if (valibotComment && acc.currentSchema) {
-        // find next field definition line
-        const remainingCandidates = lines.slice(i + 1)
-        const foundRelative = remainingCandidates.findIndex((candidate) => {
-          const trimmed = candidate.trim()
-          return trimmed !== '' && !trimmed.startsWith('///')
-        })
-        if (foundRelative !== -1) {
-          const j = i + 1 + foundRelative
-          const candidate = lines[j].trim()
-          const fieldMatch = candidate.match(/^(\w+)\s*:/)
-          if (fieldMatch) {
-            const newField = {
-              name: fieldMatch[1],
-              definition: valibotComment[1],
-              description: acc.pendingDescription,
-            }
-            acc.currentSchema.fields.push(newField)
-            acc.pendingDescription = undefined
-            return process(i + 1, acc)
-          }
-        }
-      } else {
-        // ignore comment line except metadata
-        if (!isMetadataComment(line)) {
-          const commentText = line.replace('///', '').trim()
-          acc.pendingDescription = acc.pendingDescription
-            ? `${acc.pendingDescription} ${commentText}`
-            : commentText
-          return process(i + 1, acc)
-        }
-      }
-      return process(i + 1, acc)
-    }
-    // if field definition is found in non-comment line, use pending comment as field information
-    if (acc.currentSchema && acc.pendingDescription) {
-      const fieldMatch = line.match(/^(\w+)\s*:/)
-      if (fieldMatch) {
-        const newField = {
-          name: fieldMatch[1],
-          definition: '',
-          description: acc.pendingDescription,
-        }
-        acc.currentSchema.fields.push(newField)
-        acc.pendingDescription = undefined
-        return process(i + 1, acc)
-      }
-    }
-    return process(i + 1, acc)
-  }
+  const sourceCode = lines.join('\n')
 
-  const finalAcc = process(0, { currentSchema: null, pendingDescription: undefined, schemas: [] })
-  if (finalAcc.currentSchema) {
-    finalAcc.schemas.push(finalAcc.currentSchema)
-  }
-  return finalAcc.schemas
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: {
+      allowJs: true,
+      skipLibCheck: true,
+    },
+  })
+
+  const sourceFile = project.createSourceFile('temp.ts', sourceCode)
+  const sourceText = sourceFile.getFullText()
+
+  return sourceFile
+    .getVariableStatements()
+    .filter((stmt) => stmt.hasExportKeyword())
+    .flatMap((stmt) => stmt.getDeclarations())
+    .map((decl) => extractSchemaFromDeclaration(decl, sourceText))
+    .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
 }

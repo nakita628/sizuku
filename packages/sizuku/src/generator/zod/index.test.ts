@@ -3,6 +3,9 @@ import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
+// Test run
+// pnpm vitest run ./src/generator/zod/index.test.ts
+
 describe('Sizuku Zod Generator', () => {
   it('sizuku-zod valid', async () => {
     const testDir = 'zod-test'

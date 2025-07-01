@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { extractSchemas } from './extract-schema'
 
+// Test run
+// pnpm vitest run ./src/generator/valibot/core/extract-schema.test.ts
+
 const extractSchemasTestCases = [
   {
     lines: [

@@ -1,9 +1,8 @@
 import type { Config } from '../../../common/config'
 import type { Schema } from '../../../common/type'
 import { describe, expect, it } from 'vitest'
-import { generateValibotSchema } from './generate-valibot-schema'
-
-const generateValibotSchemaTestCases: {
+import { generateZodCode } from './zod-code'
+const generateZodCodeTestCases: {
   schema: Schema
   config: Config
   expected: string
@@ -14,46 +13,54 @@ const generateValibotSchemaTestCases: {
       fields: [
         {
           name: 'id',
-          definition: 'v.pipe(v.string(), v.uuid())',
+          definition: 'z.string().uuid()',
           description: 'Unique identifier for the user.',
         },
         {
           name: 'username',
-          definition: 'v.string()',
+          definition: 'z.string()',
           description: 'Username of the user.',
         },
         {
           name: 'email',
-          definition: 'v.pipe(v.string(), v.email())',
+          definition: 'z.string().email()',
           description: 'Email address of the user.',
         },
         {
           name: 'password',
-          definition: 'v.pipe(v.string(), v.minLength(8), v.maxLength(100))',
+          definition: 'z.string().min(8).max(100)',
           description: 'Password for the user.',
         },
         {
           name: 'createdAt',
-          definition: 'v.date()',
+          definition: 'z.date()',
           description: 'Timestamp when the user was created.',
         },
         {
           name: 'updatedAt',
-          definition: 'v.date()',
+          definition: 'z.date()',
           description: 'Timestamp when the user was last updated.',
         },
       ],
     },
     config: {
-      schema: { name: 'PascalCase' },
-      type: { name: 'PascalCase', export: true },
+      schema: {
+        name: 'PascalCase',
+      },
+      type: {
+        name: 'PascalCase',
+        export: true,
+      },
     },
-    expected: `export const UserSchema = v.object({id:v.pipe(v.string(), v.uuid()),
-username:v.string(),
-email:v.pipe(v.string(), v.email()),
-password:v.pipe(v.string(), v.minLength(8), v.maxLength(100)),
-createdAt:v.date(),
-updatedAt:v.date()})`,
+    expected: `export const UserSchema = z.object({id:z.string().uuid(),
+username:z.string(),
+email:z.string().email(),
+password:z.string().min(8).max(100),
+createdAt:z.date(),
+updatedAt:z.date()})
+
+export type User = z.infer<typeof UserSchema>
+`,
   },
   {
     schema: {
@@ -61,54 +68,60 @@ updatedAt:v.date()})`,
       fields: [
         {
           name: 'id',
-          definition: 'v.pipe(v.string(), v.uuid())',
+          definition: 'z.string().uuid()',
           description: 'Unique identifier for the user.',
         },
         {
           name: 'username',
-          definition: 'v.string()',
+          definition: 'z.string()',
           description: 'Username of the user.',
         },
         {
           name: 'email',
-          definition: 'v.pipe(v.string(), v.email())',
+          definition: 'z.string().email()',
           description: 'Email address of the user.',
         },
         {
           name: 'password',
-          definition: 'v.pipe(v.string(), v.minLength(8), v.maxLength(100))',
+          definition: 'z.string().min(8).max(100)',
           description: 'Password for the user.',
         },
         {
           name: 'createdAt',
-          definition: 'v.date()',
+          definition: 'z.date()',
           description: 'Timestamp when the user was created.',
         },
         {
           name: 'updatedAt',
-          definition: 'v.date()',
+          definition: 'z.date()',
           description: 'Timestamp when the user was last updated.',
         },
       ],
     },
     config: {
-      schema: { name: 'camelCase' },
-      type: { name: 'camelCase', export: false },
+      schema: {
+        name: 'camelCase',
+      },
+      type: {
+        name: 'camelCase',
+        export: false,
+      },
     },
-    expected: `export const userSchema = v.object({id:v.pipe(v.string(), v.uuid()),
-username:v.string(),
-email:v.pipe(v.string(), v.email()),
-password:v.pipe(v.string(), v.minLength(8), v.maxLength(100)),
-createdAt:v.date(),
-updatedAt:v.date()})`,
+    expected: `export const userSchema = z.object({id:z.string().uuid(),
+username:z.string(),
+email:z.string().email(),
+password:z.string().min(8).max(100),
+createdAt:z.date(),
+updatedAt:z.date()})
+`,
   },
 ]
 
-describe('generateValibotSchema', () => {
-  it.concurrent.each(generateValibotSchemaTestCases)(
-    'generateValibotSchema($schema) -> $expected',
-    ({ schema, config, expected }) => {
-      const result = generateValibotSchema(schema, config)
+describe('generateZodCode', () => {
+  it.concurrent.each(generateZodCodeTestCases)(
+    'generateZodCode($schema) -> $expected',
+    async ({ schema, config, expected }) => {
+      const result = generateZodCode(schema, config)
       expect(result).toBe(expected)
     },
   )
