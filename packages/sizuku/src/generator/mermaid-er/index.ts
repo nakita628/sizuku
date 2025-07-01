@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
-import type { Config } from './config'
+import type { Config } from './config/index.js'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { generateERContent } from './generator/generate-er-content'
-import { parseTableInfo } from './validator/parse-table-info'
-import { extractRelations } from './core/extract-relations'
-import { getConfig } from './config'
+
+import { parseTableInfo } from './validator/parse-table-info.js'
+import { extractRelations } from './core/extract-relations.js'
+import { getConfig } from './config/index.js'
 import { argv } from 'node:process'
+import { erContent } from './generator/er-content.js'
 
 // ER diagram header
 export const ER_HEADER = ['```mermaid', 'erDiagram'] as const
@@ -51,7 +52,7 @@ export async function main(dev = false, config: Config = getConfig()) {
     // 10. extract relations
     const relations = extractRelations(lines.slice(codeStart))
     // 11. generate ER content
-    const ERContent = generateERContent(relations, tables)
+    const ERContent = erContent(relations, tables)
     // 12. write ER content to output file
     writeFileSync(output, ERContent)
     console.log(`Generated ER at: ${output}`)

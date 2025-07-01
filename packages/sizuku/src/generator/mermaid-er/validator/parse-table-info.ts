@@ -1,4 +1,4 @@
-import type { AccumulatorType, TableInfo } from '../type'
+import type { AccumulatorType, TableInfo } from '../type/index.js'
 
 type FieldInfo = {
   name: string

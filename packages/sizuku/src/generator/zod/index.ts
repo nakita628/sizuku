@@ -4,10 +4,11 @@ import type { Config } from '../../shared/config/index.js'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { extractSchemas } from './core/extract-schema.js'
-import { generateZodCode } from './generator/zod-code.js'
+
 import { formatCode } from '../../shared/format/index.js'
 import { getConfig } from './config/index.js'
 import { argv } from 'node:process'
+import { zodCode } from './generator/zod-code.js'
 const IMPORT_ZOD = 'import { z } from "zod"' as const
 
 export async function main(dev = false, config: Config = getConfig()) {
@@ -48,7 +49,7 @@ export async function main(dev = false, config: Config = getConfig()) {
     const generatedCode = [
       IMPORT_ZOD,
       '',
-      ...schemas.map((schema) => generateZodCode(schema, config)),
+      ...schemas.map((schema) => zodCode(schema, config?.comment ?? true, config?.type.export ?? false)),
     ].join('\n')
 
     // 11. format code

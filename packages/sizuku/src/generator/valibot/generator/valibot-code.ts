@@ -8,7 +8,7 @@ import type { Schema } from '../../../shared/types.js'
  * @param type
  * @returns
  */
-export function generateValibotCode(schema: Schema, comment: boolean, type: boolean): string {
+export function valibotCode(schema: Schema, comment: boolean, type: boolean): string {
   const valibotSchema = valibot(schema, comment)
 
   if (type) {

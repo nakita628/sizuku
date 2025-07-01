@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 
-import type { Config } from '../../common/config'
+import type { Config } from '../../shared/config/index.js'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { extractSchemas } from './core/extract-schema'
-import { formatCode } from '../../common/format'
-import { getConfig } from './config'
+
+import { formatCode } from '../../shared/format/index.js'
+import { getConfig } from './config/index.js'
 import { argv } from 'node:process'
-import { generateValibotCode } from './generator/generate-valibot-code'
+import { valibotCode } from './generator/valibot-code.js'
+import { extractSchemas } from './core/extract-schema.js'
+
 const IMPORT_VALIBOT = 'import * as v from "valibot"' as const
 
 export async function main(dev = false, config: Config = getConfig()) {
@@ -48,7 +50,7 @@ export async function main(dev = false, config: Config = getConfig()) {
     const generatedCode = [
       IMPORT_VALIBOT,
       '',
-      ...schemas.map((schema) => generateValibotCode(schema, config)),
+      ...schemas.map((schema) => valibotCode(schema, config?.comment ?? true, config?.type.export ?? false)),
     ].join('\n')
 
     // 11. format code

@@ -1,6 +1,6 @@
 import fs from 'node:fs'
-import type { Config } from '../../../common/config'
-import { DEFAULT_CONFIG } from '../../../common/config'
+import type { Config } from '../../../shared/config/index.js'
+import { DEFAULT_CONFIG } from '../../../shared/config/index.js'
 
 /**
  * Loads the configuration from the `sizuku.json` file or returns the default configuration.
