@@ -1,5 +1,5 @@
 import type { Schema } from '../../../shared/types.js'
-import { Project, Node } from 'ts-morph'
+import { Project, Node, CallExpression, ObjectLiteralExpression } from 'ts-morph'
 
 /**
  * Check if comment contains metadata
@@ -83,8 +83,173 @@ const extractFieldFromProperty = (
 }
 
 /**
- * Extract schema from variable declaration
+ * Convert table name to Schema name (e.g., 'user' -> 'UserSchema', 'post' -> 'PostSchema')
  */
+const toSchemaName = (tableName: string): string => {
+  return tableName.charAt(0).toUpperCase() + tableName.slice(1) + 'Schema'
+}
+
+/**
+ * Extract relation field with type inference
+ */
+const extractRelationFieldFromProperty = (
+  property: Node,
+  sourceText: string,
+): Schema['fields'][0] | null => {
+  if (!Node.isPropertyAssignment(property)) return null
+
+  const fieldName = property.getName()
+  if (!fieldName) return null
+
+  const initializer = property.getInitializer()
+  if (!Node.isCallExpression(initializer)) {
+    return {
+      name: fieldName,
+      definition: '',
+      description: undefined,
+    }
+  }
+
+  const expression = initializer.getExpression()
+  if (!Node.isIdentifier(expression)) {
+    return {
+      name: fieldName,
+      definition: '',
+      description: undefined,
+    }
+  }
+
+  const functionName = expression.getText()
+  const args = initializer.getArguments()
+
+  if (args.length === 0) {
+    return {
+      name: fieldName,
+      definition: '',
+      description: undefined,
+    }
+  }
+
+  const firstArg = args[0]
+  if (!Node.isIdentifier(firstArg)) {
+    return {
+      name: fieldName,
+      definition: '',
+      description: undefined,
+    }
+  }
+
+  const referencedTable = firstArg.getText()
+  const schemaName = toSchemaName(referencedTable)
+
+  const zodDefinition =
+    functionName === 'many'
+      ? `z.array(${schemaName})` // many(post) -> z.array(PostSchema)
+      : functionName === 'one'
+        ? schemaName // one(user, {...}) -> UserSchema
+        : ''
+
+  const fieldStartPos = property.getStart()
+  const commentLines = extractFieldComments(sourceText, fieldStartPos)
+  const { description } = parseFieldComments(commentLines)
+
+  return {
+    name: fieldName,
+    definition: zodDefinition,
+    description,
+  }
+}
+
+/**
+ * Extract object literal from any expression
+ */
+const extractObjectLiteralFromExpression = (expression: Node): ObjectLiteralExpression | null => {
+  // 直接のオブジェクトリテラル
+  if (Node.isObjectLiteralExpression(expression)) {
+    return expression
+  }
+
+  if (Node.isParenthesizedExpression(expression)) {
+    const inner = expression.getExpression()
+    return Node.isObjectLiteralExpression(inner) ? inner : null
+  }
+
+  if (Node.isArrowFunction(expression)) {
+    const body = expression.getBody()
+
+    if (Node.isObjectLiteralExpression(body)) {
+      return body
+    }
+
+    if (Node.isParenthesizedExpression(body)) {
+      const inner = body.getExpression()
+      return Node.isObjectLiteralExpression(inner) ? inner : null
+    }
+
+    if (Node.isBlock(body)) {
+      const returnStatement = body.getStatements().find((stmt) => Node.isReturnStatement(stmt))
+      if (returnStatement && Node.isReturnStatement(returnStatement)) {
+        const returnExpression = returnStatement.getExpression()
+        return returnExpression && Node.isObjectLiteralExpression(returnExpression)
+          ? returnExpression
+          : null
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Find object literal in call expression arguments
+ */
+const findObjectLiteralInArgs = (callExpr: CallExpression): ObjectLiteralExpression | null => {
+  const args = callExpr.getArguments()
+
+  // 全ての引数を検査してオブジェクトリテラルを探す
+  for (const arg of args) {
+    const objectLiteral = extractObjectLiteralFromExpression(arg)
+    if (objectLiteral) {
+      return objectLiteral
+    }
+  }
+
+  return null
+}
+
+/**
+ * Determine if this is a relation-like function call
+ */
+const isRelationFunction = (callExpr: CallExpression): boolean => {
+  const expression = callExpr.getExpression()
+  if (!Node.isIdentifier(expression)) return false
+
+  const functionName = expression.getText()
+  return functionName === 'relations' || functionName.includes('relation')
+}
+
+/**
+ * Extract fields from any call expression
+ */
+const extractFieldsFromCallExpression = (
+  callExpr: CallExpression,
+  sourceText: string,
+): Schema['fields'] => {
+  const objectLiteral = findObjectLiteralInArgs(callExpr)
+  if (!objectLiteral) return []
+
+  const isRelation = isRelationFunction(callExpr)
+
+  return objectLiteral
+    .getProperties()
+    .map((prop) =>
+      isRelation
+        ? extractRelationFieldFromProperty(prop, sourceText)
+        : extractFieldFromProperty(prop, sourceText),
+    )
+    .filter((field): field is NonNullable<typeof field> => field !== null)
+}
+
 const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Schema | null => {
   if (!Node.isVariableDeclaration(declaration)) return null
 
@@ -92,24 +257,22 @@ const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Sc
   if (!name) return null
 
   const initializer = declaration.getInitializer()
-  if (!Node.isCallExpression(initializer)) {
-    return { name, fields: [] }
+
+  if (Node.isCallExpression(initializer)) {
+    const fields = extractFieldsFromCallExpression(initializer, sourceText)
+    return { name, fields }
   }
 
-  const args = initializer.getArguments()
-  if (args.length < 2) return { name, fields: [] }
+  if (Node.isObjectLiteralExpression(initializer)) {
+    const fields = initializer
+      .getProperties()
+      .map((prop) => extractFieldFromProperty(prop, sourceText))
+      .filter((field): field is NonNullable<typeof field> => field !== null)
 
-  const objectLiteral = args[1]
-  if (!Node.isObjectLiteralExpression(objectLiteral)) {
-    return { name, fields: [] }
+    return { name, fields }
   }
 
-  const fields = objectLiteral
-    .getProperties()
-    .map((prop) => extractFieldFromProperty(prop, sourceText))
-    .filter((field): field is NonNullable<typeof field> => field !== null)
-
-  return { name, fields }
+  return { name, fields: [] }
 }
 
 /**

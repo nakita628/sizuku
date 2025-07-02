@@ -9,7 +9,7 @@ import { formatCode } from '../../shared/format/index.js'
 import { getConfig } from './config/index.js'
 import { argv } from 'node:process'
 import { zodCode } from './generator/zod-code.js'
-const IMPORT_ZOD = 'import { z } from "zod"' as const
+const IMPORT_ZOD = 'import { z } from "zod/v4"' as const
 
 export async function main(dev = false, config: Config = getConfig()) {
   // 1. argv ['**/bin/node', ''/workspaces/sizuku-test/packages/sizuku/dist/generator/zod/index.js',', 'db/schema.ts', '-o', 'zod/index.ts']
@@ -43,13 +43,17 @@ export async function main(dev = false, config: Config = getConfig()) {
       (line) => !line.trim().startsWith('import') && line.trim() !== '',
     )
 
+    console.log(lines.slice(codeStart))
+
     // 9. extract schemas
     const schemas = extractSchemas(lines.slice(codeStart))
     // 10. generate zod code
     const generatedCode = [
       IMPORT_ZOD,
       '',
-      ...schemas.map((schema) => zodCode(schema, config?.comment ?? true, config?.type.export ?? false)),
+      ...schemas.map((schema) =>
+        zodCode(schema, config?.comment ?? true, config?.type.export ?? false),
+      ),
     ].join('\n')
 
     // 11. format code
@@ -74,10 +78,9 @@ export async function main(dev = false, config: Config = getConfig()) {
   }
 }
 
-if (require.main === module) {
-  main().then((success) => {
-    if (!success) {
-      process.exit(1)
-    }
-  })
-}
+main().then((result) => {
+  if (!result) {
+    process.exit(1)
+  }
+  process.exit(0)
+})

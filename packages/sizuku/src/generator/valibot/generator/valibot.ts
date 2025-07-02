@@ -9,5 +9,5 @@ import { fieldDefinitions } from '../../../shared/generator/generate-field-defin
  */
 export function valibot(schema: Schema, comment: boolean) {
   const res = fieldDefinitions(schema, comment)
-  return `export const ${capitalize(schema.name)} = v.object({${res}})`
+  return `export const ${capitalize(schema.name)}Schema = v.object({${res}})`
 }

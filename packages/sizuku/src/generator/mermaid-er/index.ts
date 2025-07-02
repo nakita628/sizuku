@@ -72,10 +72,9 @@ export async function main(dev = false, config: Config = getConfig()) {
   }
 }
 
-if (require.main === module) {
-  main().then((success) => {
-    if (!success) {
-      process.exit(1)
-    }
-  })
-}
+main().then((result) => {
+  if (!result) {
+    process.exit(1)
+  }
+  process.exit(0)
+})

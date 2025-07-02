@@ -1,70 +1,35 @@
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const UserSchema = z.object({
   /**
-   * Unique identifier for the user.
+   * Primary key
    */
-  id: z.string().uuid(),
+  id: z.uuid(),
   /**
-   * Username of the user.
+   * Display name
    */
-  username: z.string(),
-  /**
-   * Email address of the user.
-   */
-  email: z.string().email(),
-  /**
-   * Password for the user.
-   */
-  password: z.string().min(8).max(100),
-  /**
-   * Timestamp when the user was created.
-   */
-  createdAt: z.date(),
-  /**
-   * Timestamp when the user was last updated.
-   */
-  updatedAt: z.date(),
+  name: z.string().min(1).max(50),
 })
 
 export const PostSchema = z.object({
   /**
-   * Unique identifier for the post.
+   * Primary key
    */
-  id: z.string().uuid(),
+  id: z.uuid(),
   /**
-   * ID of the user who created the post.
+   * Article title
    */
-  userId: z.string().uuid(),
+  title: z.string().min(1).max(100),
   /**
-   * Content of the post.
+   * Body content (no length limit)
    */
   content: z.string(),
   /**
-   * Timestamp when the post was created.
+   * Foreign key referencing User.id
    */
-  createdAt: z.date(),
-  /**
-   * Timestamp when the post was last updated.
-   */
-  updatedAt: z.date(),
+  userId: z.uuid(),
 })
 
-export const LikesSchema = z.object({
-  /**
-   * Unique identifier for the like.
-   */
-  id: z.string().uuid(),
-  /**
-   * ID of the post that is liked.
-   */
-  postId: z.string().uuid(),
-  /**
-   * ID of the user who liked the post.
-   */
-  userId: z.string().uuid(),
-  /**
-   * Timestamp when the like was created.
-   */
-  createdAt: z.date(),
-})
+export const UserRelationsSchema = z.object({ posts: z.array(PostSchema) })
+
+export const PostRelationsSchema = z.object({ user: UserSchema })

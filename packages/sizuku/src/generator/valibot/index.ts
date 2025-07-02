@@ -50,7 +50,9 @@ export async function main(dev = false, config: Config = getConfig()) {
     const generatedCode = [
       IMPORT_VALIBOT,
       '',
-      ...schemas.map((schema) => valibotCode(schema, config?.comment ?? true, config?.type.export ?? false)),
+      ...schemas.map((schema) =>
+        valibotCode(schema, config?.comment ?? true, config?.type.export ?? false),
+      ),
     ].join('\n')
 
     // 11. format code
@@ -76,10 +78,9 @@ export async function main(dev = false, config: Config = getConfig()) {
   }
 }
 
-if (require.main === module) {
-  main().then((success) => {
-    if (!success) {
-      process.exit(1)
-    }
-  })
-}
+main().then((result) => {
+  if (!result) {
+    process.exit(1)
+  }
+  process.exit(0)
+})
