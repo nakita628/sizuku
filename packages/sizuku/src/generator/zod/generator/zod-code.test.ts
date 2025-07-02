@@ -1,128 +1,62 @@
-import type { Config } from '../../../common/config'
-import type { Schema } from '../../../common/type'
 import { describe, expect, it } from 'vitest'
-import { generateZodCode } from './zod-code'
-const generateZodCodeTestCases: {
-  schema: Schema
-  config: Config
-  expected: string
-}[] = [
-  {
-    schema: {
-      name: 'user',
-      fields: [
-        {
-          name: 'id',
-          definition: 'z.string().uuid()',
-          description: 'Unique identifier for the user.',
-        },
-        {
-          name: 'username',
-          definition: 'z.string()',
-          description: 'Username of the user.',
-        },
-        {
-          name: 'email',
-          definition: 'z.string().email()',
-          description: 'Email address of the user.',
-        },
-        {
-          name: 'password',
-          definition: 'z.string().min(8).max(100)',
-          description: 'Password for the user.',
-        },
-        {
-          name: 'createdAt',
-          definition: 'z.date()',
-          description: 'Timestamp when the user was created.',
-        },
-        {
-          name: 'updatedAt',
-          definition: 'z.date()',
-          description: 'Timestamp when the user was last updated.',
-        },
-      ],
-    },
-    config: {
-      schema: {
-        name: 'PascalCase',
-      },
-      type: {
-        name: 'PascalCase',
-        export: true,
-      },
-    },
-    expected: `export const UserSchema = z.object({id:z.string().uuid(),
-username:z.string(),
-email:z.string().email(),
-password:z.string().min(8).max(100),
-createdAt:z.date(),
-updatedAt:z.date()})
+import { zodCode } from './zod-code'
 
-export type User = z.infer<typeof UserSchema>
-`,
-  },
-  {
-    schema: {
-      name: 'user',
-      fields: [
-        {
-          name: 'id',
-          definition: 'z.string().uuid()',
-          description: 'Unique identifier for the user.',
-        },
-        {
-          name: 'username',
-          definition: 'z.string()',
-          description: 'Username of the user.',
-        },
-        {
-          name: 'email',
-          definition: 'z.string().email()',
-          description: 'Email address of the user.',
-        },
-        {
-          name: 'password',
-          definition: 'z.string().min(8).max(100)',
-          description: 'Password for the user.',
-        },
-        {
-          name: 'createdAt',
-          definition: 'z.date()',
-          description: 'Timestamp when the user was created.',
-        },
-        {
-          name: 'updatedAt',
-          definition: 'z.date()',
-          description: 'Timestamp when the user was last updated.',
-        },
-      ],
-    },
-    config: {
-      schema: {
-        name: 'camelCase',
-      },
-      type: {
-        name: 'camelCase',
-        export: false,
-      },
-    },
-    expected: `export const userSchema = z.object({id:z.string().uuid(),
-username:z.string(),
-email:z.string().email(),
-password:z.string().min(8).max(100),
-createdAt:z.date(),
-updatedAt:z.date()})
-`,
-  },
-]
+// Test run
+// pnpm vitest run ./src/generator/zod/generator/zod-code.test.ts
 
-describe('generateZodCode', () => {
-  it.concurrent.each(generateZodCodeTestCases)(
-    'generateZodCode($schema) -> $expected',
-    async ({ schema, config, expected }) => {
-      const result = generateZodCode(schema, config)
-      expect(result).toBe(expected)
-    },
-  )
+describe('zodCode', () => {
+  it.concurrent('zodCode comment true type true', () => {
+    const result = zodCode(
+      {
+        name: 'user',
+        fields: [
+          { name: 'id', definition: 'z.uuid()', description: 'Primary key' },
+          {
+            name: 'name',
+            definition: 'z.string().min(1).max(50)',
+            description: 'Display name',
+          },
+        ],
+      },
+      true,
+      true,
+    )
+
+    const expected = `export const UserSchema = z.object({/**
+* Primary key
+*/
+id:z.uuid(),
+/**
+* Display name
+*/
+name:z.string().min(1).max(50)})
+
+export type user = z.infer<typeof userSchema>
+`
+    expect(result).toBe(expected)
+  })
+
+  it.concurrent('zodCode comment false type false', () => {
+    const result = zodCode(
+      {
+        name: 'user',
+        fields: [
+          { name: 'id', definition: 'z.uuid()', description: 'Primary key' },
+          {
+            name: 'name',
+            definition: 'z.string().min(1).max(50)',
+            description: 'Display name',
+          },
+        ],
+      },
+      false,
+      false,
+    )
+
+    console.log(result)
+    const expected = `export const UserSchema = z.object({id:z.uuid(),
+name:z.string().min(1).max(50)})
+`
+    expect(result).toBe(expected)
+  })
 })

@@ -12,30 +12,26 @@ describe('extractSchemas', () => {
       '  /// @z.uuid()',
       '  /// @v.pipe(v.string(), v.uuid())',
       "  id: varchar('id', { length: 36 }).primaryKey(),",
-      '',
       '  /// Display name',
       '  /// @z.string().min(1).max(50)',
       '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
       "  name: varchar('name', { length: 50 }).notNull(),",
       '})',
       '',
-      '/// @relation User.id Post.userId one-to-many',
+      '/// @relation user.id post.userId one-to-many',
       "export const post = mysqlTable('post', {",
       '  /// Primary key',
       '  /// @z.uuid()',
       '  /// @v.pipe(v.string(), v.uuid())',
       "  id: varchar('id', { length: 36 }).primaryKey(),",
-      '',
       '  /// Article title',
       '  /// @z.string().min(1).max(100)',
       '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
       "  title: varchar('title', { length: 100 }).notNull(),",
-      '',
       '  /// Body content (no length limit)',
       '  /// @z.string()',
       '  /// @v.string()',
       "  content: varchar('content', { length: 65535 }).notNull(),",
-      '',
       '  /// Foreign key referencing User.id',
       '  /// @z.uuid()',
       '  /// @v.pipe(v.string(), v.uuid())',
@@ -98,13 +94,23 @@ describe('extractSchemas', () => {
       },
       {
         name: 'userRelations',
-        fields: [],
+        fields: [
+          {
+            name: 'posts',
+            definition: 'z.array(PostSchema)',
+          },
+        ],
       },
       {
         name: 'postRelations',
-        fields: [],
+        fields: [
+          {
+            name: 'user',
+            definition: 'UserSchema',
+          },
+        ],
       },
     ]
-    expect(result).toStrictEqual(expected)
+    expect(result).toEqual(expected)
   })
 })

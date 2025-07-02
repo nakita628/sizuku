@@ -33,12 +33,10 @@ export const post = mysqlTable('post', {
 })
 
 export const userRelations = relations(user, ({ many }) => ({
-  /// posts
   posts: many(post),
 }))
 
 export const postRelations = relations(post, ({ one }) => ({
-  /// user
   user: one(user, {
     fields: [post.userId],
     references: [user.id],
