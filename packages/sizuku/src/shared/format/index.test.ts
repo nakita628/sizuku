@@ -1,20 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { formatCode } from './index'
+import { fmt } from '.'
 
-const formatCodeTestCases = [
-  {
-    input: 'const sizuku = "sizuku";',
-    expected: `const sizuku = 'sizuku'
-`,
-  },
-]
+// Test run
+// pnpm vitest run ./src/shared/format/index.test.ts
 
-describe('formatCode', () => {
-  it.concurrent.each(formatCodeTestCases)(
-    'formatCode($input) -> $expected',
-    async ({ input, expected }) => {
-      const result = await formatCode(input)
-      expect(result).toBe(expected)
-    },
-  )
+describe('fmt', () => {
+  it('fmt Test', async () => {
+    const result = await fmt('const sizuku = "sizuku";')
+    const expected = `const sizuku = 'sizuku'
+`
+    expect(result).toBe(expected)
+  })
 })
