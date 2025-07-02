@@ -1,4 +1,4 @@
-import type { Relation } from '../type/index.js'
+import type { Relation } from '../types.js'
 import { parseRelationLine } from '../validator/parse-relation-line.js'
 
 /**

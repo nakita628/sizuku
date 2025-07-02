@@ -1,4 +1,4 @@
-import type { Relation, TableInfo } from '../type/index.js'
+import type { Relation, TableInfo } from '../types.js'
 import { relationLine } from './index.js'
 
 const ER_HEADER = ['```mermaid', 'erDiagram'] as const

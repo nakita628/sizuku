@@ -1,113 +1,63 @@
 import { describe, expect, it } from 'vitest'
 import { valibot } from './valibot'
 
-const generateValibotSchemaTestCases: {
-  schema: Schema
-  config: Config
-  expected: string
-}[] = [
-  {
-    schema: {
-      name: 'user',
-      fields: [
-        {
-          name: 'id',
-          definition: 'v.pipe(v.string(), v.uuid())',
-          description: 'Unique identifier for the user.',
-        },
-        {
-          name: 'username',
-          definition: 'v.string()',
-          description: 'Username of the user.',
-        },
-        {
-          name: 'email',
-          definition: 'v.pipe(v.string(), v.email())',
-          description: 'Email address of the user.',
-        },
-        {
-          name: 'password',
-          definition: 'v.pipe(v.string(), v.minLength(8), v.maxLength(100))',
-          description: 'Password for the user.',
-        },
-        {
-          name: 'createdAt',
-          definition: 'v.date()',
-          description: 'Timestamp when the user was created.',
-        },
-        {
-          name: 'updatedAt',
-          definition: 'v.date()',
-          description: 'Timestamp when the user was last updated.',
-        },
-      ],
-    },
-    config: {
-      schema: { name: 'PascalCase' },
-      type: { name: 'PascalCase', export: true },
-    },
-    expected: `export const UserSchema = v.object({id:v.pipe(v.string(), v.uuid()),
-username:v.string(),
-email:v.pipe(v.string(), v.email()),
-password:v.pipe(v.string(), v.minLength(8), v.maxLength(100)),
-createdAt:v.date(),
-updatedAt:v.date()})`,
-  },
-  {
-    schema: {
-      name: 'user',
-      fields: [
-        {
-          name: 'id',
-          definition: 'v.pipe(v.string(), v.uuid())',
-          description: 'Unique identifier for the user.',
-        },
-        {
-          name: 'username',
-          definition: 'v.string()',
-          description: 'Username of the user.',
-        },
-        {
-          name: 'email',
-          definition: 'v.pipe(v.string(), v.email())',
-          description: 'Email address of the user.',
-        },
-        {
-          name: 'password',
-          definition: 'v.pipe(v.string(), v.minLength(8), v.maxLength(100))',
-          description: 'Password for the user.',
-        },
-        {
-          name: 'createdAt',
-          definition: 'v.date()',
-          description: 'Timestamp when the user was created.',
-        },
-        {
-          name: 'updatedAt',
-          definition: 'v.date()',
-          description: 'Timestamp when the user was last updated.',
-        },
-      ],
-    },
-    config: {
-      schema: { name: 'camelCase' },
-      type: { name: 'camelCase', export: false },
-    },
-    expected: `export const userSchema = v.object({id:v.pipe(v.string(), v.uuid()),
-username:v.string(),
-email:v.pipe(v.string(), v.email()),
-password:v.pipe(v.string(), v.minLength(8), v.maxLength(100)),
-createdAt:v.date(),
-updatedAt:v.date()})`,
-  },
-]
+// Test run
+// pnpm vitest run ./src/generator/valibot/generator/valibot.test.ts
 
-describe('generateValibotSchema', () => {
-  it.concurrent.each(generateValibotSchemaTestCases)(
-    'generateValibotSchema($schema) -> $expected',
-    ({ schema, config, expected }) => {
-      const result = generateValibotSchema(schema, config)
-      expect(result).toBe(expected)
-    },
-  )
+describe('valibot', () => {
+  it.concurrent('valibot comment true', () => {
+    const result = valibot(
+      {
+        name: 'user',
+        fields: [
+          {
+            name: 'id',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: 'Primary key',
+          },
+          {
+            name: 'name',
+            definition: 'v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+            description: 'Display name',
+          },
+        ],
+      },
+      true,
+    )
+
+    const expected = `export const UserSchema = v.object({/**
+* Primary key
+*/
+id:v.pipe(v.string(), v.uuid()),
+/**
+* Display name
+*/
+name:v.pipe(v.string(), v.minLength(1), v.maxLength(50))})`
+    expect(result).toBe(expected)
+  })
+
+  it.concurrent('valibot comment false', () => {
+    const result = valibot(
+      {
+        name: 'user',
+        fields: [
+          {
+            name: 'id',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: 'Primary key',
+          },
+          {
+            name: 'name',
+            definition: 'v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+            description: 'Display name',
+          },
+        ],
+      },
+      false,
+    )
+
+    const expected = `export const UserSchema = v.object({id:v.pipe(v.string(), v.uuid()),
+name:v.pipe(v.string(), v.minLength(1), v.maxLength(50))})`
+    expect(result).toBe(expected)
+  })
 })

@@ -1,5 +1,5 @@
 import { buildRelationLine } from '../relationship/build-relation-line.js'
-import type { Relation } from '../type/index.js'
+import type { Relation } from '../types.js'
 
 /**
  * Generate a relation line for a relation
