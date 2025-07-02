@@ -46,6 +46,7 @@ export async function main(dev = false, config: Config = getConfig()) {
     const codeStart = lines.findIndex(
       (line) => !line.trim().startsWith('import') && line.trim() !== '',
     )
+
     // 9. parse table info
     const tables = parseTableInfo(lines.slice(codeStart))
 

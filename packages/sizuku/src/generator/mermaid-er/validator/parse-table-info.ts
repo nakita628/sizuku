@@ -1,218 +1,88 @@
-import type { AccumulatorType, TableInfo } from '../types.js'
+import { Project, Node, Expression } from 'ts-morph'
+import type { TableInfo } from '../types.js'
 
 type FieldInfo = {
   name: string
   type: string
   description: string
-  line: number
 }
 
-type ExtendedAccumulator = AccumulatorType & {
-  tempFields: FieldInfo[]
-  currentTableStartLine: number
-  insideRelations: boolean
-  bracketDepth: number // track the depth of brackets
+const baseBuilderName = (expr: Expression): string => {
+  if (Node.isIdentifier(expr)) return expr.getText()
+  if (Node.isCallExpression(expr) || Node.isPropertyAccessExpression(expr))
+    return baseBuilderName(expr.getExpression())
+  return ''
 }
 
-/**
- * Parse table info from code (all Drizzle definitions, relations excluded)
- * @function parseTableInfo
- * @param code - The code to parse the table info from
- * @returns The parsed table info
- */
+const isFieldInfo = (v: FieldInfo | null): v is FieldInfo => v !== null
+
 export function parseTableInfo(code: string[]): TableInfo[] {
-  const initialAccumulator: ExtendedAccumulator = {
-    tables: [],
-    currentTable: null,
-    currentDescription: '',
-    tempFields: [],
-    currentTableStartLine: 0,
-    insideRelations: false,
-    bracketDepth: 0,
-  }
+  const source = code.join('\n')
+  const file = new Project({ useInMemoryFileSystem: true }).createSourceFile('temp.ts', source)
 
-  const result = code.reduce<ExtendedAccumulator>((acc, line, index) => {
-    // detect relations function and manage state
-    if (line.includes('relations(')) {
-      acc.insideRelations = true
-      acc.bracketDepth = 0
-      return acc
-    }
+  return file
+    .getVariableStatements()
+    .filter((stmt) => stmt.isExported())
+    .flatMap((stmt) => {
+      const decl = stmt.getDeclarations()[0]
+      if (!Node.isVariableDeclaration(decl)) return []
 
-    // track the depth of brackets in the relations function
-    if (acc.insideRelations) {
-      // count the number of opening brackets
-      const openBrackets = (line.match(/\{/g) || []).length
-      const closeBrackets = (line.match(/\}/g) || []).length
-      acc.bracketDepth += openBrackets - closeBrackets
+      const varName = decl.getName()
+      if (varName.toLowerCase().includes('relation')) return []
 
-      // if the bracket depth is 0 or less, the relations function ends
-      if (acc.bracketDepth <= 0) {
-        acc.insideRelations = false
-        acc.bracketDepth = 0
-      }
-      return acc
-    }
+      const init = decl.getInitializer()
+      if (!init || !Node.isCallExpression(init)) return []
 
-    // extract description
-    const descriptionMatch = line.match(/\/\/\/\s*([^@].*)/)
-    if (
-      descriptionMatch &&
-      !(line.includes('@z.') || line.includes('@v.')) &&
-      !line.includes('@relation')
-    ) {
-      acc.currentDescription = descriptionMatch[1]?.trim() ?? null
-      return acc
-    }
+      const callee = init.getExpression().getText()
+      if (!callee.endsWith('Table') || callee === 'relations') return []
 
-    // extract table name - all Drizzle table functions
-    const tableMatch = line.match(/export const (\w+)\s*=\s*(\w+Table)\s*\(/)
-    if (tableMatch) {
-      const [_, tableName, tableFunction] = tableMatch
+      const objLit = init.getArguments()[1]
+      if (!objLit || !Node.isObjectLiteralExpression(objLit)) return []
 
-      // exclude variables containing "relation"
-      if (tableName.toLowerCase().includes('relation')) {
-        return acc
-      }
+      const fields = objLit
+        .getProperties()
+        .filter(Node.isPropertyAssignment)
+        .map((prop) => {
+          const keyNode = prop.getNameNode()
+          if (!Node.isIdentifier(keyNode)) return null
+          const fieldName = keyNode.getText()
 
-      // check if it is a table function (xxxTable format)
-      if (!tableFunction.endsWith('Table')) {
-        return acc
-      }
+          const initExpr = prop.getInitializer()
+          if (!initExpr || !Node.isCallExpression(initExpr)) return null
 
-      if (acc.currentTable && acc.tempFields.length > 0) {
-        acc.currentTable.fields = acc.tempFields.map((field) => ({
-          name: field.name,
-          type: field.type,
-          description: field.description,
-        }))
-        acc.tables.push(acc.currentTable)
-      }
+          const fieldType = baseBuilderName(initExpr)
 
-      acc.currentTable = {
-        name: tableName,
-        fields: [],
-      }
-      acc.tempFields = []
-      acc.currentTableStartLine = index
-      return acc
-    }
+          const initText = initExpr.getText()
+          const lineIdx = prop.getStartLineNumber() - 1
+          const baseDesc =
+            code
+              .slice(0, lineIdx)
+              .reverse()
+              .find((line) => {
+                const t = line.trim()
+                return (
+                  t.startsWith('///') &&
+                  !t.includes('@z.') &&
+                  !t.includes('@v.') &&
+                  !t.includes('@relation')
+                )
+              })
+              ?.replace(/^\s*\/\/\/\s*/, '') ?? ''
 
-    // field info extraction (not in relations function)
-    if (!acc.currentTable) {
-      return acc
-    }
+          const prefix = initText.includes('.primaryKey()')
+            ? '(PK) '
+            : initText.includes('.references(')
+              ? '(FK) '
+              : ''
 
-    // Drizzle field definition pattern matching
-    const fieldMatch = line.match(/^\s*([^:]+):\s*(\w+)\s*\(/)
-    if (fieldMatch) {
-      const [_, fieldName, fieldType] = fieldMatch
-
-      // check if it is a Drizzle type function
-      const drizzleTypes = [
-        'varchar',
-        'char',
-        'text',
-        'tinytext',
-        'mediumtext',
-        'longtext',
-        'int',
-        'tinyint',
-        'smallint',
-        'mediumint',
-        'bigint',
-        'decimal',
-        'numeric',
-        'float',
-        'double',
-        'real',
-        'boolean',
-        'serial',
-        'timestamp',
-        'datetime',
-        'date',
-        'time',
-        'year',
-        'json',
-        'binary',
-        'varbinary',
-        'blob',
-        'tinyblob',
-        'mediumblob',
-        'longblob',
-        'enum',
-        'set',
-        'geometry',
-        'point',
-        'linestring',
-        'polygon',
-        // PostgreSQL types
-        'uuid',
-        'bytea',
-        'inet',
-        'cidr',
-        'macaddr',
-        'interval',
-        'smallserial',
-        'bigserial',
-        'money',
-        'bit',
-        'varbit',
-        // SQLite types
-        'integer',
-        'real',
-        'blob',
-        'numeric',
-        // common types
-        'primaryKey',
-        'foreignKey',
-        'unique',
-        'index',
-      ]
-
-      if (drizzleTypes.includes(fieldType)) {
-        const description = line.includes('.primaryKey()')
-          ? `(PK) ${acc.currentDescription || ''}`
-          : acc.currentDescription || ''
-
-        acc.tempFields.push({
-          name: fieldName.trim(),
-          type: fieldType.trim(),
-          description,
-          line: index,
+          return {
+            name: fieldName,
+            type: fieldType,
+            description: `${prefix}${baseDesc}`.trim(),
+          }
         })
-        acc.currentDescription = ''
-      }
-      return acc
-    }
+        .filter(isFieldInfo)
 
-    // detect foreign key constraint
-    if (line.includes('.references')) {
-      const lastIndex = acc.tempFields.length - 1
-      if (lastIndex >= 0) {
-        const lastField = acc.tempFields[lastIndex]
-        acc.tempFields[lastIndex] = {
-          name: lastField.name,
-          type: lastField.type,
-          description: `(FK) ${lastField.description}`,
-          line: lastField.line,
-        }
-      }
-      return acc
-    }
-
-    return acc
-  }, initialAccumulator)
-
-  // process fields of the last table
-  if (result.currentTable && result.tempFields.length > 0) {
-    result.currentTable.fields = result.tempFields.map((field) => ({
-      name: field.name,
-      type: field.type,
-      description: field.description,
-    }))
-    result.tables.push(result.currentTable)
-  }
-
-  return result.tables
+      return [{ name: varName, fields }]
+    })
 }

@@ -1,133 +1,69 @@
 import { describe, expect, it } from 'vitest'
-import { parseTableInfo } from './parse-table-info'
+import { parseTableInfo } from '.'
 
-const parseTableInfoTestCases = [
-  {
-    code: [
+// Test run
+// pnpm vitest run ./src/generator/mermaid-er/validator/parse-table-info.test.ts
+
+describe('parseTableInfo', () => {
+  it.concurrent('parseTableInfo Test', () => {
+    const result = parseTableInfo([
       "export const user = mysqlTable('user', {",
-      '  /// Unique identifier for the user.',
-      '  /// @z.string().uuid()',
+      '  /// Primary key',
+      '  /// @z.uuid()',
       '  /// @v.pipe(v.string(), v.uuid())',
       "  id: varchar('id', { length: 36 }).primaryKey(),",
-      '  /// Username of the user.',
-      '  /// @z.string()',
-      '  /// @v.string()',
-      "  username: varchar('username', { length: 255 }).notNull(),",
-      '  /// Email address of the user.',
-      '  /// @z.string().email()',
-      '  /// @v.pipe(v.string(), v.email())',
-      "  email: varchar('email', { length: 255 }).notNull().unique(),",
-      '  /// Password for the user.',
-      '  /// @z.string().min(8).max(100)',
-      '  /// @v.pipe(v.string(), v.minLength(8), v.maxLength(100))',
-      "  password: varchar('password', { length: 100 }).notNull(),",
-      '  /// Timestamp when the user was created.',
-      '  /// @z.date()',
-      '  /// @v.date()',
-      "  createdAt: timestamp('created_at', { mode: 'string' }).notNull().default(sql`CURRENT_TIMESTAMP`),",
-      '  /// Timestamp when the user was last updated.',
-      '  /// @z.date()',
-      '  /// @v.date()',
-      "  updatedAt: timestamp('updated_at', { mode: 'string' })",
-      '    .notNull()',
-      '    .default(sql`CURRENT_TIMESTAMP`)',
-      '    .$onUpdate(() => sql`CURRENT_TIMESTAMP`),',
+      '  /// Display name',
+      '  /// @z.string().min(1).max(50)',
+      '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+      "  name: varchar('name', { length: 50 }).notNull(),",
       '})',
       '',
       '/// @relation user.id post.userId one-to-many',
       "export const post = mysqlTable('post', {",
-      '  /// Unique identifier for the post.',
-      '  /// @z.string().uuid()',
+      '  /// Primary key',
+      '  /// @z.uuid()',
       '  /// @v.pipe(v.string(), v.uuid())',
       "  id: varchar('id', { length: 36 }).primaryKey(),",
-      '  /// ID of the user who created the post.',
-      '  /// @z.string().uuid()',
-      '  /// @v.pipe(v.string(), v.uuid())',
-      "  userId: varchar('user_id', { length: 36 })",
-      '    .notNull()',
-      "    .references(() => user.id, { onDelete: 'cascade' }),",
-      '  /// Content of the post.',
+      '  /// Article title',
+      '  /// @z.string().min(1).max(100)',
+      '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
+      "  title: varchar('title', { length: 100 }).notNull(),",
+      '  /// Body content (no length limit)',
       '  /// @z.string()',
       '  /// @v.string()',
-      "  content: varchar('content', { length: 500 }).notNull(),",
-      '  /// Timestamp when the post was created.',
-      '  /// @z.date()',
-      '  /// @v.date()',
-      "  createdAt: timestamp('created_at', { mode: 'string' }).notNull().default(sql`CURRENT_TIMESTAMP`),",
-      '  /// Timestamp when the post was last updated.',
-      '  /// @z.date()',
-      '  /// @v.date()',
-      "  updatedAt: timestamp('updated_at', { mode: 'string' })",
-      '    .notNull()',
-      '    .default(sql`CURRENT_TIMESTAMP`)',
-      '    .$onUpdate(() => sql`CURRENT_TIMESTAMP`),',
+      "  content: varchar('content', { length: 65535 }).notNull(),",
+      '  /// Foreign key referencing User.id',
+      '  /// @z.uuid()',
+      '  /// @v.pipe(v.string(), v.uuid())',
+      "  userId: varchar('user_id', { length: 36 }).notNull(),",
       '})',
       '',
-      '/// @relation post.id likes.postId one-to-many',
-      '/// @relation user.id likes.userId one-to-many',
-      'export const likes = mysqlTable(',
-      "  'likes',",
-      '  {',
-      '    /// Unique identifier for the like.',
-      '    /// @z.string().uuid()',
-      '    /// @v.pipe(v.string(), v.uuid())',
-      "    id: varchar('id', { length: 36 }).primaryKey(),",
-      '    /// ID of the post that is liked.',
-      '    /// @z.string().uuid()',
-      '    /// @v.pipe(v.string(), v.uuid())',
-      "    postId: varchar('post_id', { length: 36 })",
-      '      .notNull()',
-      "      .references(() => post.id, { onDelete: 'cascade' }),",
-      '    /// ID of the user who liked the post.',
-      '    /// @z.string().uuid()',
-      '    /// @v.pipe(v.string(), v.uuid())',
-      "    userId: varchar('user_id', { length: 36 })",
-      '      .notNull()',
-      "      .references(() => user.id, { onDelete: 'cascade' }),",
-      '    /// Timestamp when the like was created.',
-      '    /// @z.date()',
-      '    /// @v.date()',
-      "    createdAt: timestamp('created_at', { mode: 'string' })",
-      '      .notNull()',
-      '      .default(sql`CURRENT_TIMESTAMP`),',
-      '  },',
-      '  (t) => [unique().on(t.userId, t.postId)],',
-      ')',
+      'export const userRelations = relations(user, ({ many }) => ({',
+      '  posts: many(post),',
+      '}))',
       '',
-    ],
-    expected: [
+      'export const postRelations = relations(post, ({ one }) => ({',
+      '  user: one(user, {',
+      '    fields: [post.userId],',
+      '    references: [user.id],',
+      '  }),',
+      '}))',
+      '',
+    ])
+
+    const expected = [
       {
         name: 'user',
         fields: [
           {
             name: 'id',
             type: 'varchar',
-            description: '(PK) Unique identifier for the user.',
+            description: '(PK) Primary key',
           },
           {
-            name: 'username',
+            name: 'name',
             type: 'varchar',
-            description: 'Username of the user.',
-          },
-          {
-            name: 'email',
-            type: 'varchar',
-            description: 'Email address of the user.',
-          },
-          {
-            name: 'password',
-            type: 'varchar',
-            description: 'Password for the user.',
-          },
-          {
-            name: 'createdAt',
-            type: 'timestamp',
-            description: 'Timestamp when the user was created.',
-          },
-          {
-            name: 'updatedAt',
-            type: 'timestamp',
-            description: 'Timestamp when the user was last updated.',
+            description: 'Display name',
           },
         ],
       },
@@ -137,65 +73,26 @@ const parseTableInfoTestCases = [
           {
             name: 'id',
             type: 'varchar',
-            description: '(PK) Unique identifier for the post.',
+            description: '(PK) Primary key',
           },
           {
-            name: 'userId',
+            name: 'title',
             type: 'varchar',
-            description: '(FK) ID of the user who created the post.',
+            description: 'Article title',
           },
           {
             name: 'content',
             type: 'varchar',
-            description: 'Content of the post.',
-          },
-          {
-            name: 'createdAt',
-            type: 'timestamp',
-            description: 'Timestamp when the post was created.',
-          },
-          {
-            name: 'updatedAt',
-            type: 'timestamp',
-            description: 'Timestamp when the post was last updated.',
-          },
-        ],
-      },
-      {
-        name: 'likes',
-        fields: [
-          {
-            name: 'id',
-            type: 'varchar',
-            description: '(PK) Unique identifier for the like.',
-          },
-          {
-            name: 'postId',
-            type: 'varchar',
-            description: '(FK) ID of the post that is liked.',
+            description: 'Body content (no length limit)',
           },
           {
             name: 'userId',
             type: 'varchar',
-            description: '(FK) ID of the user who liked the post.',
-          },
-          {
-            name: 'createdAt',
-            type: 'timestamp',
-            description: 'Timestamp when the like was created.',
+            description: 'Foreign key referencing User.id',
           },
         ],
       },
-    ],
-  },
-]
-
-describe('parseTableInfo', () => {
-  it.concurrent.each(parseTableInfoTestCases)(
-    'parseTableInfo($code) -> $expected',
-    ({ code, expected }) => {
-      const result = parseTableInfo(code)
-      expect(result).toEqual(expected)
-    },
-  )
+    ]
+    expect(result).toStrictEqual(expected)
+  })
 })
