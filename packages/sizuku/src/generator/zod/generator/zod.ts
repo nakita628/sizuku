@@ -1,4 +1,4 @@
-import { fieldDefinitions } from '../../../shared/generator/generate-field-definitions.js'
+import { fieldDefinitions } from '../../../shared/generator/field-definitions.js'
 import type { Schema } from '../../../shared/types.js'
 import { capitalize } from '../../../shared/utils/capitalize.js'
 
