@@ -20,9 +20,7 @@
   "types": "dist/index.d.ts",
   "files": ["dist"],
   "bin": {
-    "sizuku-zod": "dist/generator/zod/index.js",
-    "sizuku-valibot": "dist/generator/valibot/index.js",
-    "sizuku-mermaid-er": "dist/generator/mermaid-er/index.js"
+    "sizuku": "dist/index.js"
   },
   "scripts": {
     "deps": "rm -rf node_modules && pnpm install",
