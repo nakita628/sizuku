@@ -1,7 +1,8 @@
+import fsp from 'node:fs/promises'
+import path from 'node:path'
 import { fmt } from '../../shared/format/index.js'
 import { extractSchemas } from './core/extract-schema.js'
 import { zodCode } from './generator/zod-code.js'
-import fsp from 'node:fs/promises'
 
 const ZODV4_IMPORT = `import { z } from 'zod/v4'` as const
 const ZODV4_MINI_IMPORT = `import { z } from 'zod/v4-mini'` as const
@@ -28,6 +29,7 @@ export async function sizukuZod(
     ...zodSchemas.map((schema) => zodCode(schema, comment ?? false, type ?? false)),
   ].join('\n')
 
+  await fsp.mkdir(path.dirname(output), { recursive: true })
   await fsp.writeFile(output, await fmt(zodGeneratedCode))
   console.log(`Generated Zod schema at: ${output}`)
 }
