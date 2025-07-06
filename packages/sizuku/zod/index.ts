@@ -11,6 +11,8 @@ export const UserSchema = z.object({
   name: z.string().min(1).max(50),
 })
 
+export type user = z.infer<typeof UserSchema>
+
 export const PostSchema = z.object({
   /**
    * Primary key
@@ -30,6 +32,4 @@ export const PostSchema = z.object({
   userId: z.uuid(),
 })
 
-export const UserRelationsSchema = z.object({ posts: z.array(PostSchema) })
-
-export const PostRelationsSchema = z.object({ user: UserSchema })
+export type post = z.infer<typeof PostSchema>

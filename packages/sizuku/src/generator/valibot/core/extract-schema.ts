@@ -2,272 +2,184 @@ import type { Schema } from '../../../shared/types.js'
 import { Project, Node, CallExpression, ObjectLiteralExpression } from 'ts-morph'
 
 /**
- * Check if comment contains metadata
+ * Check if the comment line is metadata (Zod / Valibot / relation helper)
  */
 const isMetadataComment = (text: string): boolean => {
   return text.includes('@z.') || text.includes('@v.') || text.includes('@relation.')
 }
 
 /**
- * Extract field comments that appear before a specific line position
+ * Collect consecutive `///` comment lines that appear immediately above a field.
  */
 const extractFieldComments = (sourceText: string, fieldStartPos: number): string[] => {
   const beforeField = sourceText.substring(0, fieldStartPos)
   const lines = beforeField.split('\n')
 
-  const reverseIndex = lines
-    .map((line, index) => ({ line: line.trim(), index }))
+  return lines
+    .map((line) => line.trim())
     .reverse()
-    .reduce<{ commentLines: string[]; shouldStop: boolean }>(
-      (acc, { line }) => {
-        if (acc.shouldStop) return acc
-
+    .reduce<{ commentLines: string[]; stop: boolean }>(
+      (acc, line) => {
+        if (acc.stop) return acc
         if (line.startsWith('///')) {
-          return {
-            commentLines: [line, ...acc.commentLines],
-            shouldStop: false,
-          }
+          return { commentLines: [line, ...acc.commentLines], stop: false }
         }
-
-        if (line === '') {
-          return acc
-        }
-
-        return { ...acc, shouldStop: true }
+        if (line === '') return acc
+        return { ...acc, stop: true }
       },
-      { commentLines: [], shouldStop: false },
-    )
-
-  return reverseIndex.commentLines
+      { commentLines: [], stop: false },
+    ).commentLines
 }
 
 /**
- * Parse comment lines and extract Valibot definition and description
+ * Parse the collected comment lines -> { valibotDefinition, description }
  */
 const parseFieldComments = (
   commentLines: string[],
 ): { valibotDefinition: string; description: string | undefined } => {
-  const cleanLines = commentLines
-    .map((line) => line.replace(/^\/\/\/\s*/, '').trim())
-    .filter((line) => line.length > 0)
+  const cleaned = commentLines.map((l) => l.replace(/^\/\/\/\s*/, '').trim()).filter(Boolean)
 
-  const valibotDefinition =
-    cleanLines.find((line) => line.startsWith('@v.'))?.replace(/^@/, '') ?? ''
-
-  const descriptionLines = cleanLines.filter((line) => !isMetadataComment(line))
-  const description = descriptionLines.length > 0 ? descriptionLines.join(' ') : undefined
+  const valibotDefinition = cleaned.find((l) => l.startsWith('@v.'))?.replace(/^@/, '') ?? ''
+  const descriptionLines = cleaned.filter((l) => !isMetadataComment(l))
+  const description = descriptionLines.length ? descriptionLines.join(' ') : undefined
 
   return { valibotDefinition, description }
 }
 
 /**
- * Extract field information from object property
+ * Convert table name to Schema name (e.g. `user` -> `UserSchema`)
+ */
+const toSchemaName = (table: string): string =>
+  table.charAt(0).toUpperCase() + table.slice(1) + 'Schema'
+
+/**
+ * Extract an ordinary column field.
  */
 const extractFieldFromProperty = (
   property: Node,
   sourceText: string,
 ): Schema['fields'][0] | null => {
   if (!Node.isPropertyAssignment(property)) return null
+  const name = property.getName()
+  if (!name) return null
 
-  const fieldName = property.getName()
-  if (!fieldName) return null
-
-  const fieldStartPos = property.getStart()
-  const commentLines = extractFieldComments(sourceText, fieldStartPos)
+  const commentLines = extractFieldComments(sourceText, property.getStart())
   const { valibotDefinition, description } = parseFieldComments(commentLines)
 
-  return {
-    name: fieldName,
-    definition: valibotDefinition,
-    description,
-  }
+  return { name, definition: valibotDefinition, description }
 }
 
 /**
- * Convert table name to Schema name (e.g., 'user' -> 'UserSchema', 'post' -> 'PostSchema')
- */
-const toSchemaName = (tableName: string): string => {
-  return tableName.charAt(0).toUpperCase() + tableName.slice(1) + 'Schema'
-}
-
-/**
- * Extract relation field with type inference for Valibot
+ * Extract a relation field (many / one) and infer Valibot schema.
  */
 const extractRelationFieldFromProperty = (
   property: Node,
   sourceText: string,
 ): Schema['fields'][0] | null => {
   if (!Node.isPropertyAssignment(property)) return null
+  const name = property.getName()
+  if (!name) return null
 
-  const fieldName = property.getName()
-  if (!fieldName) return null
+  const init = property.getInitializer()
+  if (!Node.isCallExpression(init)) return { name, definition: '', description: undefined }
 
-  const initializer = property.getInitializer()
-  if (!Node.isCallExpression(initializer)) {
-    return {
-      name: fieldName,
-      definition: '',
-      description: undefined,
-    }
-  }
+  const expr = init.getExpression()
+  if (!Node.isIdentifier(expr)) return { name, definition: '', description: undefined }
 
-  const expression = initializer.getExpression()
-  if (!Node.isIdentifier(expression)) {
-    return {
-      name: fieldName,
-      definition: '',
-      description: undefined,
-    }
-  }
+  const fnName = expr.getText()
+  const args = init.getArguments()
+  if (!args.length || !Node.isIdentifier(args[0]))
+    return { name, definition: '', description: undefined }
 
-  const functionName = expression.getText()
-  const args = initializer.getArguments()
+  const refTable = args[0].getText()
+  const schemaName = toSchemaName(refTable)
+  const definition =
+    fnName === 'many' ? `v.array(${schemaName})` : fnName === 'one' ? schemaName : ''
 
-  if (args.length === 0) {
-    return {
-      name: fieldName,
-      definition: '',
-      description: undefined,
-    }
-  }
-
-  const firstArg = args[0]
-  if (!Node.isIdentifier(firstArg)) {
-    return {
-      name: fieldName,
-      definition: '',
-      description: undefined,
-    }
-  }
-
-  const referencedTable = firstArg.getText()
-  const schemaName = toSchemaName(referencedTable)
-
-  const valibotDefinition =
-    functionName === 'many'
-      ? `v.array(${schemaName})` // many(post) -> v.array(PostSchema)
-      : functionName === 'one'
-        ? schemaName // one(user, {...}) -> UserSchema
-        : ''
-
-  const fieldStartPos = property.getStart()
-  const commentLines = extractFieldComments(sourceText, fieldStartPos)
+  const commentLines = extractFieldComments(sourceText, property.getStart())
   const { description } = parseFieldComments(commentLines)
 
-  return {
-    name: fieldName,
-    definition: valibotDefinition,
-    description,
-  }
+  return { name, definition, description }
 }
 
-/**
- * Extract object literal from any expression
- */
-const extractObjectLiteralFromExpression = (expression: Node): ObjectLiteralExpression | null => {
-  if (Node.isObjectLiteralExpression(expression)) {
-    return expression
-  }
-
-  if (Node.isParenthesizedExpression(expression)) {
-    const inner = expression.getExpression()
-    return Node.isObjectLiteralExpression(inner) ? inner : null
-  }
-
-  if (Node.isArrowFunction(expression)) {
-    const body = expression.getBody()
-
-    if (Node.isObjectLiteralExpression(body)) {
-      return body
-    }
-
-    if (Node.isParenthesizedExpression(body)) {
-      const inner = body.getExpression()
-      return Node.isObjectLiteralExpression(inner) ? inner : null
-    }
-
+/** Utility: unwrap arrow / paren / etc. until ObjectLiteralExpression or null */
+const extractObjectLiteralFromExpression = (expr: Node): ObjectLiteralExpression | null => {
+  if (Node.isObjectLiteralExpression(expr)) return expr
+  if (Node.isParenthesizedExpression(expr))
+    return extractObjectLiteralFromExpression(expr.getExpression())
+  if (Node.isArrowFunction(expr)) {
+    const body = expr.getBody()
+    if (Node.isObjectLiteralExpression(body)) return body
+    if (Node.isParenthesizedExpression(body))
+      return extractObjectLiteralFromExpression(body.getExpression())
     if (Node.isBlock(body)) {
-      const returnStatement = body.getStatements().find((stmt) => Node.isReturnStatement(stmt))
-      if (returnStatement && Node.isReturnStatement(returnStatement)) {
-        const returnExpression = returnStatement.getExpression()
-        return returnExpression && Node.isObjectLiteralExpression(returnExpression)
-          ? returnExpression
-          : null
+      const ret = body.getStatements().find(Node.isReturnStatement)
+      if (ret && Node.isReturnStatement(ret)) {
+        const re = ret.getExpression()
+        return re && Node.isObjectLiteralExpression(re) ? re : null
       }
     }
   }
-
   return null
 }
 
-/**
- * Find object literal in call expression arguments
- */
-const findObjectLiteralInArgs = (callExpr: CallExpression): ObjectLiteralExpression | null => {
-  const args = callExpr.getArguments()
-
-  for (const arg of args) {
-    const objectLiteral = extractObjectLiteralFromExpression(arg)
-    if (objectLiteral) {
-      return objectLiteral
-    }
+/** find the first object literal among call expression arguments */
+const findObjectLiteralInArgs = (call: CallExpression): ObjectLiteralExpression | null => {
+  for (const arg of call.getArguments()) {
+    const obj = extractObjectLiteralFromExpression(arg)
+    if (obj) return obj
   }
-
   return null
 }
 
-/**
- * Determine if this is a relation-like function call
- */
-const isRelationFunction = (callExpr: CallExpression): boolean => {
-  const expression = callExpr.getExpression()
-  if (!Node.isIdentifier(expression)) return false
-
-  const functionName = expression.getText()
-  return functionName === 'relations' || functionName.includes('relation')
+/** recognise `relations()` / `somethingRelation*` helpers */
+const isRelationFunction = (call: CallExpression): boolean => {
+  const expr = call.getExpression()
+  return (
+    Node.isIdentifier(expr) &&
+    (expr.getText() === 'relations' || expr.getText().includes('relation'))
+  )
 }
 
-/**
- * Extract fields from any call expression
- */
+/** extract fields from mysqlTable / relations call expression */
 const extractFieldsFromCallExpression = (
-  callExpr: CallExpression,
+  call: CallExpression,
   sourceText: string,
 ): Schema['fields'] => {
-  const objectLiteral = findObjectLiteralInArgs(callExpr)
-  if (!objectLiteral) return []
-
-  const isRelation = isRelationFunction(callExpr)
-
-  return objectLiteral
+  const obj = findObjectLiteralInArgs(call)
+  if (!obj) return []
+  const relation = isRelationFunction(call)
+  return obj
     .getProperties()
-    .map((prop) =>
-      isRelation
-        ? extractRelationFieldFromProperty(prop, sourceText)
-        : extractFieldFromProperty(prop, sourceText),
+    .map((p) =>
+      relation
+        ? extractRelationFieldFromProperty(p, sourceText)
+        : extractFieldFromProperty(p, sourceText),
     )
-    .filter((field): field is NonNullable<typeof field> => field !== null)
+    .filter((f): f is NonNullable<typeof f> => f !== null)
 }
 
-const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Schema | null => {
-  if (!Node.isVariableDeclaration(declaration)) return null
-
-  const name = declaration.getName()
+/** extract a single schema from variable declaration */
+const extractSchemaFromDeclaration = (decl: Node, sourceText: string): Schema | null => {
+  if (!Node.isVariableDeclaration(decl)) return null
+  const name = decl.getName()
   if (!name) return null
+  const init = decl.getInitializer()
 
-  const initializer = declaration.getInitializer()
-
-  if (Node.isCallExpression(initializer)) {
-    const fields = extractFieldsFromCallExpression(initializer, sourceText)
+  // Handle call expressions (mysqlTable, relations, etc.)
+  if (Node.isCallExpression(init)) {
+    // ⛔ Skip relation helper exports (userRelations / postRelations ...)
+    if (isRelationFunction(init)) return null
+    const fields = extractFieldsFromCallExpression(init, sourceText)
     return { name, fields }
   }
 
-  if (Node.isObjectLiteralExpression(initializer)) {
-    const fields = initializer
+  // Direct object literal export
+  if (Node.isObjectLiteralExpression(init)) {
+    const fields = init
       .getProperties()
-      .map((prop) => extractFieldFromProperty(prop, sourceText))
-      .filter((field): field is NonNullable<typeof field> => field !== null)
-
+      .map((p) => extractFieldFromProperty(p, sourceText))
+      .filter((f): f is NonNullable<typeof f> => f !== null)
     return { name, fields }
   }
 
@@ -275,28 +187,20 @@ const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Sc
 }
 
 /**
- * Extract schemas from lines of code
- * @param lines - Lines of code
- * @returns Schemas
+ * Public API: extract schemas from code lines
  */
 export function extractSchemas(lines: string[]): Schema[] {
-  const sourceCode = lines.join('\n')
-
   const project = new Project({
     useInMemoryFileSystem: true,
-    compilerOptions: {
-      allowJs: true,
-      skipLibCheck: true,
-    },
+    compilerOptions: { allowJs: true, skipLibCheck: true },
   })
+  const file = project.createSourceFile('temp.ts', lines.join('\n'))
+  const fullText = file.getFullText()
 
-  const sourceFile = project.createSourceFile('temp.ts', sourceCode)
-  const sourceText = sourceFile.getFullText()
-
-  return sourceFile
+  return file
     .getVariableStatements()
-    .filter((stmt) => stmt.hasExportKeyword())
-    .flatMap((stmt) => stmt.getDeclarations())
-    .map((decl) => extractSchemaFromDeclaration(decl, sourceText))
-    .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
+    .filter((s) => s.hasExportKeyword())
+    .flatMap((s) => s.getDeclarations())
+    .map((d) => extractSchemaFromDeclaration(d, fullText))
+    .filter((s): s is NonNullable<typeof s> => s !== null)
 }

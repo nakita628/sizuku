@@ -10,7 +10,5 @@ import { capitalize } from '../../../shared/utils/capitalize.js'
  * @returns The generated Zod schema.
  */
 export function zod(schema: Schema, comment: boolean) {
-  console.log(schema)
-
   return `export const ${capitalize(schema.name)}Schema = z.object({${fieldDefinitions(schema, comment)}})`
 }

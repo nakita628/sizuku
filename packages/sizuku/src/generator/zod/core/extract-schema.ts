@@ -164,7 +164,7 @@ const extractRelationFieldFromProperty = (
  * Extract object literal from any expression
  */
 const extractObjectLiteralFromExpression = (expression: Node): ObjectLiteralExpression | null => {
-  // 直接のオブジェクトリテラル
+  // Direct object literal
   if (Node.isObjectLiteralExpression(expression)) {
     return expression
   }
@@ -206,7 +206,6 @@ const extractObjectLiteralFromExpression = (expression: Node): ObjectLiteralExpr
 const findObjectLiteralInArgs = (callExpr: CallExpression): ObjectLiteralExpression | null => {
   const args = callExpr.getArguments()
 
-  // 全ての引数を検査してオブジェクトリテラルを探す
   for (const arg of args) {
     const objectLiteral = extractObjectLiteralFromExpression(arg)
     if (objectLiteral) {
@@ -250,6 +249,9 @@ const extractFieldsFromCallExpression = (
     .filter((field): field is NonNullable<typeof field> => field !== null)
 }
 
+/**
+ * Extract a single schema (variable declaration)
+ */
 const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Schema | null => {
   if (!Node.isVariableDeclaration(declaration)) return null
 
@@ -259,6 +261,8 @@ const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Sc
   const initializer = declaration.getInitializer()
 
   if (Node.isCallExpression(initializer)) {
+    if (isRelationFunction(initializer)) return null
+
     const fields = extractFieldsFromCallExpression(initializer, sourceText)
     return { name, fields }
   }

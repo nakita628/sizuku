@@ -29,7 +29,3 @@ export const PostSchema = v.object({
    */
   userId: v.pipe(v.string(), v.uuid()),
 })
-
-export const UserRelationsSchema = v.object({ posts: v.array(PostSchema) })
-
-export const PostRelationsSchema = v.object({ user: UserSchema })

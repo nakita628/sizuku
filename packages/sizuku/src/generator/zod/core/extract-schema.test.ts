@@ -92,25 +92,7 @@ describe('extractSchemas', () => {
           },
         ],
       },
-      {
-        name: 'userRelations',
-        fields: [
-          {
-            name: 'posts',
-            definition: 'z.array(PostSchema)',
-          },
-        ],
-      },
-      {
-        name: 'postRelations',
-        fields: [
-          {
-            name: 'user',
-            definition: 'UserSchema',
-          },
-        ],
-      },
     ]
-    expect(result).toEqual(expected)
+    expect(result).toStrictEqual(expected)
   })
 })

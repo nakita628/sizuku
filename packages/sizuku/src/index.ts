@@ -39,3 +39,12 @@ export async function main(config: Config = getConfig()) {
 
   await sizukuMermaidER(code, config.mermaid.output)
 }
+
+main()
+  .then(() => {
+    process.exit(0)
+  })
+  .catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
