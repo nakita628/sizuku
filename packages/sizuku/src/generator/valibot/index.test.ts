@@ -129,7 +129,7 @@ export const UserSchema = v.object({
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
 })
 
-export type user = v.InferInput<typeof userSchema>
+export type User = v.InferInput<typeof UserSchema>
 
 export const PostSchema = v.object({
   id: v.pipe(v.string(), v.uuid()),
@@ -138,7 +138,7 @@ export const PostSchema = v.object({
   userId: v.pipe(v.string(), v.uuid()),
 })
 
-export type post = v.InferInput<typeof postSchema>
+export type Post = v.InferInput<typeof PostSchema>
 `
     expect(result).toBe(expected)
   })

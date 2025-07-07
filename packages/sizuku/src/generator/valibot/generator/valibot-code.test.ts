@@ -35,7 +35,7 @@ id:v.pipe(v.string(), v.uuid()),
 */
 name:v.pipe(v.string(), v.minLength(1), v.maxLength(50))})
 
-export type user = v.InferInput<typeof userSchema>
+export type User = v.InferInput<typeof UserSchema>
 `
 
     expect(result).toBe(expected)
