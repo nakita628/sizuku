@@ -52,12 +52,12 @@ const TEST_CODE = [
 ]
 
 describe('sizukuZod', () => {
-  afterEach(async () => {
+  afterEach(() => {
     if (!fs.existsSync('tmp')) {
-      await fsp.rmdir('tmp', { recursive: true })
+      fs.rmdirSync('tmp', { recursive: true })
     }
     if (fs.existsSync('tmp/valibot-test.ts')) {
-      await fsp.unlink('tmp/valibot-test.ts')
+      fs.unlinkSync('tmp/valibot-test.ts')
     }
   })
 

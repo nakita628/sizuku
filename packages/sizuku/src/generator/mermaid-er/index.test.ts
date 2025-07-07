@@ -52,12 +52,12 @@ const TEST_CODE = [
 ]
 
 describe('sizukuMermaidER', () => {
-  afterEach(async () => {
+  afterEach(() => {
     if (!fs.existsSync('tmp')) {
-      await fsp.rmdir('tmp', { recursive: true })
+      fs.rmdirSync('tmp', { recursive: true })
     }
     if (fs.existsSync('tmp/mermaid-er-test.md')) {
-      await fsp.unlink('tmp/mermaid-er-test.md')
+      fs.unlinkSync('tmp/mermaid-er-test.md')
     }
   })
   it('sizukuMermaidER', async () => {
