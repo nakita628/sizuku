@@ -21,431 +21,173 @@ npm install -D sizuku
 
 ### Example
 
-input:
+Prepare schema.ts:
 
 ```ts
-import { sql } from 'drizzle-orm'
-import { mysqlTable, varchar, timestamp, unique } from 'drizzle-orm/mysql-core'
+import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
+import { relations } from 'drizzle-orm'
 
 export const user = mysqlTable('user', {
-  /// Unique identifier for the user.
-  /// @z.string().uuid()
+  /// Primary key
+  /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
   id: varchar('id', { length: 36 }).primaryKey(),
-  /// Username of the user.
-  /// @z.string()
-  /// @v.string()
-  username: varchar('username', { length: 255 }).notNull(),
-  /// Email address of the user.
-  /// @z.string().email()
-  /// @v.pipe(v.string(), v.email())
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  /// Password for the user.
-  /// @z.string().min(8).max(100)
-  /// @v.pipe(v.string(), v.minLength(8), v.maxLength(100))
-  password: varchar('password', { length: 100 }).notNull(),
-  /// Timestamp when the user was created.
-  /// @z.date()
-  /// @v.date()
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  /// Timestamp when the user was last updated.
-  /// @z.date()
-  /// @v.date()
-  updatedAt: timestamp('updated_at', { mode: 'string' })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`)
-    .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
+  /// Display name
+  /// @z.string().min(1).max(50)
+  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))
+  name: varchar('name', { length: 50 }).notNull(),
 })
 
 /// @relation user.id post.userId one-to-many
 export const post = mysqlTable('post', {
-  /// Unique identifier for the post.
-  /// @z.string().uuid()
+  /// Primary key
+  /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
   id: varchar('id', { length: 36 }).primaryKey(),
-  /// ID of the user who created the post.
-  /// @z.string().uuid()
-  /// @v.pipe(v.string(), v.uuid())
-  userId: varchar('user_id', { length: 36 })
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  /// Content of the post.
+  /// Article title
+  /// @z.string().min(1).max(100)
+  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))
+  title: varchar('title', { length: 100 }).notNull(),
+  /// Body content (no length limit)
   /// @z.string()
   /// @v.string()
-  content: varchar('content', { length: 500 }).notNull(),
-  /// Timestamp when the post was created.
-  /// @z.date()
-  /// @v.date()
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  /// Timestamp when the post was last updated.
-  /// @z.date()
-  /// @v.date()
-  updatedAt: timestamp('updated_at', { mode: 'string' })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`)
-    .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
+  content: varchar('content', { length: 65535 }).notNull(),
+  /// Foreign key referencing User.id
+  /// @z.uuid()
+  /// @v.pipe(v.string(), v.uuid())
+  userId: varchar('user_id', { length: 36 }).notNull(),
 })
 
-/// @relation post.id likes.postId one-to-many
-/// @relation user.id likes.userId one-to-many
-export const likes = mysqlTable(
-  'likes',
-  {
-    /// Unique identifier for the like.
-    /// @z.string().uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    id: varchar('id', { length: 36 }).primaryKey(),
-    /// ID of the post that is liked.
-    /// @z.string().uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    postId: varchar('post_id', { length: 36 })
-      .notNull()
-      .references(() => post.id, { onDelete: 'cascade' }),
-    /// ID of the user who liked the post.
-    /// @z.string().uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    userId: varchar('user_id', { length: 36 })
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    /// Timestamp when the like was created.
-    /// @z.date()
-    /// @v.date()
-    createdAt: timestamp('created_at', { mode: 'string' })
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+export const userRelations = relations(user, ({ many }) => ({
+  posts: many(post),
+}))
+
+export const postRelations = relations(post, ({ one }) => ({
+  user: one(user, {
+    fields: [post.userId],
+    references: [user.id],
+  }),
+}))
+```
+
+Prepare sizuku.json:
+
+```json
+{
+  "input": "db/schema.ts",
+  "zod": {
+    "output": "zod/index.ts",
+    "comment": true,
+    "type": true
   },
-  (t) => [unique().on(t.userId, t.postId)],
-)
+  "valibot": {
+    "output": "valibot/index.ts",
+    "comment": true
+  },
+  "mermaid": {
+    "output": "mermaid-er/ER.md"
+  }
+}
+```
+
+Run Sizuku:
+
+```sh
+npx sizuku
 ```
 
 ### Zod
 
-```bash
-npx sizuku-zod path/to/db/schema.ts -o path/to/output.ts
-```
-
-output:
-
 ```ts
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const UserSchema = z.object({
   /**
-   * Unique identifier for the user.
+   * Primary key
    */
-  id: z.string().uuid(),
+  id: z.uuid(),
   /**
-   * Username of the user.
+   * Display name
    */
-  username: z.string(),
-  /**
-   * Email address of the user.
-   */
-  email: z.string().email(),
-  /**
-   * Password for the user.
-   */
-  password: z.string().min(8).max(100),
-  /**
-   * Timestamp when the user was created.
-   */
-  createdAt: z.date(),
-  /**
-   * Timestamp when the user was last updated.
-   */
-  updatedAt: z.date(),
+  name: z.string().min(1).max(50),
 })
+
+export type User = z.infer<typeof UserSchema>
 
 export const PostSchema = z.object({
   /**
-   * Unique identifier for the post.
+   * Primary key
    */
-  id: z.string().uuid(),
+  id: z.uuid(),
   /**
-   * ID of the user who created the post.
+   * Article title
    */
-  userId: z.string().uuid(),
+  title: z.string().min(1).max(100),
   /**
-   * Content of the post.
+   * Body content (no length limit)
    */
   content: z.string(),
   /**
-   * Timestamp when the post was created.
+   * Foreign key referencing User.id
    */
-  createdAt: z.date(),
-  /**
-   * Timestamp when the post was last updated.
-   */
-  updatedAt: z.date(),
+  userId: z.uuid(),
 })
 
-export const LikesSchema = z.object({
-  /**
-   * Unique identifier for the like.
-   */
-  id: z.string().uuid(),
-  /**
-   * ID of the post that is liked.
-   */
-  postId: z.string().uuid(),
-  /**
-   * ID of the user who liked the post.
-   */
-  userId: z.string().uuid(),
-  /**
-   * Timestamp when the like was created.
-   */
-  createdAt: z.date(),
-})
+export type Post = z.infer<typeof PostSchema>
 ```
 
 ### Valibot
-
-```bash
-npx sizuku-valibot path/to/db/schema.ts -o path/to/output.ts
-```
-
-output:
 
 ```ts
 import * as v from 'valibot'
 
 export const UserSchema = v.object({
   /**
-   * Unique identifier for the user.
+   * Primary key
    */
   id: v.pipe(v.string(), v.uuid()),
   /**
-   * Username of the user.
+   * Display name
    */
-  username: v.string(),
-  /**
-   * Email address of the user.
-   */
-  email: v.pipe(v.string(), v.email()),
-  /**
-   * Password for the user.
-   */
-  password: v.pipe(v.string(), v.minLength(8), v.maxLength(100)),
-  /**
-   * Timestamp when the user was created.
-   */
-  createdAt: v.date(),
-  /**
-   * Timestamp when the user was last updated.
-   */
-  updatedAt: v.date(),
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
 })
 
 export const PostSchema = v.object({
   /**
-   * Unique identifier for the post.
+   * Primary key
    */
   id: v.pipe(v.string(), v.uuid()),
   /**
-   * ID of the user who created the post.
+   * Article title
    */
-  userId: v.pipe(v.string(), v.uuid()),
+  title: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
   /**
-   * Content of the post.
+   * Body content (no length limit)
    */
   content: v.string(),
   /**
-   * Timestamp when the post was created.
-   */
-  createdAt: v.date(),
-  /**
-   * Timestamp when the post was last updated.
-   */
-  updatedAt: v.date(),
-})
-
-export const LikesSchema = v.object({
-  /**
-   * Unique identifier for the like.
-   */
-  id: v.pipe(v.string(), v.uuid()),
-  /**
-   * ID of the post that is liked.
-   */
-  postId: v.pipe(v.string(), v.uuid()),
-  /**
-   * ID of the user who liked the post.
+   * Foreign key referencing User.id
    */
   userId: v.pipe(v.string(), v.uuid()),
-  /**
-   * Timestamp when the like was created.
-   */
-  createdAt: v.date(),
 })
 ```
 
 ### Mermaid ER
 
-```bash
-npx sizuku-mermaid-er path/to/db/schema.ts -o path/to/output.md
-```
-
-output:
-
 ```mermaid
 erDiagram
     user ||--}| post : "(id) - (userId)"
-    post ||--}| likes : "(id) - (postId)"
-    user ||--}| likes : "(id) - (userId)"
     user {
-        varchar id "(PK) Unique identifier for the user."
-        varchar username "Username of the user."
-        varchar email "Email address of the user."
-        varchar password "Password for the user."
-        timestamp createdAt "Timestamp when the user was created."
-        timestamp updatedAt "Timestamp when the user was last updated."
+        varchar id "(PK) Primary key"
+        varchar name "Display name"
     }
     post {
-        varchar id "(PK) Unique identifier for the post."
-        varchar userId "(FK) ID of the user who created the post."
-        varchar content "Content of the post."
-        timestamp createdAt "Timestamp when the post was created."
-        timestamp updatedAt "Timestamp when the post was last updated."
-    }
-    likes {
-        varchar id "(PK) Unique identifier for the like."
-        varchar postId "(FK) ID of the post that is liked."
-        varchar userId "(FK) ID of the user who liked the post."
-        timestamp createdAt "Timestamp when the like was created."
+        varchar id "(PK) Primary key"
+        varchar title "Article title"
+        varchar content "Body content (no length limit)"
+        varchar userId "Foreign key referencing User.id"
     }
 ```
-
-## Configuration
-
-### sizuku-zod.json
-
-#### Schema Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `"PascalCase"` \| `"camelCase"` | `"PascalCase"` | Naming convention for generated schema variables |
-| `export` | `boolean` | `false` | When true, exports all schema definitions |
-
-#### Type Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `"PascalCase"` \| `"camelCase"` | `"PascalCase"` | Naming convention for generated type definitions |
-| `export` | `boolean` | `false` | When true, exports all type definitions |
-
-#### Comment Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `boolean` | `false` | If enabled, includes the element's original name in TSDoc comments. |
-
-#### Input and Output
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `input` | `string` | `""` | Input file path |
-| `output` | `string` | `""` | Output file path |
-
-#### Example
-
-```json
-{
-  "schema": {
-    "name": "PascalCase"
-  },
-  "type": {
-    "name": "PascalCase",
-    "export": false
-  },
-  "comment": true,
-  "input": "db/schema.ts",
-  "output": "zod/index.ts"
-}
-```
-
-> **⚠️** When using a configuration file, command line arguments are not required. The configuration file settings take precedence over command line arguments.
->
-> When you have configured `sizuku-zod.json`, you can simply run:
-> ```bash
-> npx sizuku-zod
-> ```
-
-### sizuku-valibot.json
-
-#### Schema Options
-
-| Option   | Type                            | Default        | Description                                |
-|----------|---------------------------------|----------------|--------------------------------------------|
-| `name`   | `"PascalCase"` \| `"camelCase"` | `"PascalCase"` | Naming convention for generated schema variables                                                                                                  |
-| `export` | `boolean`                       | `false`         | When true, exports all schema definitions |
-
-#### Type Options
-
-| Option   | Type                            | Default        | Description                             |
-|----------|---------------------------------|----------------|-----------------------------------------|
-| `name`   | `"PascalCase"` \| `"camelCase"` | `"PascalCase"` | Naming convention for generated type definitions                                                                                             |
-| `export` | `boolean`                       | `false`        | When true, exports all type definitions |
-
-#### Comment Options
-
-| Option | Type           | Default | Description                                                         |
-|--------|----------------|---------|---------------------------------------------------------------------|
-| `name` | `boolean`      | `false` | If enabled, includes the element's original name in TSDoc comments. |
-
-#### Input and Output
-
-| Option | Type | Default     | Description |
-|--------|------|-------------|-------------|
-| `input` | `string` | `""`   | Input file path |
-| `output` | `string` | `""`  | Output file path |
-
-#### Examples
-
-```json
-{
-  "schema": {
-    "name": "PascalCase"
-  },
-  "type": {
-    "name": "PascalCase",
-    "export": false
-  },
-  "comment": true,
-  "input": "db/schema.ts",
-  "output": "valibot/index.ts"
-}
-```
-
-> **⚠️** When using a configuration file, command line arguments are not required. The configuration file settings take precedence over command line arguments.
->
-> When you have configured `sizuku-valibot.json`, you can simply run:
-> ```bash
-> npx sizuku-valibot
-> ```
-
-### sizuku-mermaid-er.json
-
-| Option   | Type     | Default    | Description      |
-|----------|----------|------------|------------------|
-| `input`  | `string` | `""`       | Input file path  |
-| `output` | `string` | `""`       | Output file path |
-
-#### Example
-
-```json
-{
-  "input": "db/schema.ts",
-  "output": "mermaid-er/ER.md"
-}
-```
-
-> **⚠️** When using a configuration file, command line arguments are not required. The configuration file settings take precedence over command line arguments.
->
-> When you have configured `sizuku-mermaid-er.json`, you can simply run:
-> ```bash
-> npx sizuku-mermaid-er
-> ```
 
 This project is in **early development** and being maintained by a developer with about 2 years of experience. While I'm doing my best to create a useful tool:
 
