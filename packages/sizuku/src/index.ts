@@ -19,25 +19,28 @@ export async function main(config: Config = getConfig()) {
   const code = lines.slice(codeStart)
 
   // zod
-  if (config.zod.output === undefined) {
-    throw new Error('zod.output is not found')
-  }
-
-  await sizukuZod(code, config.zod.output, config?.zod.comment, config.zod.type, config.zod.zod)
-
-  if (config.valibot.output === undefined) {
-    throw new Error('valibot.output is not found')
+  if (config.zod && config.zod.output) {
+    await sizukuZod(code, config.zod.output, config?.zod.comment, config.zod.type, config.zod.zod)
+    console.log(`Generated Zod schema at: ${config.zod.output}`)
+  } else {
+    process.exit(0)
   }
 
   // valibot
-  await sizukuValibot(code, config.valibot.output, config?.valibot.comment, config.valibot.type)
-
-  // mermaid
-  if (config.mermaid.output === undefined) {
-    throw new Error('mermaid.output is not found')
+  if (config.valibot && config.valibot.output) {
+    await sizukuValibot(code, config.valibot.output, config?.valibot.comment, config.valibot.type)
+    console.log(`Generated Valibot schema at: ${config.valibot.output}`)
+  } else {
+    process.exit(0)
   }
 
-  await sizukuMermaidER(code, config.mermaid.output)
+  // mermaid
+  if (config.mermaid && config.mermaid.output) {
+    await sizukuMermaidER(code, config.mermaid.output)
+    console.log(`Generated Mermaid ER at: ${config.mermaid.output}`)
+  } else {
+    process.exit(0)
+  }
 }
 
 main()

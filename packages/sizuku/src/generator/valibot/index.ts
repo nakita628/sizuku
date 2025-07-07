@@ -4,7 +4,6 @@ import { fmt } from '../../shared/format/index.js'
 import { extractSchemas } from './core/extract-schema.js'
 import { valibotCode } from './generator/valibot-code.js'
 
-
 export async function sizukuValibot(
   code: string[],
   output: `${string}.ts`,
@@ -22,5 +21,4 @@ export async function sizukuValibot(
 
   await fsp.mkdir(path.dirname(output), { recursive: true })
   await fsp.writeFile(output, await fmt(valibotGeneratedCode))
-  console.log(`Generated Valibot schema at: ${output}`)
 }

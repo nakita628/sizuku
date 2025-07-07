@@ -31,5 +31,4 @@ export async function sizukuZod(
 
   await fsp.mkdir(path.dirname(output), { recursive: true })
   await fsp.writeFile(output, await fmt(zodGeneratedCode))
-  console.log(`Generated Zod schema at: ${output}`)
 }

@@ -11,5 +11,4 @@ export async function sizukuMermaidER(code: string[], output: string) {
 
   await fsp.mkdir(path.dirname(output), { recursive: true })
   await fsp.writeFile(output, ERContent)
-  console.log(`Generated ER at: ${output}`)
 }

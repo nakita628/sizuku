@@ -31,7 +31,7 @@ id:z.uuid(),
 */
 name:z.string().min(1).max(50)})
 
-export type user = z.infer<typeof userSchema>
+export type User = z.infer<typeof UserSchema>
 `
     expect(result).toBe(expected)
   })

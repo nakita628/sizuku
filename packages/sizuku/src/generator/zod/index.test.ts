@@ -1,104 +1,154 @@
-import { describe, expect, it } from 'vitest'
-import { execSync } from 'node:child_process'
+import { describe, expect, it, afterEach } from 'vitest'
+import { sizukuZod } from './index.js'
 import fs from 'node:fs'
-import path from 'node:path'
+import fsp from 'node:fs/promises'
 
 // Test run
 // pnpm vitest run ./src/generator/zod/index.test.ts
 
-describe('Sizuku Zod Generator', () => {
-  it('sizuku-zod valid', async () => {
-    const testDir = 'zod-test'
+const TEST_CODE = [
+  "export const user = mysqlTable('user', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Display name',
+  '  /// @z.string().min(1).max(50)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+  "  name: varchar('name', { length: 50 }).notNull(),",
+  '})',
+  '',
+  '/// @relation user.id post.userId one-to-many',
+  "export const post = mysqlTable('post', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Article title',
+  '  /// @z.string().min(1).max(100)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
+  "  title: varchar('title', { length: 100 }).notNull(),",
+  '  /// Body content (no length limit)',
+  '  /// @z.string()',
+  '  /// @v.string()',
+  "  content: varchar('content', { length: 65535 }).notNull(),",
+  '  /// Foreign key referencing User.id',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  userId: varchar('user_id', { length: 36 }).notNull(),",
+  '})',
+  '',
+  'export const userRelations = relations(user, ({ many }) => ({',
+  '  posts: many(post),',
+  '}))',
+  '',
+  'export const postRelations = relations(post, ({ one }) => ({',
+  '  user: one(user, {',
+  '    fields: [post.userId],',
+  '    references: [user.id],',
+  '  }),',
+  '}))',
+  '',
+]
 
-    try {
-      // CLI
-      execSync(
-        `node ${path.resolve('dist/generator/zod/index.js')} db/schema.ts -o ${testDir}/index.ts`,
-        { stdio: 'pipe' },
-      )
+describe('sizukuZod', () => {
+  afterEach(async () => {
+    if (fs.existsSync('tmp')) {
+      await fsp.rmdir('tmp', { recursive: true })
+    }
+  })
 
-      expect(fs.existsSync(`${testDir}/index.ts`)).toBe(true)
+  it('sizukuZod', async () => {
+    await sizukuZod(TEST_CODE, 'tmp/zod-test.ts')
+    const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
+    const expected = `import { z } from 'zod/v4'
 
-      const result = fs.readFileSync(`${testDir}/index.ts`, 'utf-8')
+export const UserSchema = z.object({ id: z.uuid(), name: z.string().min(1).max(50) })
 
-      const expected = `import { z } from 'zod'
+export const PostSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(100),
+  content: z.string(),
+  userId: z.uuid(),
+})
+`
+    expect(result).toBe(expected)
+  })
+
+  it('sizukuZod comment true', async () => {
+    await sizukuZod(TEST_CODE, 'tmp/zod-test.ts', true)
+    const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
+
+    const expected = `import { z } from 'zod/v4'
 
 export const UserSchema = z.object({
   /**
-   * Unique identifier for the user.
+   * Primary key
    */
-  id: z.string().uuid(),
+  id: z.uuid(),
   /**
-   * Username of the user.
+   * Display name
    */
-  username: z.string(),
-  /**
-   * Email address of the user.
-   */
-  email: z.string().email(),
-  /**
-   * Password for the user.
-   */
-  password: z.string().min(8).max(100),
-  /**
-   * Timestamp when the user was created.
-   */
-  createdAt: z.date(),
-  /**
-   * Timestamp when the user was last updated.
-   */
-  updatedAt: z.date(),
+  name: z.string().min(1).max(50),
 })
 
 export const PostSchema = z.object({
   /**
-   * Unique identifier for the post.
+   * Primary key
    */
-  id: z.string().uuid(),
+  id: z.uuid(),
   /**
-   * ID of the user who created the post.
+   * Article title
    */
-  userId: z.string().uuid(),
+  title: z.string().min(1).max(100),
   /**
-   * Content of the post.
+   * Body content (no length limit)
    */
   content: z.string(),
   /**
-   * Timestamp when the post was created.
+   * Foreign key referencing User.id
    */
-  createdAt: z.date(),
-  /**
-   * Timestamp when the post was last updated.
-   */
-  updatedAt: z.date(),
-})
-
-export const LikesSchema = z.object({
-  /**
-   * Unique identifier for the like.
-   */
-  id: z.string().uuid(),
-  /**
-   * ID of the post that is liked.
-   */
-  postId: z.string().uuid(),
-  /**
-   * ID of the user who liked the post.
-   */
-  userId: z.string().uuid(),
-  /**
-   * Timestamp when the like was created.
-   */
-  createdAt: z.date(),
+  userId: z.uuid(),
 })
 `
+    expect(result).toBe(expected)
+  })
 
-      expect(result).toBe(expected)
-    } finally {
-      // clean up
-      if (fs.existsSync(testDir)) {
-        fs.rmdirSync(testDir, { recursive: true })
-      }
-    }
+  it('sizukuZod type true', async () => {
+    await sizukuZod(TEST_CODE, 'tmp/zod-test.ts', false, true)
+    const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
+    const expected = `import { z } from 'zod/v4'
+
+export const UserSchema = z.object({ id: z.uuid(), name: z.string().min(1).max(50) })
+
+export type User = z.infer<typeof UserSchema>
+
+export const PostSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(100),
+  content: z.string(),
+  userId: z.uuid(),
+})
+
+export type Post = z.infer<typeof PostSchema>
+`
+    expect(result).toBe(expected)
+  })
+
+  it('sizukuZod zod @hono/zod-openapi', async () => {
+    await sizukuZod(TEST_CODE, 'tmp/zod-test.ts', false, false, '@hono/zod-openapi')
+    const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
+    const expected = `import { z } from '@hono/zod-openapi'
+
+export const UserSchema = z.object({ id: z.uuid(), name: z.string().min(1).max(50) })
+
+export const PostSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(100),
+  content: z.string(),
+  userId: z.uuid(),
+})
+`
+    expect(result).toBe(expected)
   })
 })

@@ -5,5 +5,5 @@ import { capitalize } from '../../../shared/utils/capitalize.js'
  * @returns
  */
 export function infer(name: string) {
-  return `export type ${name} = z.infer<typeof ${capitalize(name)}Schema>`
+  return `export type ${capitalize(name)} = z.infer<typeof ${capitalize(name)}Schema>`
 }
