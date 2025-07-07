@@ -2,18 +2,18 @@ import fs from 'node:fs'
 
 export type Config = {
   input?: `${string}.ts`
-  zod: {
+  zod?: {
     output?: `${string}.ts`
     comment?: boolean
     type?: boolean
     zod?: 'v4' | 'v4-mini' | '@hono/zod-openapi'
   }
-  valibot: {
+  valibot?: {
     output?: `${string}.ts`
     comment?: boolean
     type?: boolean
   }
-  mermaid: {
+  mermaid?: {
     output?: string
   }
 }
