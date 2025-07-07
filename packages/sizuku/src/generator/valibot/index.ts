@@ -1,8 +1,9 @@
 import path from 'node:path'
-import fsp from 'node:fs/promises'
-import { fmt } from '../../shared/format/index.js'
 import { extractSchemas } from './core/extract-schema.js'
 import { valibotCode } from './generator/valibot-code.js'
+import { fmt } from '../../shared/format/index.js'
+import { mkdir, writeFile } from '../../shared/fsp/index.js'
+import type { Result } from 'neverthrow'
 
 /**
  * Generate Valibot schema
@@ -16,16 +17,14 @@ export async function sizukuValibot(
   output: `${string}.ts`,
   comment?: boolean,
   type?: boolean,
-) {
-  const schemas = extractSchemas(code)
-  const IMPORT_VALIBOT = 'import * as v from "valibot"' as const
-
+): Promise<Result<void, Error>> {
   const valibotGeneratedCode = [
-    IMPORT_VALIBOT,
+    'import * as v from "valibot"' as const,
     '',
-    ...schemas.map((schema) => valibotCode(schema, comment ?? false, type ?? false)),
+    ...extractSchemas(code).map((schema) => valibotCode(schema, comment ?? false, type ?? false)),
   ].join('\n')
 
-  await fsp.mkdir(path.dirname(output), { recursive: true })
-  await fsp.writeFile(output, await fmt(valibotGeneratedCode))
+  return await mkdir(path.dirname(output))
+    .andThen(() => fmt(valibotGeneratedCode))
+    .andThen((formatted) => writeFile(output, formatted))
 }

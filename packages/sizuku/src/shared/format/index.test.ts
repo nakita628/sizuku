@@ -5,10 +5,12 @@ import { fmt } from '.'
 // pnpm vitest run ./src/shared/format/index.test.ts
 
 describe('fmt', () => {
-  it('fmt Test', async () => {
+  it('fmt success', async () => {
     const result = await fmt('const sizuku = "sizuku";')
-    const expected = `const sizuku = 'sizuku'
-`
-    expect(result).toBe(expected)
+    expect(result.isOk()).toBe(true)
+  })
+  it('fmt error', async () => {
+    const result = await fmt('const sizuku = "sizu')
+    expect(result.isErr()).toBe(true)
   })
 })

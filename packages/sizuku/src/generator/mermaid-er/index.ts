@@ -1,7 +1,7 @@
+import { mkdir, writeFile } from '../../shared/fsp/index.js'
 import { extractRelations } from './core/extract-relations.js'
 import { erContent } from './generator/index.js'
 import { parseTableInfo } from './validator/parse-table-info.js'
-import fsp from 'node:fs/promises'
 import path from 'node:path'
 
 /**
@@ -14,6 +14,5 @@ export async function sizukuMermaidER(code: string[], output: string) {
   const relations = extractRelations(code)
   const ERContent = erContent(relations, tables)
 
-  await fsp.mkdir(path.dirname(output), { recursive: true })
-  await fsp.writeFile(output, ERContent)
+  return await mkdir(path.dirname(output)).andThen(() => writeFile(output, ERContent))
 }

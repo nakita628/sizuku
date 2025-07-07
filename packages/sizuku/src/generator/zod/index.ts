@@ -1,8 +1,9 @@
-import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { fmt } from '../../shared/format/index.js'
 import { extractSchemas } from './core/extract-schema.js'
 import { zodCode } from './generator/zod-code.js'
+import { mkdir, writeFile } from '../../shared/fsp/index.js'
+import { fmt } from '../../shared/format/index.js'
+import type { Result } from 'neverthrow'
 
 const ZODV4_IMPORT = `import { z } from 'zod/v4'` as const
 const ZODV4_MINI_IMPORT = `import { z } from 'zod/v4-mini'` as const
@@ -22,21 +23,18 @@ export async function sizukuZod(
   comment?: boolean,
   type?: boolean,
   zod?: 'v4' | 'v4-mini' | '@hono/zod-openapi',
-) {
-  const zodSchemas = extractSchemas(code)
-  const importStatement =
+): Promise<Result<void, Error>> {
+  const zodGeneratedCode = [
     zod === 'v4-mini'
       ? ZODV4_MINI_IMPORT
       : zod === '@hono/zod-openapi'
         ? ZOD_OPENAPI_HONO_IMPORT
-        : ZODV4_IMPORT
-
-  const zodGeneratedCode = [
-    importStatement,
+        : ZODV4_IMPORT,
     '',
-    ...zodSchemas.map((schema) => zodCode(schema, comment ?? false, type ?? false)),
+    ...extractSchemas(code).map((schema) => zodCode(schema, comment ?? false, type ?? false)),
   ].join('\n')
 
-  await fsp.mkdir(path.dirname(output), { recursive: true })
-  await fsp.writeFile(output, await fmt(zodGeneratedCode))
+  return await mkdir(path.dirname(output))
+    .andThen(() => fmt(zodGeneratedCode))
+    .andThen((formatted) => writeFile(output, formatted))
 }

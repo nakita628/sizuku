@@ -11,7 +11,7 @@ export const UserSchema = z.object({
   name: z.string().min(1).max(50),
 })
 
-export type user = z.infer<typeof UserSchema>
+export type User = z.infer<typeof UserSchema>
 
 export const PostSchema = z.object({
   /**
@@ -32,4 +32,4 @@ export const PostSchema = z.object({
   userId: z.uuid(),
 })
 
-export type post = z.infer<typeof PostSchema>
+export type Post = z.infer<typeof PostSchema>

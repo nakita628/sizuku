@@ -1,10 +1,14 @@
 import { format } from 'prettier'
+import { ResultAsync } from 'neverthrow'
 
-export async function fmt(code: string) {
-  return await format(code, {
-    parser: 'typescript',
-    printWidth: 100,
-    singleQuote: true,
-    semi: false,
-  })
+export function fmt(code: string): ResultAsync<string, Error> {
+  return ResultAsync.fromPromise(
+    format(code, {
+      parser: 'typescript',
+      printWidth: 100,
+      singleQuote: true,
+      semi: false,
+    }),
+    (e) => new Error(String(e)),
+  )
 }
