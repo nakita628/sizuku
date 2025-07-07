@@ -53,8 +53,11 @@ const TEST_CODE = [
 
 describe('sizukuZod', () => {
   afterEach(async () => {
-    if (fs.existsSync('tmp')) {
+    if (!fs.existsSync('tmp')) {
       await fsp.rmdir('tmp', { recursive: true })
+    }
+    if (fs.existsSync('tmp/zod-test.ts')) {
+      await fsp.unlink('tmp/zod-test.ts')
     }
   })
 
