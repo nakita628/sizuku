@@ -1,77 +1,82 @@
-import { describe, expect, it } from 'vitest'
-import { execSync } from 'node:child_process'
+import { describe, expect, it, afterEach } from 'vitest'
+import { sizukuMermaidER } from './index.js'
 import fs from 'node:fs'
-import path from 'node:path'
+import fsp from 'node:fs/promises'
 
-describe('Sizuku ER Generator CLI', () => {
-  it('sizuku-mermaid-er valid', async () => {
-    const testDir = 'mermaid-test-er'
+// Test run
+// pnpm vitest run ./src/generator/mermaid-er/index.test.ts
 
-    try {
-      // CLI
-      execSync(
-        `node ${path.resolve('dist/generator/mermaid-er/index.js')} db/schema.ts -o ${testDir}/ER.md`,
-        { stdio: 'pipe' },
-      )
+const TEST_CODE = [
+  "export const user = mysqlTable('user', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Display name',
+  '  /// @z.string().min(1).max(50)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+  "  name: varchar('name', { length: 50 }).notNull(),",
+  '})',
+  '',
+  '/// @relation user.id post.userId one-to-many',
+  "export const post = mysqlTable('post', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Article title',
+  '  /// @z.string().min(1).max(100)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
+  "  title: varchar('title', { length: 100 }).notNull(),",
+  '  /// Body content (no length limit)',
+  '  /// @z.string()',
+  '  /// @v.string()',
+  "  content: varchar('content', { length: 65535 }).notNull(),",
+  '  /// Foreign key referencing User.id',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  userId: varchar('user_id', { length: 36 }).notNull(),",
+  '})',
+  '',
+  'export const userRelations = relations(user, ({ many }) => ({',
+  '  posts: many(post),',
+  '}))',
+  '',
+  'export const postRelations = relations(post, ({ one }) => ({',
+  '  user: one(user, {',
+  '    fields: [post.userId],',
+  '    references: [user.id],',
+  '  }),',
+  '}))',
+  '',
+]
 
-      expect(fs.existsSync(`${testDir}/ER.md`)).toBe(true)
-
-      const result = fs.readFileSync(`${testDir}/ER.md`, 'utf-8')
-
-      const expected = `\`\`\`mermaid
-erDiagram
-    user ||--}| post : "(id) - (userId)"
-    post ||--}| likes : "(id) - (postId)"
-    user ||--}| likes : "(id) - (userId)"
-    user {
-        varchar id "(PK) Unique identifier for the user."
-        varchar username "Username of the user."
-        varchar email "Email address of the user."
-        varchar password "Password for the user."
-        timestamp createdAt "Timestamp when the user was created."
-        timestamp updatedAt "Timestamp when the user was last updated."
+describe('sizukuMermaidER', () => {
+  afterEach(() => {
+    if (!fs.existsSync('tmp')) {
+      fs.rmdirSync('tmp', { recursive: true })
     }
-    post {
-        varchar id "(PK) Unique identifier for the post."
-        varchar userId "(FK) ID of the user who created the post."
-        varchar content "Content of the post."
-        timestamp createdAt "Timestamp when the post was created."
-        timestamp updatedAt "Timestamp when the post was last updated."
-    }
-    likes {
-        varchar id "(PK) Unique identifier for the like."
-        varchar postId "(FK) ID of the post that is liked."
-        varchar userId "(FK) ID of the user who liked the post."
-        timestamp createdAt "Timestamp when the like was created."
-    }
-\`\`\``
-      expect(result).toBe(expected)
-    } finally {
-      if (fs.existsSync(testDir)) {
-        fs.rmdirSync(testDir, { recursive: true })
-      }
+    if (fs.existsSync('tmp/mermaid-er-test.md')) {
+      fs.unlinkSync('tmp/mermaid-er-test.md')
     }
   })
-
-  it('sizuku-mermaid-er error', async () => {
-    const testDir = 'mermaid-test-er'
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true })
+  it('sizukuMermaidER', async () => {
+    await sizukuMermaidER(TEST_CODE, 'tmp/mermaid-er-test.md')
+    const result = await fsp.readFile('tmp/mermaid-er-test.md', 'utf-8')
+    const expected = `\`\`\`mermaid
+erDiagram
+    user ||--}| post : "(id) - (userId)"
+    user {
+        varchar id "(PK) Primary key"
+        varchar name "Display name"
     }
-
-    try {
-      // CLI
-      execSync(
-        `node ${path.resolve('dist/generator/mermaid-er/index.js')} db/schema.ts ${testDir}/ER.md`,
-        { stdio: 'pipe' },
-      )
-    } catch (e) {
-      expect(e).toBeInstanceOf(Error)
-    } finally {
-      // clean up
-      if (fs.existsSync(testDir)) {
-        fs.rmdirSync(testDir, { recursive: true })
-      }
+    post {
+        varchar id "(PK) Primary key"
+        varchar title "Article title"
+        varchar content "Body content (no length limit)"
+        varchar userId "Foreign key referencing User.id"
     }
+\`\`\``
+    expect(result).toBe(expected)
   })
 })

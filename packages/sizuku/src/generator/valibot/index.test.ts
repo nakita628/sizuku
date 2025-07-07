@@ -1,101 +1,145 @@
-import { describe, expect, it } from 'vitest'
-import { execSync } from 'node:child_process'
+import { describe, expect, it, afterEach } from 'vitest'
+import { sizukuValibot } from './index.js'
 import fs from 'node:fs'
-import path from 'node:path'
+import fsp from 'node:fs/promises'
 
-describe('Sizuku Valibot Generator', () => {
-  it('sizuku-valibot valid', async () => {
-    const testDir = 'valibot-test'
+// Test run
+// pnpm vitest run ./src/generator/valibot/index.test.ts
 
-    try {
-      // CLI
-      execSync(
-        `node ${path.resolve('dist/generator/valibot/index.js')} db/schema.ts -o ${testDir}/index.ts`,
-        { stdio: 'pipe' },
-      )
+const TEST_CODE = [
+  "export const user = mysqlTable('user', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Display name',
+  '  /// @z.string().min(1).max(50)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+  "  name: varchar('name', { length: 50 }).notNull(),",
+  '})',
+  '',
+  '/// @relation user.id post.userId one-to-many',
+  "export const post = mysqlTable('post', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Article title',
+  '  /// @z.string().min(1).max(100)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
+  "  title: varchar('title', { length: 100 }).notNull(),",
+  '  /// Body content (no length limit)',
+  '  /// @z.string()',
+  '  /// @v.string()',
+  "  content: varchar('content', { length: 65535 }).notNull(),",
+  '  /// Foreign key referencing User.id',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  userId: varchar('user_id', { length: 36 }).notNull(),",
+  '})',
+  '',
+  'export const userRelations = relations(user, ({ many }) => ({',
+  '  posts: many(post),',
+  '}))',
+  '',
+  'export const postRelations = relations(post, ({ one }) => ({',
+  '  user: one(user, {',
+  '    fields: [post.userId],',
+  '    references: [user.id],',
+  '  }),',
+  '}))',
+  '',
+]
 
-      expect(fs.existsSync(`${testDir}/index.ts`)).toBe(true)
+describe('sizukuZod', () => {
+  afterEach(() => {
+    if (!fs.existsSync('tmp')) {
+      fs.rmdirSync('tmp', { recursive: true })
+    }
+    if (fs.existsSync('tmp/valibot-test.ts')) {
+      fs.unlinkSync('tmp/valibot-test.ts')
+    }
+  })
 
-      const result = fs.readFileSync(`${testDir}/index.ts`, 'utf-8')
+  it('sizukuValibot', async () => {
+    await sizukuValibot(TEST_CODE, 'tmp/valibot-test.ts')
+    const result = await fsp.readFile('tmp/valibot-test.ts', 'utf-8')
+    const expected = `import * as v from 'valibot'
 
-      const expected = `import * as v from 'valibot'
+export const UserSchema = v.object({
+  id: v.pipe(v.string(), v.uuid()),
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
+})
+
+export const PostSchema = v.object({
+  id: v.pipe(v.string(), v.uuid()),
+  title: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
+  content: v.string(),
+  userId: v.pipe(v.string(), v.uuid()),
+})
+`
+    expect(result).toBe(expected)
+  })
+
+  it('sizukuValibot comment true', async () => {
+    await sizukuValibot(TEST_CODE, 'tmp/valibot-test.ts', true)
+    const result = await fsp.readFile('tmp/valibot-test.ts', 'utf-8')
+    const expected = `import * as v from 'valibot'
 
 export const UserSchema = v.object({
   /**
-   * Unique identifier for the user.
+   * Primary key
    */
   id: v.pipe(v.string(), v.uuid()),
   /**
-   * Username of the user.
+   * Display name
    */
-  username: v.string(),
-  /**
-   * Email address of the user.
-   */
-  email: v.pipe(v.string(), v.email()),
-  /**
-   * Password for the user.
-   */
-  password: v.pipe(v.string(), v.minLength(8), v.maxLength(100)),
-  /**
-   * Timestamp when the user was created.
-   */
-  createdAt: v.date(),
-  /**
-   * Timestamp when the user was last updated.
-   */
-  updatedAt: v.date(),
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
 })
 
 export const PostSchema = v.object({
   /**
-   * Unique identifier for the post.
+   * Primary key
    */
   id: v.pipe(v.string(), v.uuid()),
   /**
-   * ID of the user who created the post.
+   * Article title
    */
-  userId: v.pipe(v.string(), v.uuid()),
+  title: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
   /**
-   * Content of the post.
+   * Body content (no length limit)
    */
   content: v.string(),
   /**
-   * Timestamp when the post was created.
-   */
-  createdAt: v.date(),
-  /**
-   * Timestamp when the post was last updated.
-   */
-  updatedAt: v.date(),
-})
-
-export const LikesSchema = v.object({
-  /**
-   * Unique identifier for the like.
-   */
-  id: v.pipe(v.string(), v.uuid()),
-  /**
-   * ID of the post that is liked.
-   */
-  postId: v.pipe(v.string(), v.uuid()),
-  /**
-   * ID of the user who liked the post.
+   * Foreign key referencing User.id
    */
   userId: v.pipe(v.string(), v.uuid()),
-  /**
-   * Timestamp when the like was created.
-   */
-  createdAt: v.date(),
 })
 `
+    expect(result).toBe(expected)
+  })
 
-      expect(result).toBe(expected)
-    } finally {
-      // clean up
-      if (fs.existsSync(testDir)) {
-        fs.rmdirSync(testDir, { recursive: true })
-      }
-    }
+  it('sizukuValibot type true', async () => {
+    await sizukuValibot(TEST_CODE, 'tmp/valibot-test.ts', false, true)
+    const result = await fsp.readFile('tmp/valibot-test.ts', 'utf-8')
+    const expected = `import * as v from 'valibot'
+
+export const UserSchema = v.object({
+  id: v.pipe(v.string(), v.uuid()),
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
+})
+
+export type User = v.InferInput<typeof UserSchema>
+
+export const PostSchema = v.object({
+  id: v.pipe(v.string(), v.uuid()),
+  title: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
+  content: v.string(),
+  userId: v.pipe(v.string(), v.uuid()),
+})
+
+export type Post = v.InferInput<typeof PostSchema>
+`
+    expect(result).toBe(expected)
   })
 })

@@ -1,103 +1,307 @@
-import type { Schema } from '../../../common/type'
+import type { Schema } from '../../../shared/types.js'
+import { Node, Project } from 'ts-morph'
+import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 
-type Acc = {
-  currentSchema: Schema | null
-  pendingDescription?: string
-  schemas: Schema[]
+/**
+ * Check if comment contains metadata
+ */
+const isMetadataComment = (text: string): boolean => {
+  return text.includes('@z.') || text.includes('@v.') || text.includes('@relation.')
 }
 
 /**
- * Check if line contains metadata
+ * Extract field comments that appear before a specific line position
  */
-const isMetadataComment = (line: string): boolean => {
-  return line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')
+const extractFieldComments = (sourceText: string, fieldStartPos: number): string[] => {
+  const beforeField = sourceText.substring(0, fieldStartPos)
+  const lines = beforeField.split('\n')
+
+  const reverseIndex = lines
+    .map((line, index) => ({ line: line.trim(), index }))
+    .reverse()
+    .reduce<{ commentLines: string[]; shouldStop: boolean }>(
+      (acc, { line }) => {
+        if (acc.shouldStop) return acc
+
+        if (line.startsWith('///')) {
+          return {
+            commentLines: [line, ...acc.commentLines],
+            shouldStop: false,
+          }
+        }
+
+        if (line === '') {
+          return acc
+        }
+
+        return { commentLines: acc.commentLines, shouldStop: true }
+      },
+      { commentLines: [], shouldStop: false },
+    )
+
+  return reverseIndex.commentLines
 }
 
 /**
- * Check if line is a non-comment line
+ * Parse comment lines and extract Zod definition and description
  */
-const isNonCommentLine = (line: string): boolean => {
-  const trimmed = line.trim()
-  return trimmed !== '' && !trimmed.startsWith('///')
+const parseFieldComments = (
+  commentLines: string[],
+): { zodDefinition: string; description: string | undefined } => {
+  const cleanLines = commentLines
+    .map((line) => line.replace(/^\/\/\/\s*/, '').trim())
+    .filter((line) => line.length > 0)
+
+  const zodDefinition = cleanLines.find((line) => line.startsWith('@z.'))?.replace(/^@/, '') ?? ''
+
+  const descriptionLines = cleanLines.filter((line) => !isMetadataComment(line))
+  const description = descriptionLines.length > 0 ? descriptionLines.join(' ') : undefined
+
+  return { zodDefinition, description }
+}
+
+/**
+ * Extract field information from object property
+ */
+const extractFieldFromProperty = (
+  property: Node,
+  sourceText: string,
+): Schema['fields'][0] | null => {
+  if (!Node.isPropertyAssignment(property)) return null
+
+  const fieldName = property.getName()
+  if (!fieldName) return null
+
+  const fieldStartPos = property.getStart()
+  const commentLines = extractFieldComments(sourceText, fieldStartPos)
+  const { zodDefinition, description } = parseFieldComments(commentLines)
+
+  return {
+    name: fieldName,
+    definition: zodDefinition,
+    description,
+  }
+}
+
+/**
+ * Convert table name to Schema name (e.g., 'user' -> 'UserSchema', 'post' -> 'PostSchema')
+ */
+const toSchemaName = (tableName: string): string =>
+  `${tableName.charAt(0).toUpperCase() + tableName.slice(1)}Schema`
+
+/**
+ * Extract relation field with type inference
+ */
+const extractRelationFieldFromProperty = (
+  property: Node,
+  sourceText: string,
+): Schema['fields'][0] | null => {
+  if (!Node.isPropertyAssignment(property)) return null
+
+  const fieldName = property.getName()
+  if (!fieldName) return null
+
+  const initializer = property.getInitializer()
+  if (!Node.isCallExpression(initializer)) {
+    return {
+      name: fieldName,
+      definition: '',
+      description: undefined,
+    }
+  }
+
+  const expression = initializer.getExpression()
+  if (!Node.isIdentifier(expression)) {
+    return {
+      name: fieldName,
+      definition: '',
+      description: undefined,
+    }
+  }
+
+  const functionName = expression.getText()
+  const args = initializer.getArguments()
+
+  if (args.length === 0) {
+    return {
+      name: fieldName,
+      definition: '',
+      description: undefined,
+    }
+  }
+
+  const firstArg = args[0]
+  if (!Node.isIdentifier(firstArg)) {
+    return {
+      name: fieldName,
+      definition: '',
+      description: undefined,
+    }
+  }
+
+  const referencedTable = firstArg.getText()
+  const schemaName = toSchemaName(referencedTable)
+
+  const zodDefinition =
+    functionName === 'many'
+      ? `z.array(${schemaName})` // many(post) -> z.array(PostSchema)
+      : functionName === 'one'
+        ? schemaName // one(user, {...}) -> UserSchema
+        : ''
+
+  const fieldStartPos = property.getStart()
+  const commentLines = extractFieldComments(sourceText, fieldStartPos)
+  const { description } = parseFieldComments(commentLines)
+
+  return {
+    name: fieldName,
+    definition: zodDefinition,
+    description,
+  }
+}
+
+/**
+ * Extract object literal from any expression
+ */
+const extractObjectLiteralFromExpression = (expression: Node): ObjectLiteralExpression | null => {
+  // Direct object literal
+  if (Node.isObjectLiteralExpression(expression)) {
+    return expression
+  }
+
+  if (Node.isParenthesizedExpression(expression)) {
+    const inner = expression.getExpression()
+    return Node.isObjectLiteralExpression(inner) ? inner : null
+  }
+
+  if (Node.isArrowFunction(expression)) {
+    const body = expression.getBody()
+
+    if (Node.isObjectLiteralExpression(body)) {
+      return body
+    }
+
+    if (Node.isParenthesizedExpression(body)) {
+      const inner = body.getExpression()
+      return Node.isObjectLiteralExpression(inner) ? inner : null
+    }
+
+    if (Node.isBlock(body)) {
+      const returnStatement = body.getStatements().find((stmt) => Node.isReturnStatement(stmt))
+      if (returnStatement && Node.isReturnStatement(returnStatement)) {
+        const returnExpression = returnStatement.getExpression()
+        return returnExpression && Node.isObjectLiteralExpression(returnExpression)
+          ? returnExpression
+          : null
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Find object literal in call expression arguments
+ */
+const findObjectLiteralInArgs = (callExpr: CallExpression): ObjectLiteralExpression | null => {
+  const args = callExpr.getArguments()
+
+  for (const arg of args) {
+    const objectLiteral = extractObjectLiteralFromExpression(arg)
+    if (objectLiteral) {
+      return objectLiteral
+    }
+  }
+
+  return null
+}
+
+/**
+ * Determine if this is a relation-like function call
+ */
+const isRelationFunction = (callExpr: CallExpression): boolean => {
+  const expression = callExpr.getExpression()
+  if (!Node.isIdentifier(expression)) return false
+
+  const functionName = expression.getText()
+  return functionName === 'relations' || functionName.includes('relation')
+}
+
+/**
+ * Extract fields from any call expression
+ */
+const extractFieldsFromCallExpression = (
+  callExpr: CallExpression,
+  sourceText: string,
+): Schema['fields'] => {
+  const objectLiteral = findObjectLiteralInArgs(callExpr)
+  if (!objectLiteral) return []
+
+  const isRelation = isRelationFunction(callExpr)
+
+  return objectLiteral
+    .getProperties()
+    .map((prop) =>
+      isRelation
+        ? extractRelationFieldFromProperty(prop, sourceText)
+        : extractFieldFromProperty(prop, sourceText),
+    )
+    .filter((field): field is NonNullable<typeof field> => field !== null)
+}
+
+/**
+ * Extract a single schema (variable declaration)
+ */
+const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Schema | null => {
+  if (!Node.isVariableDeclaration(declaration)) return null
+
+  const name = declaration.getName()
+  if (!name) return null
+
+  const initializer = declaration.getInitializer()
+
+  if (Node.isCallExpression(initializer)) {
+    if (isRelationFunction(initializer)) return null
+
+    const fields = extractFieldsFromCallExpression(initializer, sourceText)
+    return { name, fields }
+  }
+
+  if (Node.isObjectLiteralExpression(initializer)) {
+    const fields = initializer
+      .getProperties()
+      .map((prop) => extractFieldFromProperty(prop, sourceText))
+      .filter((field): field is NonNullable<typeof field> => field !== null)
+
+    return { name, fields }
+  }
+
+  return { name, fields: [] }
 }
 
 /**
  * Extract schemas from lines of code
- * @function extractSchemas
  * @param lines - Lines of code
  * @returns Schemas
  */
 export function extractSchemas(lines: string[]): Schema[] {
-  const process = (i: number, acc: Acc): Acc => {
-    if (i >= lines.length) {
-      return acc
-    }
-    const line = lines[i]
-    // extract schema
-    const schemaMatch = line.match(/export const (\w+)\s*=/)
-    if (schemaMatch) {
-      if (acc.currentSchema) {
-        acc.schemas.push(acc.currentSchema)
-      }
-      acc.currentSchema = { name: schemaMatch[1], fields: [] }
-      acc.pendingDescription = undefined
-      return process(i + 1, acc)
-    }
-    // process comment
-    if (line.trim().startsWith('///')) {
-      // zod comment
-      const zodComment = line.match(/\/\/\/\s*(@z\.(?:[^()]+|\([^)]*\))+)/)
-      if (zodComment && acc.currentSchema) {
-        // find next field definition line
-        const remainingCandidates = lines.slice(i + 1)
-        const foundRelative = remainingCandidates.findIndex(isNonCommentLine)
-        if (foundRelative !== -1) {
-          const j = i + 1 + foundRelative
-          const candidate = lines[j].trim()
-          const fieldMatch = candidate.match(/^(\w+)\s*:/)
-          if (fieldMatch) {
-            const newField = {
-              name: fieldMatch[1],
-              definition: zodComment[1].replace('@', ''),
-              description: acc.pendingDescription,
-            }
-            acc.currentSchema.fields.push(newField)
-            acc.pendingDescription = undefined
-            return process(i + 1, acc)
-          }
-        }
-      } else {
-        // comments other than metadata are pending
-        if (!isMetadataComment(line)) {
-          const commentText = line.replace('///', '').trim()
-          acc.pendingDescription = acc.pendingDescription
-            ? `${acc.pendingDescription} ${commentText}`
-            : commentText
-          return process(i + 1, acc)
-        }
-      }
-      return process(i + 1, acc)
-    }
-    // if there is a field definition other than comment, use the pending comment as field information
-    if (acc.currentSchema && acc.pendingDescription) {
-      const fieldMatch = line.match(/^(\w+)\s*:/)
-      if (fieldMatch) {
-        const newField = {
-          name: fieldMatch[1],
-          definition: '',
-          description: acc.pendingDescription,
-        }
-        acc.currentSchema.fields.push(newField)
-        acc.pendingDescription = undefined
-        return process(i + 1, acc)
-      }
-    }
-    return process(i + 1, acc)
-  }
+  const sourceCode = lines.join('\n')
 
-  const finalAcc = process(0, { currentSchema: null, pendingDescription: undefined, schemas: [] })
-  if (finalAcc.currentSchema) {
-    finalAcc.schemas.push(finalAcc.currentSchema)
-  }
-  return finalAcc.schemas
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: {
+      allowJs: true,
+      skipLibCheck: true,
+    },
+  })
+
+  const sourceFile = project.createSourceFile('temp.ts', sourceCode)
+  const sourceText = sourceFile.getFullText()
+
+  return sourceFile
+    .getVariableStatements()
+    .filter((stmt) => stmt.hasExportKeyword())
+    .flatMap((stmt) => stmt.getDeclarations())
+    .map((decl) => extractSchemaFromDeclaration(decl, sourceText))
+    .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
 }
