@@ -32,13 +32,13 @@ export function parseTableInfo(code: string[]): TableInfo[] {
       if (varName.toLowerCase().includes('relation')) return []
 
       const init = decl.getInitializer()
-      if (!init || !Node.isCallExpression(init)) return []
+      if (!(init && Node.isCallExpression(init))) return []
 
       const callee = init.getExpression().getText()
       if (!callee.endsWith('Table') || callee === 'relations') return []
 
       const objLit = init.getArguments()[1]
-      if (!objLit || !Node.isObjectLiteralExpression(objLit)) return []
+      if (!(objLit && Node.isObjectLiteralExpression(objLit))) return []
 
       const fields = objLit
         .getProperties()
@@ -49,7 +49,7 @@ export function parseTableInfo(code: string[]): TableInfo[] {
           const fieldName = keyNode.getText()
 
           const initExpr = prop.getInitializer()
-          if (!initExpr || !Node.isCallExpression(initExpr)) return null
+          if (!(initExpr && Node.isCallExpression(initExpr))) return null
 
           const fieldType = baseBuilderName(initExpr)
 

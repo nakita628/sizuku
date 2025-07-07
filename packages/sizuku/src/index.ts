@@ -6,8 +6,9 @@ import { sizukuValibot } from './generator/valibot/index.js'
 import { sizukuMermaidER } from './generator/mermaid-er/index.js'
 import { readFileSync } from './shared/fs/index.js'
 import { ok, err, ResultAsync } from 'neverthrow'
+import type { Result } from 'neverthrow'
 
-export async function main(config: Config = getConfig()) {
+export async function main(config: Config = getConfig()): Promise<Result<void, Error>> {
   return ResultAsync.fromPromise(Promise.resolve(), () => new Error('init'))
     .andThen(() => {
       if (!config.input) {
@@ -32,7 +33,7 @@ export async function main(config: Config = getConfig()) {
           sizukuZod(code, config.zod.output, config.zod.comment, config.zod.type, config.zod.zod),
           (e) => (e instanceof Error ? e : new Error(String(e))),
         ).map(() => {
-          console.log(`Generated Zod schema at: ${config.zod!.output}`)
+          console.log(`Generated Zod schema at: ${config.zod?.output}`)
           return code
         })
       }
@@ -44,7 +45,7 @@ export async function main(config: Config = getConfig()) {
           sizukuValibot(code, config.valibot.output, config.valibot.comment, config.valibot.type),
           (e) => (e instanceof Error ? e : new Error(String(e))),
         ).map(() => {
-          console.log(`Generated Valibot schema at: ${config.valibot!.output}`)
+          console.log(`Generated Valibot schema at: ${config.valibot?.output}`)
           return code
         })
       }
@@ -55,22 +56,16 @@ export async function main(config: Config = getConfig()) {
         return ResultAsync.fromPromise(sizukuMermaidER(code, config.mermaid.output), (e) =>
           e instanceof Error ? e : new Error(String(e)),
         ).map(() => {
-          console.log(`Generated Mermaid ER at: ${config.mermaid!.output}`)
+          console.log(`Generated Mermaid ER at: ${config.mermaid?.output}`)
         })
       }
       return ok(undefined)
     })
 }
 
-main()
-  .then((result) => {
-    if (result.isErr()) {
-      console.error(result.error)
-      process.exit(1)
-    }
-    process.exit(0)
-  })
-  .catch((err) => {
-    console.error(err)
+main().then((result) => {
+  if (!result.isOk()) {
+    console.error(result.error)
     process.exit(1)
-  })
+  }
+})

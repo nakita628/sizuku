@@ -1,5 +1,6 @@
 import type { Schema } from '../../../shared/types.js'
-import { Project, Node, CallExpression, ObjectLiteralExpression } from 'ts-morph'
+import { Node, Project } from 'ts-morph'
+import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 
 /**
  * Check if the comment line is metadata (Zod / Valibot / relation helper)
@@ -25,7 +26,7 @@ const extractFieldComments = (sourceText: string, fieldStartPos: number): string
           return { commentLines: [line, ...acc.commentLines], stop: false }
         }
         if (line === '') return acc
-        return { ...acc, stop: true }
+        return { commentLines: acc.commentLines, stop: true }
       },
       { commentLines: [], stop: false },
     ).commentLines
@@ -50,7 +51,7 @@ const parseFieldComments = (
  * Convert table name to Schema name (e.g. `user` -> `UserSchema`)
  */
 const toSchemaName = (table: string): string =>
-  table.charAt(0).toUpperCase() + table.slice(1) + 'Schema'
+  `${table.charAt(0).toUpperCase() + table.slice(1)}Schema`
 
 /**
  * Extract an ordinary column field.
@@ -88,7 +89,7 @@ const extractRelationFieldFromProperty = (
 
   const fnName = expr.getText()
   const args = init.getArguments()
-  if (!args.length || !Node.isIdentifier(args[0]))
+  if (!(args.length && Node.isIdentifier(args[0])))
     return { name, definition: '', description: undefined }
 
   const refTable = args[0].getText()

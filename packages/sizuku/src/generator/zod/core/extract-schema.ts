@@ -1,5 +1,6 @@
 import type { Schema } from '../../../shared/types.js'
-import { Project, Node, CallExpression, ObjectLiteralExpression } from 'ts-morph'
+import { Node, Project } from 'ts-morph'
+import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 
 /**
  * Check if comment contains metadata
@@ -33,7 +34,7 @@ const extractFieldComments = (sourceText: string, fieldStartPos: number): string
           return acc
         }
 
-        return { ...acc, shouldStop: true }
+        return { commentLines: acc.commentLines, shouldStop: true }
       },
       { commentLines: [], shouldStop: false },
     )
@@ -85,9 +86,8 @@ const extractFieldFromProperty = (
 /**
  * Convert table name to Schema name (e.g., 'user' -> 'UserSchema', 'post' -> 'PostSchema')
  */
-const toSchemaName = (tableName: string): string => {
-  return tableName.charAt(0).toUpperCase() + tableName.slice(1) + 'Schema'
-}
+const toSchemaName = (tableName: string): string =>
+  `${tableName.charAt(0).toUpperCase() + tableName.slice(1)}Schema`
 
 /**
  * Extract relation field with type inference
