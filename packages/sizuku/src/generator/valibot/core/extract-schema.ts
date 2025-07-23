@@ -1,35 +1,6 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-
-/**
- * Check if the comment line is metadata (Zod / Valibot / relation helper)
- */
-const isMetadataComment = (text: string): boolean => {
-  return text.includes('@z.') || text.includes('@v.') || text.includes('@relation.')
-}
-
-/**
- * Collect consecutive `///` comment lines that appear immediately above a field.
- */
-const extractFieldComments = (sourceText: string, fieldStartPos: number): string[] => {
-  const beforeField = sourceText.substring(0, fieldStartPos)
-  const lines = beforeField.split('\n')
-
-  return lines
-    .map((line) => line.trim())
-    .reverse()
-    .reduce<{ commentLines: string[]; stop: boolean }>(
-      (acc, line) => {
-        if (acc.stop) return acc
-        if (line.startsWith('///')) {
-          return { commentLines: [line, ...acc.commentLines], stop: false }
-        }
-        if (line === '') return acc
-        return { commentLines: acc.commentLines, stop: true }
-      },
-      { commentLines: [], stop: false },
-    ).commentLines
-}
+import { extractFieldComments, isMetadataComment } from '../../../shared/utils/index.js'
 
 /**
  * Parse the collected comment lines -> { valibotDefinition, description }
@@ -58,14 +29,16 @@ const toSchemaName = (table: string): string =>
 const extractFieldFromProperty = (
   property: Node,
   sourceText: string,
-): {
-  name: string
-  fields: {
-    name: string
-    definition: string
-    description?: string
-  }[]
-}['fields'][0] | null => {
+):
+  | {
+      name: string
+      fields: {
+        name: string
+        definition: string
+        description?: string
+      }[]
+    }['fields'][0]
+  | null => {
   if (!Node.isPropertyAssignment(property)) return null
   const name = property.getName()
   if (!name) return null
@@ -82,14 +55,16 @@ const extractFieldFromProperty = (
 const extractRelationFieldFromProperty = (
   property: Node,
   sourceText: string,
-): {
-  name: string
-  fields: {
-    name: string
-    definition: string
-    description?: string
-  }[]
-}['fields'][0] | null => {
+):
+  | {
+      name: string
+      fields: {
+        name: string
+        definition: string
+        description?: string
+      }[]
+    }['fields'][0]
+  | null => {
   if (!Node.isPropertyAssignment(property)) return null
   const name = property.getName()
   if (!name) return null
@@ -181,7 +156,10 @@ const extractFieldsFromCallExpression = (
 }
 
 /** extract a single schema from variable declaration */
-const extractSchemaFromDeclaration = (decl: Node, sourceText: string): {
+const extractSchemaFromDeclaration = (
+  decl: Node,
+  sourceText: string,
+): {
   name: string
   fields: {
     name: string

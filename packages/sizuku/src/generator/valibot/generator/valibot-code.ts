@@ -7,14 +7,18 @@ import { valibot } from './valibot.js'
  * @param type
  * @returns
  */
-export function valibotCode(schema: {
-  name: string
-  fields: {
+export function valibotCode(
+  schema: {
     name: string
-    definition: string
-    description?: string
-  }[]
-}, comment: boolean, type: boolean): string {
+    fields: {
+      name: string
+      definition: string
+      description?: string
+    }[]
+  },
+  comment: boolean,
+  type: boolean,
+): string {
   const valibotSchema = valibot(schema, comment)
 
   if (type) {

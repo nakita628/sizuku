@@ -9,14 +9,18 @@ import { zod } from './zod.js'
  * @param config - The configuration for the code generation.
  * @returns The generated Zod code.
  */
-export function zodCode(schema: {
-  name: string
-  fields: {
+export function zodCode(
+  schema: {
     name: string
-    definition: string
-    description?: string
-  }[]
-}, comment: boolean, type: boolean): string {
+    fields: {
+      name: string
+      definition: string
+      description?: string
+    }[]
+  },
+  comment: boolean,
+  type: boolean,
+): string {
   const zodSchema = zod(schema, comment)
   if (type) {
     const zInfer = infer(schema.name)

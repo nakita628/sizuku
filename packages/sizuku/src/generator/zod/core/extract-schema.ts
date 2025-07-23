@@ -1,45 +1,6 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-
-/**
- * Check if comment contains metadata
- */
-const isMetadataComment = (text: string): boolean => {
-  return text.includes('@z.') || text.includes('@v.') || text.includes('@relation.')
-}
-
-/**
- * Extract field comments that appear before a specific line position
- */
-const extractFieldComments = (sourceText: string, fieldStartPos: number): string[] => {
-  const beforeField = sourceText.substring(0, fieldStartPos)
-  const lines = beforeField.split('\n')
-
-  const reverseIndex = lines
-    .map((line, index) => ({ line: line.trim(), index }))
-    .reverse()
-    .reduce<{ commentLines: string[]; shouldStop: boolean }>(
-      (acc, { line }) => {
-        if (acc.shouldStop) return acc
-
-        if (line.startsWith('///')) {
-          return {
-            commentLines: [line, ...acc.commentLines],
-            shouldStop: false,
-          }
-        }
-
-        if (line === '') {
-          return acc
-        }
-
-        return { commentLines: acc.commentLines, shouldStop: true }
-      },
-      { commentLines: [], shouldStop: false },
-    )
-
-  return reverseIndex.commentLines
-}
+import { extractFieldComments, isMetadataComment } from '../../../shared/utils/index.js'
 
 /**
  * Parse comment lines and extract Zod definition and description
@@ -65,14 +26,16 @@ const parseFieldComments = (
 const extractFieldFromProperty = (
   property: Node,
   sourceText: string,
-): {
-  name: string
-  fields: {
-    name: string
-    definition: string
-    description?: string
-  }[]
-}['fields'][0] | null => {
+):
+  | {
+      name: string
+      fields: {
+        name: string
+        definition: string
+        description?: string
+      }[]
+    }['fields'][0]
+  | null => {
   if (!Node.isPropertyAssignment(property)) return null
 
   const fieldName = property.getName()
@@ -101,14 +64,16 @@ const toSchemaName = (tableName: string): string =>
 const extractRelationFieldFromProperty = (
   property: Node,
   sourceText: string,
-): {
-  name: string
-  fields: {
-    name: string
-    definition: string
-    description?: string
-  }[]
-}['fields'][0] | null => {
+):
+  | {
+      name: string
+      fields: {
+        name: string
+        definition: string
+        description?: string
+      }[]
+    }['fields'][0]
+  | null => {
   if (!Node.isPropertyAssignment(property)) return null
 
   const fieldName = property.getName()
@@ -272,7 +237,10 @@ const extractFieldsFromCallExpression = (
 /**
  * Extract a single schema (variable declaration)
  */
-const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): {
+const extractSchemaFromDeclaration = (
+  declaration: Node,
+  sourceText: string,
+): {
   name: string
   fields: {
     name: string
