@@ -1,5 +1,5 @@
-import { Project, Node } from 'ts-morph'
 import type { Expression } from 'ts-morph'
+import { Node, Project } from 'ts-morph'
 import type { TableInfo } from '../types.js'
 
 type FieldInfo = {

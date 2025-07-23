@@ -1,12 +1,13 @@
 // #!/usr/bin/env node
+
+import type { Result } from 'neverthrow'
+import { err, ok, ResultAsync } from 'neverthrow'
 import type { Config } from './config/index.js'
 import { getConfig } from './config/index.js'
-import { sizukuZod } from './generator/zod/index.js'
-import { sizukuValibot } from './generator/valibot/index.js'
 import { sizukuMermaidER } from './generator/mermaid-er/index.js'
+import { sizukuValibot } from './generator/valibot/index.js'
+import { sizukuZod } from './generator/zod/index.js'
 import { readFileSync } from './shared/fs/index.js'
-import { ok, err, ResultAsync } from 'neverthrow'
-import type { Result } from 'neverthrow'
 
 export async function main(config: Config = getConfig()): Promise<Result<void, Error>> {
   return ResultAsync.fromPromise(Promise.resolve(), () => new Error('init'))

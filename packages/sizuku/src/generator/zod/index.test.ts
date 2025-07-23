@@ -1,7 +1,7 @@
-import { describe, expect, it, afterEach } from 'vitest'
-import { sizukuZod } from './index.js'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
+import { afterEach, describe, expect, it } from 'vitest'
+import { sizukuZod } from './index.js'
 
 // Test run
 // pnpm vitest run ./src/generator/zod/index.test.ts

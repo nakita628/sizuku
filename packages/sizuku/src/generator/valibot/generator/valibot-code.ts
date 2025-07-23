@@ -1,6 +1,6 @@
-import { valibot } from './valibot.js'
-import { inferInput } from './infer-input.js'
 import type { Schema } from '../../../shared/types.js'
+import { inferInput } from './infer-input.js'
+import { valibot } from './valibot.js'
 
 /**
  * @param schema

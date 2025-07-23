@@ -1,6 +1,6 @@
-import type { Schema } from '../../../shared/types.js'
-import { Node, Project } from 'ts-morph'
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
+import { Node, Project } from 'ts-morph'
+import type { Schema } from '../../../shared/types.js'
 
 /**
  * Check if comment contains metadata

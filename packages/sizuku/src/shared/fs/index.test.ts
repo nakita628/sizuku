@@ -1,7 +1,8 @@
 // test/utils/readFileSync.test.ts
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+
 import fs from 'node:fs'
 import path from 'node:path'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { readFileSync } from './index.js'
 
 // Test run

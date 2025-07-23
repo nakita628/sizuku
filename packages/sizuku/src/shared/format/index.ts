@@ -1,5 +1,5 @@
-import { format } from 'prettier'
 import { ResultAsync } from 'neverthrow'
+import { format } from 'prettier'
 
 export function fmt(code: string): ResultAsync<string, Error> {
   return ResultAsync.fromPromise(

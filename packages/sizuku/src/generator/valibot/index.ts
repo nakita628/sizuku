@@ -1,9 +1,9 @@
 import path from 'node:path'
-import { extractSchemas } from './core/extract-schema.js'
-import { valibotCode } from './generator/valibot-code.js'
+import type { Result } from 'neverthrow'
 import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import type { Result } from 'neverthrow'
+import { extractSchemas } from './core/extract-schema.js'
+import { valibotCode } from './generator/valibot-code.js'
 
 /**
  * Generate Valibot schema

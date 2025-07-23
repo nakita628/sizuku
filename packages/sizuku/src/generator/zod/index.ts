@@ -1,9 +1,9 @@
 import path from 'node:path'
+import type { Result } from 'neverthrow'
+import { fmt } from '../../shared/format/index.js'
+import { mkdir, writeFile } from '../../shared/fsp/index.js'
 import { extractSchemas } from './core/extract-schema.js'
 import { zodCode } from './generator/zod-code.js'
-import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { fmt } from '../../shared/format/index.js'
-import type { Result } from 'neverthrow'
 
 const ZODV4_IMPORT = `import { z } from 'zod/v4'` as const
 const ZODV4_MINI_IMPORT = `import { z } from 'zod/v4-mini'` as const
