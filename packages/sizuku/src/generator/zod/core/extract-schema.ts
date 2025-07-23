@@ -1,6 +1,5 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-import type { Schema } from '../../../shared/types.js'
 
 /**
  * Check if comment contains metadata
@@ -66,7 +65,14 @@ const parseFieldComments = (
 const extractFieldFromProperty = (
   property: Node,
   sourceText: string,
-): Schema['fields'][0] | null => {
+): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}['fields'][0] | null => {
   if (!Node.isPropertyAssignment(property)) return null
 
   const fieldName = property.getName()
@@ -95,7 +101,14 @@ const toSchemaName = (tableName: string): string =>
 const extractRelationFieldFromProperty = (
   property: Node,
   sourceText: string,
-): Schema['fields'][0] | null => {
+): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}['fields'][0] | null => {
   if (!Node.isPropertyAssignment(property)) return null
 
   const fieldName = property.getName()
@@ -233,7 +246,14 @@ const isRelationFunction = (callExpr: CallExpression): boolean => {
 const extractFieldsFromCallExpression = (
   callExpr: CallExpression,
   sourceText: string,
-): Schema['fields'] => {
+): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}['fields'] => {
   const objectLiteral = findObjectLiteralInArgs(callExpr)
   if (!objectLiteral) return []
 
@@ -252,7 +272,14 @@ const extractFieldsFromCallExpression = (
 /**
  * Extract a single schema (variable declaration)
  */
-const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Schema | null => {
+const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+} | null => {
   if (!Node.isVariableDeclaration(declaration)) return null
 
   const name = declaration.getName()
@@ -284,7 +311,14 @@ const extractSchemaFromDeclaration = (declaration: Node, sourceText: string): Sc
  * @param lines - Lines of code
  * @returns Schemas
  */
-export function extractSchemas(lines: string[]): Schema[] {
+export function extractSchemas(lines: string[]): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}[] {
   const sourceCode = lines.join('\n')
 
   const project = new Project({

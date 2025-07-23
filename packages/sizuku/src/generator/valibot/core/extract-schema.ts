@@ -1,6 +1,5 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-import type { Schema } from '../../../shared/types.js'
 
 /**
  * Check if the comment line is metadata (Zod / Valibot / relation helper)
@@ -59,7 +58,14 @@ const toSchemaName = (table: string): string =>
 const extractFieldFromProperty = (
   property: Node,
   sourceText: string,
-): Schema['fields'][0] | null => {
+): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}['fields'][0] | null => {
   if (!Node.isPropertyAssignment(property)) return null
   const name = property.getName()
   if (!name) return null
@@ -76,7 +82,14 @@ const extractFieldFromProperty = (
 const extractRelationFieldFromProperty = (
   property: Node,
   sourceText: string,
-): Schema['fields'][0] | null => {
+): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}['fields'][0] | null => {
   if (!Node.isPropertyAssignment(property)) return null
   const name = property.getName()
   if (!name) return null
@@ -146,7 +159,14 @@ const isRelationFunction = (call: CallExpression): boolean => {
 const extractFieldsFromCallExpression = (
   call: CallExpression,
   sourceText: string,
-): Schema['fields'] => {
+): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}['fields'] => {
   const obj = findObjectLiteralInArgs(call)
   if (!obj) return []
   const relation = isRelationFunction(call)
@@ -161,7 +181,14 @@ const extractFieldsFromCallExpression = (
 }
 
 /** extract a single schema from variable declaration */
-const extractSchemaFromDeclaration = (decl: Node, sourceText: string): Schema | null => {
+const extractSchemaFromDeclaration = (decl: Node, sourceText: string): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+} | null => {
   if (!Node.isVariableDeclaration(decl)) return null
   const name = decl.getName()
   if (!name) return null
@@ -190,7 +217,14 @@ const extractSchemaFromDeclaration = (decl: Node, sourceText: string): Schema | 
 /**
  * Public API: extract schemas from code lines
  */
-export function extractSchemas(lines: string[]): Schema[] {
+export function extractSchemas(lines: string[]): {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}[] {
   const project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: { allowJs: true, skipLibCheck: true },

@@ -1,6 +1,5 @@
 import { fieldDefinitions } from '../../../shared/generator/field-definitions.js'
-import type { Schema } from '../../../shared/types.js'
-import { capitalize } from '../../../shared/utils/capitalize.js'
+import { capitalize } from '../../../shared/utils/index.js'
 
 /**
  * Generates a Zod schema for a given schema and config.
@@ -9,6 +8,13 @@ import { capitalize } from '../../../shared/utils/capitalize.js'
  * @param config - The configuration for the code generation.
  * @returns The generated Zod schema.
  */
-export function zod(schema: Schema, comment: boolean) {
+export function zod(schema: {
+  name: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}, comment: boolean) {
   return `export const ${capitalize(schema.name)}Schema = z.object({${fieldDefinitions(schema, comment)}})`
 }
