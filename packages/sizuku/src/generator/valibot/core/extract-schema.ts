@@ -1,23 +1,12 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
-import { Node, Project } from 'ts-morph'
+import { Node } from 'ts-morph'
 import { findObjectLiteralExpression } from '../../../shared/helper/find-object-literal-expression.js'
 import { isRelationFunctionCall } from '../../../shared/helper/is-relation-function.js'
-import { extractFieldComments, isMetadataComment, schemaName } from '../../../shared/utils/index.js'
-
-/**
- * Parse the collected comment lines -> { valibotDefinition, description }
- */
-const parseFieldComments = (
-  commentLines: string[],
-): { valibotDefinition: string; description: string | undefined } => {
-  const cleaned = commentLines.map((l) => l.replace(/^\/\/\/\s*/, '').trim()).filter(Boolean)
-
-  const valibotDefinition = cleaned.find((l) => l.startsWith('@v.'))?.replace(/^@/, '') ?? ''
-  const descriptionLines = cleaned.filter((l) => !isMetadataComment(l))
-  const description = descriptionLines.length ? descriptionLines.join(' ') : undefined
-
-  return { valibotDefinition, description }
-}
+import {
+  extractFieldComments,
+  parseFieldComments,
+  schemaName,
+} from '../../../shared/utils/index.js'
 
 /**
  * Extract an ordinary column field.
@@ -39,10 +28,12 @@ export const extractFieldFromProperty = (
   const name = property.getName()
   if (!name) return null
 
-  const commentLines = extractFieldComments(sourceText, property.getStart())
-  const { valibotDefinition, description } = parseFieldComments(commentLines)
+  const { definition, description } = parseFieldComments(
+    extractFieldComments(sourceText, property.getStart()),
+    '@v.',
+  )
 
-  return { name, definition: valibotDefinition, description }
+  return { name, definition, description }
 }
 
 /**
@@ -81,7 +72,7 @@ const extractRelationFieldFromProperty = (
   const definition = fnName === 'many' ? `v.array(${schema})` : fnName === 'one' ? schema : ''
 
   const commentLines = extractFieldComments(sourceText, property.getStart())
-  const { description } = parseFieldComments(commentLines)
+  const { description } = parseFieldComments(commentLines, '@v.')
 
   return { name, definition, description }
 }

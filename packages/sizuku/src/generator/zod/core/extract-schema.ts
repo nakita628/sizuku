@@ -2,25 +2,11 @@ import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node } from 'ts-morph'
 import { findObjectLiteralExpression } from '../../../shared/helper/find-object-literal-expression.js'
 import { isRelationFunctionCall } from '../../../shared/helper/is-relation-function.js'
-import { extractFieldComments, isMetadataComment, schemaName } from '../../../shared/utils/index.js'
-
-/**
- * Parse comment lines and extract Zod definition and description
- */
-export const parseFieldComments = (
-  commentLines: string[],
-): { zodDefinition: string; description: string | undefined } => {
-  const cleanLines = commentLines
-    .map((line) => line.replace(/^\/\/\/\s*/, '').trim())
-    .filter((line) => line.length > 0)
-
-  const zodDefinition = cleanLines.find((line) => line.startsWith('@z.'))?.replace(/^@/, '') ?? ''
-
-  const descriptionLines = cleanLines.filter((line) => !isMetadataComment(line))
-  const description = descriptionLines.length > 0 ? descriptionLines.join(' ') : undefined
-
-  return { zodDefinition, description }
-}
+import {
+  extractFieldComments,
+  parseFieldComments,
+  schemaName,
+} from '../../../shared/utils/index.js'
 
 /**
  * Extract field information from object property
@@ -44,12 +30,14 @@ export const extractFieldFromProperty = (
   if (!fieldName) return null
 
   const fieldStartPos = property.getStart()
-  const commentLines = extractFieldComments(sourceText, fieldStartPos)
-  const { zodDefinition, description } = parseFieldComments(commentLines)
+  const { definition, description } = parseFieldComments(
+    extractFieldComments(sourceText, fieldStartPos),
+    '@z.',
+  )
 
   return {
     name: fieldName,
-    definition: zodDefinition,
+    definition,
     description,
   }
 }
@@ -116,11 +104,11 @@ const extractRelationFieldFromProperty = (
   const referencedTable = firstArg.getText()
   const schema = schemaName(referencedTable)
 
-  const definition = fnName === 'many' ? `v.array(${schema})` : fnName === 'one' ? schema : ''
+  const definition = fnName === 'many' ? `z.array(${schema})` : fnName === 'one' ? schema : ''
 
   const fieldStartPos = property.getStart()
   const commentLines = extractFieldComments(sourceText, fieldStartPos)
-  const { description } = parseFieldComments(commentLines)
+  const { description } = parseFieldComments(commentLines, '@z.')
 
   return { name, definition, description }
 }

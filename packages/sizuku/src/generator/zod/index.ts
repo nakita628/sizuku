@@ -4,10 +4,7 @@ import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
 import { buildSchemaExtractor } from '../../shared/helper/build-schema-extractor.js'
 import { extractSchemas } from '../../shared/helper/extract-schemas.js'
-import {
-  extractFieldFromProperty,
-  extractFieldsFromCallExpression,
-} from './core/extract-schema.js'
+import { extractFieldFromProperty, extractFieldsFromCallExpression } from './core/extract-schema.js'
 import { zodCode } from './generator/zod-code.js'
 
 /**

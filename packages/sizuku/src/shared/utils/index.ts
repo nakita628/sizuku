@@ -12,8 +12,27 @@ export function schemaName(str: string): string {
   return `${str.charAt(0).toUpperCase() + str.slice(1)}Schema`
 }
 
-export function isMetadataComment(text: string): boolean {
-  return text.includes('@z.') || text.includes('@v.') || text.includes('@relation.')
+/**
+ * Parse field comments and extract definition line and description.
+ *
+ * @param commentLines - Raw comment lines (e.g., from source text)
+ * @param tag - The tag to look for (e.g., '@v.' or '@z.')
+ * @returns Parsed definition and description
+ */
+export function parseFieldComments(
+  commentLines: string[],
+  tag: '@v.' | '@z.',
+): { definition: string; description?: string } {
+  const cleaned = commentLines.map((line) => line.replace(/^\/\/\/\s*/, '').trim()).filter(Boolean)
+
+  const definition = cleaned.find((line) => line.startsWith(tag))?.replace(/^@/, '') ?? ''
+
+  const descriptionLines = cleaned.filter(
+    (line) => !(line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')),
+  )
+  const description = descriptionLines.length ? descriptionLines.join(' ') : undefined
+
+  return { definition, description }
 }
 
 export function extractFieldComments(sourceText: string, fieldStartPos: number): string[] {
