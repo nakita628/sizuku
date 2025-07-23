@@ -1,11 +1,13 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
-import { Node, Project } from 'ts-morph'
+import { Node } from 'ts-morph'
+import { findObjectLiteralExpression } from '../../../shared/helper/find-object-literal-expression.js'
+import { isRelationFunctionCall } from '../../../shared/helper/is-relation-function.js'
 import { extractFieldComments, isMetadataComment, schemaName } from '../../../shared/utils/index.js'
 
 /**
  * Parse comment lines and extract Zod definition and description
  */
-const parseFieldComments = (
+export const parseFieldComments = (
   commentLines: string[],
 ): { zodDefinition: string; description: string | undefined } => {
   const cleanLines = commentLines
@@ -23,7 +25,7 @@ const parseFieldComments = (
 /**
  * Extract field information from object property
  */
-const extractFieldFromProperty = (
+export const extractFieldFromProperty = (
   property: Node,
   sourceText: string,
 ):
@@ -70,33 +72,33 @@ const extractRelationFieldFromProperty = (
   | null => {
   if (!Node.isPropertyAssignment(property)) return null
 
-  const fieldName = property.getName()
-  if (!fieldName) return null
+  const name = property.getName()
+  if (!name) return null
 
-  const initializer = property.getInitializer()
-  if (!Node.isCallExpression(initializer)) {
+  const init = property.getInitializer()
+  if (!Node.isCallExpression(init)) {
     return {
-      name: fieldName,
+      name,
       definition: '',
       description: undefined,
     }
   }
 
-  const expression = initializer.getExpression()
-  if (!Node.isIdentifier(expression)) {
+  const expr = init.getExpression()
+  if (!Node.isIdentifier(expr)) {
     return {
-      name: fieldName,
+      name,
       definition: '',
       description: undefined,
     }
   }
 
-  const functionName = expression.getText()
-  const args = initializer.getArguments()
+  const fnName = expr.getText()
+  const args = init.getArguments()
 
   if (args.length === 0) {
     return {
-      name: fieldName,
+      name,
       definition: '',
       description: undefined,
     }
@@ -105,7 +107,7 @@ const extractRelationFieldFromProperty = (
   const firstArg = args[0]
   if (!Node.isIdentifier(firstArg)) {
     return {
-      name: fieldName,
+      name,
       definition: '',
       description: undefined,
     }
@@ -114,62 +116,13 @@ const extractRelationFieldFromProperty = (
   const referencedTable = firstArg.getText()
   const schema = schemaName(referencedTable)
 
-  const zodDefinition =
-    functionName === 'many'
-      ? `z.array(${schema})` // many(post) -> z.array(PostSchema)
-      : functionName === 'one'
-        ? schema // one(user, {...}) -> UserSchema
-        : ''
+  const definition = fnName === 'many' ? `v.array(${schema})` : fnName === 'one' ? schema : ''
 
   const fieldStartPos = property.getStart()
   const commentLines = extractFieldComments(sourceText, fieldStartPos)
   const { description } = parseFieldComments(commentLines)
 
-  return {
-    name: fieldName,
-    definition: zodDefinition,
-    description,
-  }
-}
-
-/**
- * Extract object literal from any expression
- */
-const extractObjectLiteralFromExpression = (expression: Node): ObjectLiteralExpression | null => {
-  // Direct object literal
-  if (Node.isObjectLiteralExpression(expression)) {
-    return expression
-  }
-
-  if (Node.isParenthesizedExpression(expression)) {
-    const inner = expression.getExpression()
-    return Node.isObjectLiteralExpression(inner) ? inner : null
-  }
-
-  if (Node.isArrowFunction(expression)) {
-    const body = expression.getBody()
-
-    if (Node.isObjectLiteralExpression(body)) {
-      return body
-    }
-
-    if (Node.isParenthesizedExpression(body)) {
-      const inner = body.getExpression()
-      return Node.isObjectLiteralExpression(inner) ? inner : null
-    }
-
-    if (Node.isBlock(body)) {
-      const returnStatement = body.getStatements().find((stmt) => Node.isReturnStatement(stmt))
-      if (returnStatement && Node.isReturnStatement(returnStatement)) {
-        const returnExpression = returnStatement.getExpression()
-        return returnExpression && Node.isObjectLiteralExpression(returnExpression)
-          ? returnExpression
-          : null
-      }
-    }
-  }
-
-  return null
+  return { name, definition, description }
 }
 
 /**
@@ -177,32 +130,19 @@ const extractObjectLiteralFromExpression = (expression: Node): ObjectLiteralExpr
  */
 const findObjectLiteralInArgs = (callExpr: CallExpression): ObjectLiteralExpression | null => {
   const args = callExpr.getArguments()
-
   for (const arg of args) {
-    const objectLiteral = extractObjectLiteralFromExpression(arg)
+    const objectLiteral = findObjectLiteralExpression(arg)
     if (objectLiteral) {
       return objectLiteral
     }
   }
-
   return null
-}
-
-/**
- * Determine if this is a relation-like function call
- */
-const isRelationFunction = (callExpr: CallExpression): boolean => {
-  const expression = callExpr.getExpression()
-  if (!Node.isIdentifier(expression)) return false
-
-  const functionName = expression.getText()
-  return functionName === 'relations' || functionName.includes('relation')
 }
 
 /**
  * Extract fields from any call expression
  */
-const extractFieldsFromCallExpression = (
+export const extractFieldsFromCallExpression = (
   callExpr: CallExpression,
   sourceText: string,
 ): {
@@ -216,7 +156,7 @@ const extractFieldsFromCallExpression = (
   const objectLiteral = findObjectLiteralInArgs(callExpr)
   if (!objectLiteral) return []
 
-  const isRelation = isRelationFunction(callExpr)
+  const isRelation = isRelationFunctionCall(callExpr)
 
   return objectLiteral
     .getProperties()
@@ -231,7 +171,7 @@ const extractFieldsFromCallExpression = (
 /**
  * Extract a single schema (variable declaration)
  */
-const extractSchemaFromDeclaration = (
+export const extractSchemaFromDeclaration = (
   declaration: Node,
   sourceText: string,
 ): {
@@ -250,7 +190,7 @@ const extractSchemaFromDeclaration = (
   const initializer = declaration.getInitializer()
 
   if (Node.isCallExpression(initializer)) {
-    if (isRelationFunction(initializer)) return null
+    if (isRelationFunctionCall(initializer)) return null
 
     const fields = extractFieldsFromCallExpression(initializer, sourceText)
     return { name, fields }
@@ -266,38 +206,4 @@ const extractSchemaFromDeclaration = (
   }
 
   return { name, fields: [] }
-}
-
-/**
- * Extract schemas from lines of code
- * @param lines - Lines of code
- * @returns Schemas
- */
-export function extractSchemas(lines: string[]): {
-  name: string
-  fields: {
-    name: string
-    definition: string
-    description?: string
-  }[]
-}[] {
-  const sourceCode = lines.join('\n')
-
-  const project = new Project({
-    useInMemoryFileSystem: true,
-    compilerOptions: {
-      allowJs: true,
-      skipLibCheck: true,
-    },
-  })
-
-  const sourceFile = project.createSourceFile('temp.ts', sourceCode)
-  const sourceText = sourceFile.getFullText()
-
-  return sourceFile
-    .getVariableStatements()
-    .filter((stmt) => stmt.hasExportKeyword())
-    .flatMap((stmt) => stmt.getDeclarations())
-    .map((decl) => extractSchemaFromDeclaration(decl, sourceText))
-    .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
 }

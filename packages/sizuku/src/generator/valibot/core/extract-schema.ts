@@ -1,5 +1,7 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
+import { findObjectLiteralExpression } from '../../../shared/helper/find-object-literal-expression.js'
+import { isRelationFunctionCall } from '../../../shared/helper/is-relation-function.js'
 import { extractFieldComments, isMetadataComment, schemaName } from '../../../shared/utils/index.js'
 
 /**
@@ -20,7 +22,7 @@ const parseFieldComments = (
 /**
  * Extract an ordinary column field.
  */
-const extractFieldFromProperty = (
+export const extractFieldFromProperty = (
   property: Node,
   sourceText: string,
 ):
@@ -84,47 +86,17 @@ const extractRelationFieldFromProperty = (
   return { name, definition, description }
 }
 
-/** Utility: unwrap arrow / paren / etc. until ObjectLiteralExpression or null */
-const extractObjectLiteralFromExpression = (expr: Node): ObjectLiteralExpression | null => {
-  if (Node.isObjectLiteralExpression(expr)) return expr
-  if (Node.isParenthesizedExpression(expr))
-    return extractObjectLiteralFromExpression(expr.getExpression())
-  if (Node.isArrowFunction(expr)) {
-    const body = expr.getBody()
-    if (Node.isObjectLiteralExpression(body)) return body
-    if (Node.isParenthesizedExpression(body))
-      return extractObjectLiteralFromExpression(body.getExpression())
-    if (Node.isBlock(body)) {
-      const ret = body.getStatements().find(Node.isReturnStatement)
-      if (ret && Node.isReturnStatement(ret)) {
-        const re = ret.getExpression()
-        return re && Node.isObjectLiteralExpression(re) ? re : null
-      }
-    }
-  }
-  return null
-}
-
 /** find the first object literal among call expression arguments */
 const findObjectLiteralInArgs = (call: CallExpression): ObjectLiteralExpression | null => {
   for (const arg of call.getArguments()) {
-    const obj = extractObjectLiteralFromExpression(arg)
+    const obj = findObjectLiteralExpression(arg)
     if (obj) return obj
   }
   return null
 }
 
-/** recognise `relations()` / `somethingRelation*` helpers */
-const isRelationFunction = (call: CallExpression): boolean => {
-  const expr = call.getExpression()
-  return (
-    Node.isIdentifier(expr) &&
-    (expr.getText() === 'relations' || expr.getText().includes('relation'))
-  )
-}
-
 /** extract fields from mysqlTable / relations call expression */
-const extractFieldsFromCallExpression = (
+export const extractFieldsFromCallExpression = (
   call: CallExpression,
   sourceText: string,
 ): {
@@ -137,7 +109,7 @@ const extractFieldsFromCallExpression = (
 }['fields'] => {
   const obj = findObjectLiteralInArgs(call)
   if (!obj) return []
-  const relation = isRelationFunction(call)
+  const relation = isRelationFunctionCall(call)
   return obj
     .getProperties()
     .map((p) =>
@@ -149,7 +121,7 @@ const extractFieldsFromCallExpression = (
 }
 
 /** extract a single schema from variable declaration */
-const extractSchemaFromDeclaration = (
+export const extractSchemaFromDeclaration = (
   decl: Node,
   sourceText: string,
 ): {
@@ -168,7 +140,7 @@ const extractSchemaFromDeclaration = (
   // Handle call expressions (mysqlTable, relations, etc.)
   if (Node.isCallExpression(init)) {
     // ⛔ Skip relation helper exports (userRelations / postRelations ...)
-    if (isRelationFunction(init)) return null
+    if (isRelationFunctionCall(init)) return null
     const fields = extractFieldsFromCallExpression(init, sourceText)
     return { name, fields }
   }
@@ -183,30 +155,4 @@ const extractSchemaFromDeclaration = (
   }
 
   return { name, fields: [] }
-}
-
-/**
- * Public API: extract schemas from code lines
- */
-export function extractSchemas(lines: string[]): {
-  name: string
-  fields: {
-    name: string
-    definition: string
-    description?: string
-  }[]
-}[] {
-  const project = new Project({
-    useInMemoryFileSystem: true,
-    compilerOptions: { allowJs: true, skipLibCheck: true },
-  })
-  const file = project.createSourceFile('temp.ts', lines.join('\n'))
-  const fullText = file.getFullText()
-
-  return file
-    .getVariableStatements()
-    .filter((s) => s.hasExportKeyword())
-    .flatMap((s) => s.getDeclarations())
-    .map((d) => extractSchemaFromDeclaration(d, fullText))
-    .filter((s): s is NonNullable<typeof s> => s !== null)
 }
