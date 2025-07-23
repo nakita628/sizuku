@@ -1,6 +1,6 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-import { extractFieldComments, isMetadataComment } from '../../../shared/utils/index.js'
+import { extractFieldComments, isMetadataComment, schemaName } from '../../../shared/utils/index.js'
 
 /**
  * Parse the collected comment lines -> { valibotDefinition, description }
@@ -16,12 +16,6 @@ const parseFieldComments = (
 
   return { valibotDefinition, description }
 }
-
-/**
- * Convert table name to Schema name (e.g. `user` -> `UserSchema`)
- */
-const toSchemaName = (table: string): string =>
-  `${table.charAt(0).toUpperCase() + table.slice(1)}Schema`
 
 /**
  * Extract an ordinary column field.
@@ -81,9 +75,8 @@ const extractRelationFieldFromProperty = (
     return { name, definition: '', description: undefined }
 
   const refTable = args[0].getText()
-  const schemaName = toSchemaName(refTable)
-  const definition =
-    fnName === 'many' ? `v.array(${schemaName})` : fnName === 'one' ? schemaName : ''
+  const schema = schemaName(refTable)
+  const definition = fnName === 'many' ? `v.array(${schema})` : fnName === 'one' ? schema : ''
 
   const commentLines = extractFieldComments(sourceText, property.getStart())
   const { description } = parseFieldComments(commentLines)

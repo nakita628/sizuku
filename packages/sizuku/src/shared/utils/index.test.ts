@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { capitalize, } from '.'
+import { capitalize } from '.'
 
 // Test run
 // pnpm vitest run ./src/shared/utils/index.test.ts
@@ -19,4 +19,3 @@ describe('utils', () => {
     })
   })
 })
-  

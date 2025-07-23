@@ -1,6 +1,6 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-import { extractFieldComments, isMetadataComment } from '../../../shared/utils/index.js'
+import { extractFieldComments, isMetadataComment, schemaName } from '../../../shared/utils/index.js'
 
 /**
  * Parse comment lines and extract Zod definition and description
@@ -51,12 +51,6 @@ const extractFieldFromProperty = (
     description,
   }
 }
-
-/**
- * Convert table name to Schema name (e.g., 'user' -> 'UserSchema', 'post' -> 'PostSchema')
- */
-const toSchemaName = (tableName: string): string =>
-  `${tableName.charAt(0).toUpperCase() + tableName.slice(1)}Schema`
 
 /**
  * Extract relation field with type inference
@@ -118,13 +112,13 @@ const extractRelationFieldFromProperty = (
   }
 
   const referencedTable = firstArg.getText()
-  const schemaName = toSchemaName(referencedTable)
+  const schema = schemaName(referencedTable)
 
   const zodDefinition =
     functionName === 'many'
-      ? `z.array(${schemaName})` // many(post) -> z.array(PostSchema)
+      ? `z.array(${schema})` // many(post) -> z.array(PostSchema)
       : functionName === 'one'
-        ? schemaName // one(user, {...}) -> UserSchema
+        ? schema // one(user, {...}) -> UserSchema
         : ''
 
   const fieldStartPos = property.getStart()
