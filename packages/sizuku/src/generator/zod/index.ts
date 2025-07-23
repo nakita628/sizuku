@@ -3,8 +3,11 @@ import type { Result } from 'neverthrow'
 import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
 import { buildSchemaExtractor } from '../../shared/helper/build-schema-extractor.js'
+import { createExtractFieldFromProperty } from '../../shared/helper/create-extract-field-from-property.js'
+import { createExtractRelationFieldFromProperty } from '../../shared/helper/create-extract-relation-field-from-property.js'
 import { extractSchemas } from '../../shared/helper/extract-schemas.js'
-import { extractFieldFromProperty, extractFieldsFromCallExpression } from './core/extract-schema.js'
+import { parseFieldComments } from '../../shared/utils/index.js'
+import { createExtractFieldsFromCallExpression } from './core/extract-schema.js'
 import { zodCode } from './generator/zod-code.js'
 
 /**
@@ -22,16 +25,30 @@ export async function sizukuZod(
   type?: boolean,
   zod?: 'v4' | 'mini' | '@hono/zod-openapi',
 ): Promise<Result<void, Error>> {
-  const zodGeneratedCode = [
+  const extractField = createExtractFieldFromProperty((lines) => parseFieldComments(lines, '@z.'))
+  const extractRelationField = createExtractRelationFieldFromProperty(
+    (lines) => parseFieldComments(lines, '@z.'),
+    'z',
+  )
+  const extractFieldsFromCall = createExtractFieldsFromCallExpression(
+    extractField,
+    extractRelationField,
+  )
+  const extractSchema = buildSchemaExtractor(extractFieldsFromCall, extractField)
+
+  const importLine =
     zod === 'mini'
       ? `import * as z from 'zod/mini'`
       : zod === '@hono/zod-openapi'
         ? `import { z } from '@hono/zod-openapi'`
-        : `import * as z from 'zod'`,
-    ...extractSchemas(
-      code,
-      buildSchemaExtractor(extractFieldsFromCallExpression, extractFieldFromProperty),
-    ).map((schema) => zodCode(schema, comment ?? false, type ?? false)),
+        : `import * as z from 'zod'`
+
+  const zodGeneratedCode = [
+    importLine,
+    '',
+    ...extractSchemas(code, extractSchema).map((schema) =>
+      zodCode(schema, comment ?? false, type ?? false),
+    ),
   ].join('\n')
 
   return await mkdir(path.dirname(output))

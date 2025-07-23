@@ -12,7 +12,6 @@ import { Node } from 'ts-morph'
 export function isRelationFunctionCall(callExpr: CallExpression): boolean {
   const expression = callExpr.getExpression()
   if (!Node.isIdentifier(expression)) return false
-
   const functionName = expression.getText()
   return functionName === 'relations' || functionName.includes('relation')
 }

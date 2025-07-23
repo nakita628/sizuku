@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import {
-  extractFieldFromProperty,
-  extractFieldsFromCallExpression,
-} from '../../generator/zod/core/extract-schema.js'
+import { createExtractFieldsFromCallExpression } from '../../generator/zod/core/extract-schema.js'
+import { createExtractRelationFieldFromProperty } from '../../shared/helper/create-extract-relation-field-from-property.js'
+import { parseFieldComments } from '../utils/index.js'
 import { buildSchemaExtractor } from './build-schema-extractor.js'
+import { createExtractFieldFromProperty } from './create-extract-field-from-property.js'
 import { extractSchemas } from './extract-schemas.js'
 
 // Test run
@@ -12,8 +12,11 @@ import { extractSchemas } from './extract-schemas.js'
 describe('extractSchemas', () => {
   it.concurrent('extractSchemas', () => {
     const extractZodSchema = buildSchemaExtractor(
-      extractFieldsFromCallExpression,
-      extractFieldFromProperty,
+      createExtractFieldsFromCallExpression(
+        createExtractFieldFromProperty((lines) => parseFieldComments(lines, '@z.')),
+        createExtractRelationFieldFromProperty((lines) => parseFieldComments(lines, '@z.'), 'z'),
+      ),
+      createExtractFieldFromProperty((lines) => parseFieldComments(lines, '@z.')),
     )
 
     const result = extractSchemas(
