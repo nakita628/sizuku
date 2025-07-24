@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { createExtractFieldsFromCallExpression } from '../../generator/zod/core/extract-schema.js'
 import { createExtractRelationFieldFromProperty } from '../../shared/helper/create-extract-relation-field-from-property.js'
 import { parseFieldComments } from '../utils/index.js'
 import { buildSchemaExtractor } from './build-schema-extractor.js'
 import { createExtractFieldFromProperty } from './create-extract-field-from-property.js'
+import { createExtractFieldsFromCallExpression } from './create-extract-fields-from-call-expression.js'
 import { extractSchemas } from './extract-schemas.js'
+import { findObjectLiteralExpression } from './find-object-literal-expression.js'
+import { findObjectLiteralInArgs } from './find-object-literalIn-args.js'
+import { isRelationFunctionCall } from './is-relation-function.js'
 
 // Test run
 // pnpm vitest run ./src/shared/helper/extract-schemas.test.ts
@@ -15,6 +18,9 @@ describe('extractSchemas', () => {
       createExtractFieldsFromCallExpression(
         createExtractFieldFromProperty((lines) => parseFieldComments(lines, '@z.')),
         createExtractRelationFieldFromProperty((lines) => parseFieldComments(lines, '@z.'), 'z'),
+        findObjectLiteralExpression,
+        findObjectLiteralInArgs,
+        isRelationFunctionCall,
       ),
       createExtractFieldFromProperty((lines) => parseFieldComments(lines, '@z.')),
     )

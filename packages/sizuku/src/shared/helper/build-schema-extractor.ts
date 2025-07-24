@@ -1,4 +1,5 @@
-import { type CallExpression, Node } from 'ts-morph'
+import type { CallExpression } from 'ts-morph'
+import { Node } from 'ts-morph'
 import { isRelationFunctionCall } from '../../shared/helper/is-relation-function.js'
 
 /**
