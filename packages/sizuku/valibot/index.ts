@@ -29,9 +29,5 @@ export const PostSchema = v.object({
    */
   userId: v.pipe(v.string(), v.uuid()),
 })
-id
-   */
-  userId: v.pipe(v.string(), v.uuid()),
-})
 
 export type Post = v.InferInput<typeof PostSchema>

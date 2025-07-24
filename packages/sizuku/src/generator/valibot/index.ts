@@ -4,10 +4,13 @@ import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
 import { buildSchemaExtractor } from '../../shared/helper/build-schema-extractor.js'
 import { createExtractFieldFromProperty } from '../../shared/helper/create-extract-field-from-property.js'
+import { createExtractFieldsFromCallExpression } from '../../shared/helper/create-extract-fields-from-call-expression.js'
 import { createExtractRelationFieldFromProperty } from '../../shared/helper/create-extract-relation-field-from-property.js'
 import { extractSchemas } from '../../shared/helper/extract-schemas.js'
+import { findObjectLiteralExpression } from '../../shared/helper/find-object-literal-expression.js'
+import { findObjectLiteralInArgs } from '../../shared/helper/find-object-literalIn-args.js'
+import { isRelationFunctionCall } from '../../shared/helper/is-relation-function.js'
 import { parseFieldComments } from '../../shared/utils/index.js'
-import { createExtractFieldsFromCallExpression } from './core/extract-schema.js'
 import { valibotCode } from './generator/valibot-code.js'
 
 /**
@@ -33,6 +36,9 @@ export async function sizukuValibot(
   const extractFieldsFromCall = createExtractFieldsFromCallExpression(
     extractField,
     extractRelationField,
+    findObjectLiteralExpression,
+    findObjectLiteralInArgs,
+    isRelationFunctionCall,
   )
 
   const extractSchema = buildSchemaExtractor(extractFieldsFromCall, extractField)
