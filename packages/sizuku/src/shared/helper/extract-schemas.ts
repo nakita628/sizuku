@@ -28,14 +28,14 @@ export type SchemaExtractor = (
 
 /**
  * Extracts schemas from TypeScript source code using AST analysis.
- * 
+ *
  * This function processes exported variable declarations to extract table schemas
  * with their field definitions and comments.
- * 
+ *
  * @param lines - Array of source code lines to process
  * @param extractFn - Function to extract schema from variable declaration
  * @returns Array of extracted schemas with field definitions
- * 
+ *
  * @example
  * ```typescript
  * const schemas = extractSchemas(sourceLines, myExtractor)

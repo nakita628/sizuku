@@ -5,11 +5,11 @@ import type { FieldExtractionResult } from './build-schema-extractor.js'
 /**
  * Field comment parser function type for parsing comment lines.
  */
-export type FieldCommentParser = (lines: string[]) => { 
+export type FieldCommentParser = (lines: string[]) => {
   /** Validation definition string */
   definition: string
   /** Optional field description */
-  description?: string 
+  description?: string
 }
 
 /**
@@ -22,7 +22,7 @@ export type FieldCommentParser = (lines: string[]) => {
  * @param parseFieldComments - Function to parse field comments
  * @param prefix - Schema prefix ('v' or 'z') for validation library
  * @returns Function that extracts relation fields from property
- * 
+ *
  * @example
  * ```typescript
  * const extractor = createExtractRelationFieldFromProperty(
@@ -37,44 +37,38 @@ export function createExtractRelationFieldFromProperty(
   parseFieldComments: FieldCommentParser,
   prefix: 'v' | 'z',
 ) {
-  return (
-    property: Node,
-    sourceText: string,
-  ): FieldExtractionResult | null => {
+  return (property: Node, sourceText: string): FieldExtractionResult | null => {
     if (!Node.isPropertyAssignment(property)) return null
-    
+
     const name = property.getName()
     if (!name) return null
-    
+
     const init = property.getInitializer()
     if (!Node.isCallExpression(init)) {
       return { name, definition: '', description: undefined }
     }
-    
+
     const expr = init.getExpression()
     if (!Node.isIdentifier(expr)) {
       return { name, definition: '', description: undefined }
     }
-    
+
     const fnName = expr.getText()
     const args = init.getArguments()
-    
+
     if (!(args.length && Node.isIdentifier(args[0]))) {
       return { name, definition: '', description: undefined }
     }
-    
+
     const refTable = args[0].getText()
     const schema = schemaName(refTable)
-    const definition = fnName === 'many' 
-      ? `${prefix}.array(${schema})` 
-      : fnName === 'one' 
-        ? schema 
-        : ''
-    
+    const definition =
+      fnName === 'many' ? `${prefix}.array(${schema})` : fnName === 'one' ? schema : ''
+
     const { description } = parseFieldComments(
       extractFieldComments(sourceText, property.getStart()),
     )
-    
+
     return { name, definition, description }
   }
 }

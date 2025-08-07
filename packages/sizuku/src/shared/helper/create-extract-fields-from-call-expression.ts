@@ -4,10 +4,7 @@ import type { FieldExtractionResult } from './build-schema-extractor.js'
 /**
  * Field extractor function type for processing object literal properties.
  */
-export type FieldExtractor = (
-  property: Node,
-  sourceText: string,
-) => FieldExtractionResult | null
+export type FieldExtractor = (property: Node, sourceText: string) => FieldExtractionResult | null
 
 /**
  * Relation field extractor function type for processing relation properties.
@@ -48,7 +45,7 @@ export type RelationFunctionChecker = (call: CallExpression) => boolean
  * @param findObjectLiteralInArgs - Function to find object literal in call arguments
  * @param isRelationFunctionCall - Function to check if call is relation function
  * @returns Function that extracts fields from call expression
- * 
+ *
  * @example
  * ```typescript
  * const extractor = createExtractFieldsFromCallExpression(
@@ -68,10 +65,7 @@ export function createExtractFieldsFromCallExpression(
   findObjectLiteralInArgs: ObjectLiteralInArgsFinder,
   isRelationFunctionCall: RelationFunctionChecker,
 ) {
-  return (
-    callExpr: CallExpression,
-    sourceText: string,
-  ): FieldExtractionResult[] => {
+  return (callExpr: CallExpression, sourceText: string): FieldExtractionResult[] => {
     const objectLiteral = findObjectLiteralInArgs(callExpr, findObjectLiteralExpression)
     if (!objectLiteral) return []
 
@@ -84,10 +78,6 @@ export function createExtractFieldsFromCallExpression(
           ? extractRelationFieldFromProperty(prop, sourceText)
           : extractFieldFromProperty(prop, sourceText),
       )
-      .filter(
-        (
-          field,
-        ): field is FieldExtractionResult => field !== null,
-      )
+      .filter((field): field is FieldExtractionResult => field !== null)
   }
 }

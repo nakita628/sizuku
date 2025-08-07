@@ -9,7 +9,7 @@ import { Node } from 'ts-morph'
  *
  * @param callExpr - The call expression node to check for relation functions
  * @returns `true` if the function is a relation function; otherwise, `false`
- * 
+ *
  * @example
  * ```typescript
  * const isRelation = isRelationFunctionCall(callExpression)
@@ -22,7 +22,7 @@ import { Node } from 'ts-morph'
 export function isRelationFunctionCall(callExpr: CallExpression): boolean {
   const expression = callExpr.getExpression()
   if (!Node.isIdentifier(expression)) return false
-  
+
   const functionName = expression.getText()
   return functionName === 'relations' || functionName.includes('relation')
 }

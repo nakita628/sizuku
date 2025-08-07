@@ -1,7 +1,7 @@
 import type { CallExpression } from 'ts-morph'
 import { Node } from 'ts-morph'
+import type { SchemaExtractor } from './extract-schemas.js'
 import { isRelationFunctionCall } from './is-relation-function.js'
-import type { SchemaExtractionResult, SchemaExtractor } from './extract-schemas.js'
 
 /**
  * Field extraction result type containing field metadata.
@@ -18,10 +18,7 @@ export type FieldExtractionResult = {
 /**
  * Field extractor function type for processing object literal properties.
  */
-export type FieldExtractor = (
-  prop: Node,
-  sourceText: string,
-) => FieldExtractionResult | null
+export type FieldExtractor = (prop: Node, sourceText: string) => FieldExtractionResult | null
 
 /**
  * Call expression field extractor function type for processing function calls.
@@ -41,7 +38,7 @@ export type CallExpressionFieldExtractor = (
  * @param extractFieldsFromCall - Function to extract fields from a call expression
  * @param extractFieldFromProperty - Function to extract a single field from an object literal property
  * @returns A function that extracts a schema from a variable declaration node
- * 
+ *
  * @example
  * ```typescript
  * const extractor = buildSchemaExtractor(

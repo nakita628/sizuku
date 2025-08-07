@@ -5,11 +5,11 @@ import type { FieldExtractionResult } from './build-schema-extractor.js'
 /**
  * Field comment parser function type for parsing comment lines.
  */
-export type FieldCommentParser = (commentLines: string[]) => { 
+export type FieldCommentParser = (commentLines: string[]) => {
   /** Validation definition string */
   definition: string
   /** Optional field description */
-  description?: string 
+  description?: string
 }
 
 /**
@@ -21,7 +21,7 @@ export type FieldCommentParser = (commentLines: string[]) => {
  *
  * @param parseFieldComments - A function that parses comment lines into { definition, description }
  * @returns A property node extractor function
- * 
+ *
  * @example
  * ```typescript
  * const extractor = createExtractFieldFromProperty((lines) => parseFieldComments(lines, '@z.'))
@@ -29,13 +29,8 @@ export type FieldCommentParser = (commentLines: string[]) => {
  * // Returns: { name: 'id', definition: 'z.uuid()', description: 'Primary key' }
  * ```
  */
-export function createExtractFieldFromProperty(
-  parseFieldComments: FieldCommentParser,
-) {
-  return (
-    property: Node,
-    sourceText: string,
-  ): FieldExtractionResult | null => {
+export function createExtractFieldFromProperty(parseFieldComments: FieldCommentParser) {
+  return (property: Node, sourceText: string): FieldExtractionResult | null => {
     if (!Node.isPropertyAssignment(property)) return null
 
     const name = property.getName()

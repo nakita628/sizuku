@@ -14,7 +14,7 @@ export type ObjectLiteralFinder = (expr: Node) => ObjectLiteralExpression | null
  * @param call - The call expression to search for object literals in its arguments
  * @param finder - Function to find object literal in a node
  * @returns The found object literal, or `null` if not found in any argument
- * 
+ *
  * @example
  * ```typescript
  * const obj = findObjectLiteralInArgs(callExpression, findObjectLiteralExpression)
