@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { extractZodSchemas } from './extract-schemas.js'
+import { extractValibotSchemas } from './extract-valibot-schemas.js'
 
 // Test run
-// pnpm vitest run ./src/shared/helper/extract-schemas.test.ts
+// pnpm vitest run ./src/shared/helper/extract-valibot-schemas.test.ts
 
-describe('extractZodSchemas', () => {
-  it.concurrent('extractZodSchemas', () => {
-    const result = extractZodSchemas([
+describe('extractValibotSchemas', () => {
+  it.concurrent('extractValibotSchemas', () => {
+    const result = extractValibotSchemas([
       "export const user = mysqlTable('user', {",
       '  /// Primary key',
       '  /// @z.uuid()',
@@ -57,12 +57,12 @@ describe('extractZodSchemas', () => {
         fields: [
           {
             name: 'id',
-            definition: 'z.uuid()',
+            definition: 'v.pipe(v.string(), v.uuid())',
             description: 'Primary key',
           },
           {
             name: 'name',
-            definition: 'z.string().min(1).max(50)',
+            definition: 'v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
             description: 'Display name',
           },
         ],
@@ -72,22 +72,22 @@ describe('extractZodSchemas', () => {
         fields: [
           {
             name: 'id',
-            definition: 'z.uuid()',
+            definition: 'v.pipe(v.string(), v.uuid())',
             description: 'Primary key',
           },
           {
             name: 'title',
-            definition: 'z.string().min(1).max(100)',
+            definition: 'v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
             description: 'Article title',
           },
           {
             name: 'content',
-            definition: 'z.string()',
+            definition: 'v.string()',
             description: 'Body content (no length limit)',
           },
           {
             name: 'userId',
-            definition: 'z.uuid()',
+            definition: 'v.pipe(v.string(), v.uuid())',
             description: 'Foreign key referencing User.id',
           },
         ],

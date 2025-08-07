@@ -2,7 +2,7 @@ import path from 'node:path'
 import type { Result } from 'neverthrow'
 import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { extractSchemas } from '../../shared/helper/extract-schemas.js'
+import { extractValibotSchemas } from '../../shared/helper/extract-valibot-schemas.js'
 import { valibotCode } from './generator/valibot-code.js'
 
 /**
@@ -21,7 +21,7 @@ export async function sizukuValibot(
   const valibotGeneratedCode = [
     'import * as v from "valibot"',
     '',
-    ...extractSchemas(code).map((schema) => valibotCode(schema, comment ?? false, type ?? false)),
+    ...extractValibotSchemas(code).map((schema) => valibotCode(schema, comment ?? false, type ?? false)),
   ].join('\n')
 
   return await mkdir(path.dirname(output))

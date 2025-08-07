@@ -2,7 +2,7 @@ import path from 'node:path'
 import type { Result } from 'neverthrow'
 import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { extractSchemas } from '../../shared/helper/extract-schemas.js'
+import { extractZodSchemas } from '../../shared/helper/extract-schemas.js'
 import { zodCode } from './generator/zod-code.js'
 
 /**
@@ -30,7 +30,7 @@ export async function sizukuZod(
   const zodGeneratedCode = [
     importLine,
     '',
-    ...extractSchemas(code).map((schema) => zodCode(schema, comment ?? false, type ?? false)),
+    ...extractZodSchemas(code).map((schema) => zodCode(schema, comment ?? false, type ?? false)),
   ].join('\n')
 
   return await mkdir(path.dirname(output))

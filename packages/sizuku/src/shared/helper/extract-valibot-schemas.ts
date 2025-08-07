@@ -289,21 +289,21 @@ function buildSchemaExtractor(
 }
 
 /**
- * Extracts Zod schemas from TypeScript source code using AST analysis.
+ * Extracts Valibot schemas from TypeScript source code using AST analysis.
  *
  * This function processes exported variable declarations to extract table schemas
- * with their field definitions and comments. It automatically handles Zod schema extraction.
+ * with their field definitions and comments. It automatically handles Valibot schema extraction.
  *
  * @param lines - Array of source code lines to process
  * @returns Array of extracted schemas with field definitions
  *
  * @example
  * ```typescript
- * const schemas = extractZodSchemas(sourceLines)
- * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: 'z.uuid()', description: 'Primary key' }] }]
+ * const schemas = extractValibotSchemas(sourceLines)
+ * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key' }] }]
  * ```
  */
-export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
+export function extractValibotSchemas(lines: string[]): SchemaExtractionResult[] {
   const sourceCode = lines.join('\n')
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -316,10 +316,10 @@ export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
   const sourceFile = project.createSourceFile('temp.ts', sourceCode)
   const sourceText = sourceFile.getFullText()
 
-  const extractField = createExtractFieldFromProperty((lines) => parseFieldComments(lines, '@z.'))
+  const extractField = createExtractFieldFromProperty((lines) => parseFieldComments(lines, '@v.'))
   const extractRelationField = createExtractRelationFieldFromProperty(
-    (lines) => parseFieldComments(lines, '@z.'),
-    'z',
+    (lines) => parseFieldComments(lines, '@v.'),
+    'v',
   )
   const extractFieldsFromCall = createExtractFieldsFromCallExpression(
     extractField,
