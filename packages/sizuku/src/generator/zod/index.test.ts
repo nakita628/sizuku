@@ -64,7 +64,7 @@ describe('sizukuZod', () => {
   it('sizukuZod', async () => {
     await sizukuZod(TEST_CODE, 'tmp/zod-test.ts')
     const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
-    const expected = `import { z } from 'zod/v4'
+    const expected = `import * as z from 'zod'
 
 export const UserSchema = z.object({ id: z.uuid(), name: z.string().min(1).max(50) })
 
@@ -82,7 +82,7 @@ export const PostSchema = z.object({
     await sizukuZod(TEST_CODE, 'tmp/zod-test.ts', true)
     const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
 
-    const expected = `import { z } from 'zod/v4'
+    const expected = `import * as z from 'zod'
 
 export const UserSchema = z.object({
   /**
@@ -120,7 +120,7 @@ export const PostSchema = z.object({
   it('sizukuZod type true', async () => {
     await sizukuZod(TEST_CODE, 'tmp/zod-test.ts', false, true)
     const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
-    const expected = `import { z } from 'zod/v4'
+    const expected = `import * as z from 'zod'
 
 export const UserSchema = z.object({ id: z.uuid(), name: z.string().min(1).max(50) })
 
