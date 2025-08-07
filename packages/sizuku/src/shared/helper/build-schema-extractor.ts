@@ -1,42 +1,60 @@
 import type { CallExpression } from 'ts-morph'
 import { Node } from 'ts-morph'
-import { isRelationFunctionCall } from '../../shared/helper/is-relation-function.js'
+import { isRelationFunctionCall } from './is-relation-function.js'
+import type { SchemaExtractionResult, SchemaExtractor } from './extract-schemas.js'
+
+/**
+ * Field extraction result type containing field metadata.
+ */
+export type FieldExtractionResult = {
+  /** Field name */
+  name: string
+  /** Validation definition string */
+  definition: string
+  /** Optional field description */
+  description?: string
+}
+
+/**
+ * Field extractor function type for processing object literal properties.
+ */
+export type FieldExtractor = (
+  prop: Node,
+  sourceText: string,
+) => FieldExtractionResult | null
+
+/**
+ * Call expression field extractor function type for processing function calls.
+ */
+export type CallExpressionFieldExtractor = (
+  call: CallExpression,
+  sourceText: string,
+) => FieldExtractionResult[]
 
 /**
  * Creates a schema extractor from customizable strategies.
  *
- * @param extractFieldsFromCall - Function to extract fields from a call expression (e.g. mysqlTable(...)).
- * @param extractFieldFromProperty - Function to extract a single field from an object literal property.
- * @returns A function that extracts a schema from a variable declaration node.
+ * This function builds a schema extractor that can handle both call expressions
+ * (like `mysqlTable(...)`) and object literal expressions, with customizable
+ * field extraction strategies.
+ *
+ * @param extractFieldsFromCall - Function to extract fields from a call expression
+ * @param extractFieldFromProperty - Function to extract a single field from an object literal property
+ * @returns A function that extracts a schema from a variable declaration node
+ * 
+ * @example
+ * ```typescript
+ * const extractor = buildSchemaExtractor(
+ *   extractFieldsFromCall,
+ *   extractFieldFromProperty
+ * )
+ * const schema = extractor(declaration, sourceText)
+ * ```
  */
 export function buildSchemaExtractor(
-  extractFieldsFromCall: (
-    call: CallExpression,
-    sourceText: string,
-  ) => {
-    name: string
-    definition: string
-    description?: string
-  }[],
-  extractFieldFromProperty: (
-    prop: Node,
-    sourceText: string,
-  ) => {
-    name: string
-    definition: string
-    description?: string
-  } | null,
-): (
-  declaration: Node,
-  sourceText: string,
-) => {
-  name: string
-  fields: {
-    name: string
-    definition: string
-    description?: string
-  }[]
-} | null {
+  extractFieldsFromCall: CallExpressionFieldExtractor,
+  extractFieldFromProperty: FieldExtractor,
+): SchemaExtractor {
   return (declaration, sourceText) => {
     if (!Node.isVariableDeclaration(declaration)) return null
 

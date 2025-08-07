@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createExtractRelationFieldFromProperty } from '../../shared/helper/create-extract-relation-field-from-property.js'
+import { createExtractRelationFieldFromProperty } from './create-extract-relation-field-from-property.js'
 import { parseFieldComments } from '../utils/index.js'
 import { buildSchemaExtractor } from './build-schema-extractor.js'
 import { createExtractFieldFromProperty } from './create-extract-field-from-property.js'
@@ -115,6 +115,7 @@ describe('extractSchemas', () => {
         ],
       },
     ]
+
     expect(result).toStrictEqual(expected)
   })
 })
