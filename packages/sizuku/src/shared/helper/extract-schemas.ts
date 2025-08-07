@@ -4,6 +4,11 @@ import { Project } from 'ts-morph'
 import { extractFieldComments, parseFieldComments, schemaName } from '../utils/index.js'
 
 /**
+ * Supported validation library types.
+ */
+export type ValidationLibrary = 'zod' | 'valibot'
+
+/**
  * Schema extraction result type containing table name and field definitions.
  */
 export type SchemaExtractionResult = {
@@ -289,21 +294,25 @@ function buildSchemaExtractor(
 }
 
 /**
- * Extracts Zod schemas from TypeScript source code using AST analysis.
+ * Extracts schemas from TypeScript source code using AST analysis.
  *
  * This function processes exported variable declarations to extract table schemas
- * with their field definitions and comments. It automatically handles Zod schema extraction.
+ * with their field definitions and comments. It supports both Zod and Valibot schema extraction.
  *
  * @param lines - Array of source code lines to process
+ * @param library - The validation library to extract schemas for ('zod' or 'valibot')
  * @returns Array of extracted schemas with field definitions
  *
  * @example
  * ```typescript
- * const schemas = extractZodSchemas(sourceLines)
- * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: 'z.uuid()', description: 'Primary key' }] }]
+ * // For Zod schemas
+ * const zodSchemas = extractSchemas(sourceLines, 'zod')
+ * 
+ * // For Valibot schemas
+ * const valibotSchemas = extractSchemas(sourceLines, 'valibot')
  * ```
  */
-export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
+export function extractSchemas(lines: string[], library: ValidationLibrary): SchemaExtractionResult[] {
   const sourceCode = lines.join('\n')
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -316,10 +325,13 @@ export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
   const sourceFile = project.createSourceFile('temp.ts', sourceCode)
   const sourceText = sourceFile.getFullText()
 
-  const extractField = createExtractFieldFromProperty((lines) => parseFieldComments(lines, '@z.'))
+  const commentPrefix = library === 'zod' ? '@z.' : '@v.'
+  const schemaPrefix = library === 'zod' ? 'z' : 'v'
+
+  const extractField = createExtractFieldFromProperty((lines) => parseFieldComments(lines, commentPrefix))
   const extractRelationField = createExtractRelationFieldFromProperty(
-    (lines) => parseFieldComments(lines, '@z.'),
-    'z',
+    (lines) => parseFieldComments(lines, commentPrefix),
+    schemaPrefix,
   )
   const extractFieldsFromCall = createExtractFieldsFromCallExpression(
     extractField,
@@ -336,4 +348,42 @@ export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
     .flatMap((stmt) => stmt.getDeclarations())
     .map((decl) => extractSchema(decl, sourceText))
     .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
+}
+
+/**
+ * Extracts Zod schemas from TypeScript source code using AST analysis.
+ *
+ * This function processes exported variable declarations to extract table schemas
+ * with their field definitions and comments. It automatically handles Zod schema extraction.
+ *
+ * @param lines - Array of source code lines to process
+ * @returns Array of extracted schemas with field definitions
+ *
+ * @example
+ * ```typescript
+ * const schemas = extractZodSchemas(sourceLines)
+ * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: 'z.uuid()', description: 'Primary key' }] }]
+ * ```
+ */
+export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
+  return extractSchemas(lines, 'zod')
+}
+
+/**
+ * Extracts Valibot schemas from TypeScript source code using AST analysis.
+ *
+ * This function processes exported variable declarations to extract table schemas
+ * with their field definitions and comments. It automatically handles Valibot schema extraction.
+ *
+ * @param lines - Array of source code lines to process
+ * @returns Array of extracted schemas with field definitions
+ *
+ * @example
+ * ```typescript
+ * const schemas = extractValibotSchemas(sourceLines)
+ * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key' }] }]
+ * ```
+ */
+export function extractValibotSchemas(lines: string[]): SchemaExtractionResult[] {
+  return extractSchemas(lines, 'valibot')
 }
