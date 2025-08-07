@@ -33,6 +33,32 @@ export type ObjectLiteralInArgsFinder = (
 export type RelationFunctionChecker = (call: CallExpression) => boolean
 
 /**
+ * Extracts fields from object literal properties using appropriate extractor.
+ *
+ * @param properties - Array of object literal properties
+ * @param isRelation - Whether this is a relation function call
+ * @param extractFieldFromProperty - Function to extract regular fields
+ * @param extractRelationFieldFromProperty - Function to extract relation fields
+ * @param sourceText - The source text for comment extraction
+ * @returns Array of extracted field results
+ */
+function extractFieldsFromProperties(
+  properties: Node[],
+  isRelation: boolean,
+  extractFieldFromProperty: FieldExtractor,
+  extractRelationFieldFromProperty: RelationFieldExtractor,
+  sourceText: string,
+): FieldExtractionResult[] {
+  return properties
+    .map((prop) =>
+      isRelation
+        ? extractRelationFieldFromProperty(prop, sourceText)
+        : extractFieldFromProperty(prop, sourceText),
+    )
+    .filter((field): field is FieldExtractionResult => field !== null)
+}
+
+/**
  * Creates a field extractor for call expressions with customizable strategies.
  *
  * This function creates a field extractor that can process call expressions
@@ -70,14 +96,14 @@ export function createExtractFieldsFromCallExpression(
     if (!objectLiteral) return []
 
     const isRelation = isRelationFunctionCall(callExpr)
+    const properties = objectLiteral.getProperties()
 
-    return objectLiteral
-      .getProperties()
-      .map((prop) =>
-        isRelation
-          ? extractRelationFieldFromProperty(prop, sourceText)
-          : extractFieldFromProperty(prop, sourceText),
-      )
-      .filter((field): field is FieldExtractionResult => field !== null)
+    return extractFieldsFromProperties(
+      properties,
+      isRelation,
+      extractFieldFromProperty,
+      extractRelationFieldFromProperty,
+      sourceText,
+    )
   }
 }

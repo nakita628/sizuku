@@ -1,6 +1,6 @@
 import type { CallExpression } from 'ts-morph'
 import { Node } from 'ts-morph'
-import type { SchemaExtractor } from './extract-schemas.js'
+import type { SchemaExtractionResult } from './extract-schemas.js'
 import { isRelationFunctionCall } from './is-relation-function.js'
 
 /**
@@ -29,6 +29,14 @@ export type CallExpressionFieldExtractor = (
 ) => FieldExtractionResult[]
 
 /**
+ * Schema extractor function type for processing variable declarations.
+ */
+export type SchemaExtractor = (
+  declaration: Node,
+  sourceText: string,
+) => SchemaExtractionResult | null
+
+/**
  * Creates a schema extractor from customizable strategies.
  *
  * This function builds a schema extractor that can handle both call expressions
@@ -52,7 +60,7 @@ export function buildSchemaExtractor(
   extractFieldsFromCall: CallExpressionFieldExtractor,
   extractFieldFromProperty: FieldExtractor,
 ): SchemaExtractor {
-  return (declaration, sourceText) => {
+  return (declaration: Node, sourceText: string): SchemaExtractionResult | null => {
     if (!Node.isVariableDeclaration(declaration)) return null
 
     const name = declaration.getName()

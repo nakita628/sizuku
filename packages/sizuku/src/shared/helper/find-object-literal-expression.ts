@@ -2,6 +2,30 @@ import type { ObjectLiteralExpression } from 'ts-morph'
 import { Node } from 'ts-morph'
 
 /**
+ * Processes arrow function body to find object literal expression.
+ *
+ * @param body - The arrow function body node
+ * @returns The found object literal expression, or null if not found
+ */
+function processArrowFunctionBody(body: Node): ObjectLiteralExpression | null {
+  if (Node.isObjectLiteralExpression(body)) return body
+
+  if (Node.isParenthesizedExpression(body)) {
+    return findObjectLiteralExpression(body.getExpression())
+  }
+
+  if (Node.isBlock(body)) {
+    const ret = body.getStatements().find(Node.isReturnStatement)
+    if (ret && Node.isReturnStatement(ret)) {
+      const re = ret.getExpression()
+      return re && Node.isObjectLiteralExpression(re) ? re : null
+    }
+  }
+
+  return null
+}
+
+/**
  * Recursively extracts an `ObjectLiteralExpression` from a given AST node.
  *
  * This function supports multiple patterns for finding object literals:
@@ -30,21 +54,7 @@ export function findObjectLiteralExpression(expr: Node): ObjectLiteralExpression
   }
 
   if (Node.isArrowFunction(expr)) {
-    const body = expr.getBody()
-
-    if (Node.isObjectLiteralExpression(body)) return body
-
-    if (Node.isParenthesizedExpression(body)) {
-      return findObjectLiteralExpression(body.getExpression())
-    }
-
-    if (Node.isBlock(body)) {
-      const ret = body.getStatements().find(Node.isReturnStatement)
-      if (ret && Node.isReturnStatement(ret)) {
-        const re = ret.getExpression()
-        return re && Node.isObjectLiteralExpression(re) ? re : null
-      }
-    }
+    return processArrowFunctionBody(expr.getBody())
   }
 
   return null

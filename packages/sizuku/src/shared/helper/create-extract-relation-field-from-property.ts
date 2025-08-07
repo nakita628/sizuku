@@ -13,6 +13,19 @@ export type FieldCommentParser = (lines: string[]) => {
 }
 
 /**
+ * Generates relation definition based on function name and reference table.
+ *
+ * @param fnName - The relation function name ('many' or 'one')
+ * @param refTable - The referenced table name
+ * @param prefix - Schema prefix ('v' or 'z') for validation library
+ * @returns The generated relation definition string
+ */
+function generateRelationDefinition(fnName: string, refTable: string, prefix: 'v' | 'z'): string {
+  const schema = schemaName(refTable)
+  return fnName === 'many' ? `${prefix}.array(${schema})` : fnName === 'one' ? schema : ''
+}
+
+/**
  * Creates a relation field extractor function.
  *
  * This function creates a field extractor specifically for relation fields
@@ -61,9 +74,7 @@ export function createExtractRelationFieldFromProperty(
     }
 
     const refTable = args[0].getText()
-    const schema = schemaName(refTable)
-    const definition =
-      fnName === 'many' ? `${prefix}.array(${schema})` : fnName === 'one' ? schema : ''
+    const definition = generateRelationDefinition(fnName, refTable, prefix)
 
     const { description } = parseFieldComments(
       extractFieldComments(sourceText, property.getStart()),
