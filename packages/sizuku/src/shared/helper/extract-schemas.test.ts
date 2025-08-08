@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractSchemas, extractZodSchemas, extractValibotSchemas } from './extract-schemas.js'
+import { extractSchemas, extractValibotSchemas, extractZodSchemas } from './extract-schemas.js'
 
 // Test run
 // pnpm vitest run ./src/shared/helper/extract-schemas.test.ts

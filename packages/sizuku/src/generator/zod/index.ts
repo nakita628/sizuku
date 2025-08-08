@@ -30,7 +30,9 @@ export async function sizukuZod(
   const zodGeneratedCode = [
     importLine,
     '',
-    ...extractSchemas(code, 'zod').map((schema) => zodCode(schema, comment ?? false, type ?? false)),
+    ...extractSchemas(code, 'zod').map((schema) =>
+      zodCode(schema, comment ?? false, type ?? false),
+    ),
   ].join('\n')
 
   return await mkdir(path.dirname(output))

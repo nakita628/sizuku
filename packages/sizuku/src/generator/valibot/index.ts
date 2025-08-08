@@ -21,7 +21,9 @@ export async function sizukuValibot(
   const valibotGeneratedCode = [
     'import * as v from "valibot"',
     '',
-    ...extractSchemas(code, 'valibot').map((schema) => valibotCode(schema, comment ?? false, type ?? false)),
+    ...extractSchemas(code, 'valibot').map((schema) =>
+      valibotCode(schema, comment ?? false, type ?? false),
+    ),
   ].join('\n')
 
   return await mkdir(path.dirname(output))

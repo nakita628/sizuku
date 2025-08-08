@@ -1,6 +1,5 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
-import { Node } from 'ts-morph'
-import { Project } from 'ts-morph'
+import { Node, Project } from 'ts-morph'
 import { extractFieldComments, parseFieldComments, schemaName } from '../utils/index.js'
 
 /**
@@ -207,7 +206,10 @@ function extractFieldsFromProperties(
   properties: Node[],
   isRelation: boolean,
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
-  extractRelationFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
+  extractRelationFieldFromProperty: (
+    prop: Node,
+    sourceText: string,
+  ) => FieldExtractionResult | null,
   sourceText: string,
 ): FieldExtractionResult[] {
   return properties
@@ -231,7 +233,10 @@ function extractFieldsFromProperties(
  */
 function createExtractFieldsFromCallExpression(
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
-  extractRelationFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
+  extractRelationFieldFromProperty: (
+    prop: Node,
+    sourceText: string,
+  ) => FieldExtractionResult | null,
   findObjectLiteralExpression: (expr: Node) => ObjectLiteralExpression | null,
   findObjectLiteralInArgs: (
     call: CallExpression,
@@ -307,12 +312,15 @@ function buildSchemaExtractor(
  * ```typescript
  * // For Zod schemas
  * const zodSchemas = extractSchemas(sourceLines, 'zod')
- * 
+ *
  * // For Valibot schemas
  * const valibotSchemas = extractSchemas(sourceLines, 'valibot')
  * ```
  */
-export function extractSchemas(lines: string[], library: ValidationLibrary): SchemaExtractionResult[] {
+export function extractSchemas(
+  lines: string[],
+  library: ValidationLibrary,
+): SchemaExtractionResult[] {
   const sourceCode = lines.join('\n')
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -328,7 +336,9 @@ export function extractSchemas(lines: string[], library: ValidationLibrary): Sch
   const commentPrefix = library === 'zod' ? '@z.' : '@v.'
   const schemaPrefix = library === 'zod' ? 'z' : 'v'
 
-  const extractField = createExtractFieldFromProperty((lines) => parseFieldComments(lines, commentPrefix))
+  const extractField = createExtractFieldFromProperty((lines) =>
+    parseFieldComments(lines, commentPrefix),
+  )
   const extractRelationField = createExtractRelationFieldFromProperty(
     (lines) => parseFieldComments(lines, commentPrefix),
     schemaPrefix,

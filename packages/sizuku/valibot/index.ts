@@ -11,6 +11,8 @@ export const UserSchema = v.object({
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
 })
 
+export type User = v.InferInput<typeof UserSchema>
+
 export const PostSchema = v.object({
   /**
    * Primary key
@@ -23,15 +25,25 @@ export const PostSchema = v.object({
   /**
    * Body content (no length limit)
    */
-  content: v.string(),
+  content: v.pipe(v.string(), v.minLength(1), v.maxLength(65535)),
   /**
    * Foreign key referencing User.id
    */
   userId: v.pipe(v.string(), v.uuid()),
 })
-id
-   */
-  userId: v.pipe(v.string(), v.uuid()),
-})
 
 export type Post = v.InferInput<typeof PostSchema>
+
+export const UserRelationsSchema = v.object({
+  ...UserSchema.entries,
+  posts: v.array(PostSchema),
+})
+
+export type UserRelations = v.InferInput<typeof UserRelationsSchema>
+
+export const PostRelationsSchema = v.object({
+  ...PostSchema.entries,
+  user: UserSchema,
+})
+
+export type PostRelations = v.InferInput<typeof PostRelationsSchema>
