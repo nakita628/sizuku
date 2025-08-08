@@ -10,42 +10,55 @@ import { foreignKey, int, numeric, sqliteTable, text, uniqueIndex } from 'drizzl
 export const User = sqliteTable('User', {
   /// Unique identifier for the user
   /// @z.uuid()
+  /// @v.pipe(v.string(), v.uuid()),
   id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
   /// User's display name
   /// @z.string()
+  /// @v.string()
   name: text('name').notNull(),
   /// User's biography or profile description
   /// @z.string().optional().default("")
+  ///
   username: text('username').notNull().unique(),
   /// User's biography or profile description
   /// @z.string().optional().default("")
+  /// @v.optional(v.string(),"")
   bio: text('bio'),
   /// User's unique email address
   /// @z.email()
+  /// @v.pipe(v.string(),v.email())
   email: text('email').notNull().unique(),
   /// Timestamp of email verification
   /// @z.date().nullable()
+  /// @v.nullable(v.date())
   emailVerified: numeric('emailVerified'),
   /// URL of user's image
   /// @z.url().nullable()
+  /// @v.nullable(v.string())
   image: text('image'),
   /// URL of user's cover image
   /// @z.url().nullable()
+  /// @v.nullable(v.string())
   coverImage: text('coverImage'),
   /// URL of user's profile image
   /// @z.url().nullable()
+  /// @v.nullable(v.string())
   profileImage: text('profileImage'),
   /// Hashed password for security
   /// @z.string()
+  /// @v.string()
   hashedPassword: text('hashedPassword'),
   /// Timestamp when the user was created
   /// @z.iso.datetime()
+  /// @v.pipe(v.string(),v.isoDate())
   createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
   /// Timestamp when the user was last updated
   /// @z.iso.datetime()
+  /// @v.pipe(v.string(),v.isoDate())
   updatedAt: numeric('updatedAt').notNull(),
   /// Flag indicating if user has unread notifications
   /// @z.boolean().default(false)
+  /// @v.optional(v.boolean(),false)
   hasNotification: int('hasNotification', { mode: 'boolean' }),
 })
 
@@ -54,18 +67,23 @@ export const Post = sqliteTable(
   {
     /// Unique identifier for the post
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Body content of the post
     /// @z.string().min(1).max(65535)
+    /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
     body: text('body').notNull(),
     /// Timestamp when the post was created
     /// @z.iso.datetime()
+    /// @v.pipe(v.string(),v.isoDate())
     createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
     /// Timestamp when the post was last updated
     /// @z.iso.datetime()
+    /// @v.pipe(v.string(),v.isoDate())
     updatedAt: numeric('updatedAt').notNull(),
     /// Foreign key referencing User.id
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     userId: text('userId').notNull(),
   },
   (Post) => ({
@@ -84,15 +102,19 @@ export const Follow = sqliteTable(
   {
     /// Unique identifier for the follow relationship
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Foreign key referencing User.id
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     followerId: text('followerId').notNull(),
     /// Foreign key referencing User.id
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     followingId: text('followingId').notNull(),
     /// Timestamp when the follow relationship was created
     /// @z.iso.datetime()
+    /// @v.pipe(v.string(),v.isoDate())
     createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
   },
   (Follow) => ({
@@ -122,14 +144,18 @@ export const Like = sqliteTable(
   {
     /// Unique identifier for the like relationship
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Foreign key referencing User.id
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     userId: text('userId').notNull(),
     /// Foreign key referencing Post.id
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     postId: text('postId').notNull(),
     /// Timestamp when the like relationship was created
+    /// @v.pipe(v.string(),v.isoDate())
     createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
   },
   (Like) => ({
@@ -159,21 +185,27 @@ export const Comment = sqliteTable(
   {
     /// Unique identifier for the comment
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Body content of the comment
     /// @z.string().min(1).max(65535)
+    /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
     body: text('body').notNull(),
     /// Timestamp when the comment was created
     /// @z.iso.datetime()
+    /// @v.pipe(v.string(),v.isoDate())
     createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
     /// Timestamp when the comment was last updated
     /// @z.iso.datetime()
+    /// @v.pipe(v.string(),v.isoDate())
     updatedAt: numeric('updatedAt').notNull(),
     /// Foreign key referencing User.id
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     userId: text('userId').notNull(),
     /// Foreign key referencing Post.id
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     postId: text('postId').notNull(),
   },
   (Comment) => ({
@@ -199,14 +231,19 @@ export const Notification = sqliteTable(
   {
     /// Unique identifier for the notification
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Body content of the notification
     /// @z.string().min(1).max(65535)
+    /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
     body: text('body').notNull(),
     /// Foreign key referencing User.id
     /// @z.uuid()
+    /// @v.pipe(v.string(), v.uuid()),
     userId: text('userId').notNull(),
     /// Timestamp when the notification was created
+    /// @z.iso.datetime()
+    /// @v.pipe(v.string(),v.isoDate())
     createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
   },
   (Notification) => ({
