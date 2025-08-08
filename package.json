@@ -3,16 +3,15 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "deps": "rm -rf node_modules && pnpm install",
+    "deps": "mkdir -p /tmp/pnpm-store && pnpm config set store-dir /tmp/pnpm-store &&rm -rf node_modules && rm -rf pnpm-lock.yaml && rm -rf ~/.pnpm-store && pnpm store prune && pnpm install --no-prefer-frozen-lockfile",
     "build": "pnpm -F sizuku build",
-    "fmt": "pnpm biome format --write ./",
-    "lint": "pnpm biome lint",
+    "check": "pnpm biome check --write ./",
     "typecheck": "pnpm -F sizuku typecheck",
     "test": "pnpm -F sizuku test",
     "coverage": "pnpm -F sizuku coverage",
     "release": "pnpm -F sizuku release"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.0.6"
+    "@biomejs/biome": "^2.1.2"
   }
 }

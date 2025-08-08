@@ -1,9 +1,18 @@
-import type { Schema } from '../types.js'
 /**
  * @param schema
  * @returns
  */
-export function fieldDefinitions(schema: Schema, comment: boolean) {
+export function fieldDefinitions(
+  schema: {
+    name: string
+    fields: {
+      name: string
+      definition: string
+      description?: string
+    }[]
+  },
+  comment: boolean,
+) {
   return schema.fields
     .map(({ name, definition, description }) => {
       const commentCode = description && comment ? `/**\n* ${description}\n*/\n` : ''

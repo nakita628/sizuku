@@ -1,6 +1,5 @@
-import { valibot } from './valibot.js'
 import { inferInput } from './infer-input.js'
-import type { Schema } from '../../../shared/types.js'
+import { valibot } from './valibot.js'
 
 /**
  * @param schema
@@ -8,7 +7,18 @@ import type { Schema } from '../../../shared/types.js'
  * @param type
  * @returns
  */
-export function valibotCode(schema: Schema, comment: boolean, type: boolean): string {
+export function valibotCode(
+  schema: {
+    name: string
+    fields: {
+      name: string
+      definition: string
+      description?: string
+    }[]
+  },
+  comment: boolean,
+  type: boolean,
+): string {
   const valibotSchema = valibot(schema, comment)
 
   if (type) {

@@ -1,13 +1,10 @@
 import path from 'node:path'
-import { extractSchemas } from './core/extract-schema.js'
-import { zodCode } from './generator/zod-code.js'
-import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { fmt } from '../../shared/format/index.js'
 import type { Result } from 'neverthrow'
-
-const ZODV4_IMPORT = `import { z } from 'zod/v4'` as const
-const ZODV4_MINI_IMPORT = `import { z } from 'zod/v4-mini'` as const
-const ZOD_OPENAPI_HONO_IMPORT = `import { z } from '@hono/zod-openapi'` as const
+import { fmt } from '../../shared/format/index.js'
+import { mkdir, writeFile } from '../../shared/fsp/index.js'
+import { extractRelationSchemas, extractSchemas } from '../../shared/helper/extract-schemas.js'
+import { relationZodCode } from './generator/relation-zod-code.js'
+import { zodCode } from './generator/zod-code.js'
 
 /**
  * Generate Zod schema
@@ -22,16 +19,24 @@ export async function sizukuZod(
   output: `${string}.ts`,
   comment?: boolean,
   type?: boolean,
-  zod?: 'v4' | 'v4-mini' | '@hono/zod-openapi',
+  zod?: 'v4' | 'mini' | '@hono/zod-openapi',
+  relations?: boolean,
 ): Promise<Result<void, Error>> {
-  const zodGeneratedCode = [
-    zod === 'v4-mini'
-      ? ZODV4_MINI_IMPORT
+  const importLine =
+    zod === 'mini'
+      ? `import * as z from 'zod/mini'`
       : zod === '@hono/zod-openapi'
-        ? ZOD_OPENAPI_HONO_IMPORT
-        : ZODV4_IMPORT,
+        ? `import { z } from '@hono/zod-openapi'`
+        : `import * as z from 'zod'`
+
+  const baseSchemas = extractSchemas(code, 'zod')
+  const relationSchemas = extractRelationSchemas(code, 'zod')
+
+  const zodGeneratedCode = [
+    importLine,
     '',
-    ...extractSchemas(code).map((schema) => zodCode(schema, comment ?? false, type ?? false)),
+    ...baseSchemas.map((schema) => zodCode(schema, comment ?? false, type ?? false)),
+    ...(relations ? relationSchemas.map((schema) => relationZodCode(schema, type ?? false)) : []),
   ].join('\n')
 
   return await mkdir(path.dirname(output))

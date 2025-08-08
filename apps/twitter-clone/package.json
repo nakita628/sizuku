@@ -1,0 +1,10 @@
+{
+  "name": "@apps/twitter-clone",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.40.1"
+  }
+}

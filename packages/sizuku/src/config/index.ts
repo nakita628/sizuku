@@ -6,7 +6,7 @@ export type Config = {
     output?: `${string}.ts`
     comment?: boolean
     type?: boolean
-    zod?: 'v4' | 'v4-mini' | '@hono/zod-openapi'
+    zod?: 'v4' | 'mini' | '@hono/zod-openapi'
   }
   valibot?: {
     output?: `${string}.ts`

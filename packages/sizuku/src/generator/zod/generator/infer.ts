@@ -1,9 +1,8 @@
-import { capitalize } from '../../../shared/utils/capitalize.js'
-
 /**
  * @param name
  * @returns
  */
 export function infer(name: string) {
-  return `export type ${capitalize(name)} = z.infer<typeof ${capitalize(name)}Schema>`
+  const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1)
+  return `export type ${capitalizedName} = z.infer<typeof ${capitalizedName}Schema>`
 }

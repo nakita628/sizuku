@@ -1,5 +1,5 @@
-import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
 import { relations } from 'drizzle-orm'
+import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
 
 export const user = mysqlTable('user', {
   /// Primary key
@@ -23,8 +23,8 @@ export const post = mysqlTable('post', {
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))
   title: varchar('title', { length: 100 }).notNull(),
   /// Body content (no length limit)
-  /// @z.string()
-  /// @v.string()
+  /// @z.string().min(1).max(65535)
+  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
   content: varchar('content', { length: 65535 }).notNull(),
   /// Foreign key referencing User.id
   /// @z.uuid()
