@@ -397,3 +397,62 @@ export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
 export function extractValibotSchemas(lines: string[]): SchemaExtractionResult[] {
   return extractSchemas(lines, 'valibot')
 }
+
+/**
+ * Extracts relation schemas from `relations(...)` declarations using AST analysis.
+ *
+ * This returns entries like `userRelations` and `postRelations` with fields
+ * resolved to either `z.array(OtherSchema)` / `v.array(OtherSchema)` or direct
+ * `OtherSchema` based on `many`/`one`.
+ *
+ * Note: Base table schemas are not included here; use `extractSchemas` for those.
+ */
+export function extractRelationSchemas(
+  lines: string[],
+  library: ValidationLibrary,
+): SchemaExtractionResult[] {
+  const sourceCode = lines.join('\n')
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: { allowJs: true, skipLibCheck: true },
+  })
+
+  const sourceFile = project.createSourceFile('temp.ts', sourceCode)
+  const sourceText = sourceFile.getFullText()
+
+  const commentPrefix = library === 'zod' ? '@z.' : '@v.'
+  const schemaPrefix = library === 'zod' ? 'z' : 'v'
+
+  const extractField = createExtractFieldFromProperty((lines) =>
+    parseFieldComments(lines, commentPrefix),
+  )
+  const extractRelationField = createExtractRelationFieldFromProperty(
+    (lines) => parseFieldComments(lines, commentPrefix),
+    schemaPrefix,
+  )
+  const extractFieldsFromCall = createExtractFieldsFromCallExpression(
+    extractField,
+    extractRelationField,
+    findObjectLiteralExpression,
+    findObjectLiteralInArgs,
+    isRelationFunctionCall,
+  )
+
+  function extract(declaration: Node): SchemaExtractionResult | null {
+    if (!Node.isVariableDeclaration(declaration)) return null
+    const name = declaration.getName()
+    if (!name) return null
+    const initializer = declaration.getInitializer()
+    if (!Node.isCallExpression(initializer)) return null
+    if (!isRelationFunctionCall(initializer)) return null
+    const fields = extractFieldsFromCall(initializer, sourceText)
+    return { name, fields }
+  }
+
+  return sourceFile
+    .getVariableStatements()
+    .filter((stmt) => stmt.hasExportKeyword())
+    .flatMap((stmt) => stmt.getDeclarations())
+    .map((decl) => extract(decl))
+    .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
+}

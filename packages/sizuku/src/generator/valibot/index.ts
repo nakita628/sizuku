@@ -2,8 +2,9 @@ import path from 'node:path'
 import type { Result } from 'neverthrow'
 import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { extractSchemas } from '../../shared/helper/extract-schemas.js'
+import { extractRelationSchemas, extractSchemas } from '../../shared/helper/extract-schemas.js'
 import { valibotCode } from './generator/valibot-code.js'
+import { relationValibotCode } from './generator/relation-valibot-code.js'
 
 /**
  * Generate Valibot schema
@@ -17,13 +18,18 @@ export async function sizukuValibot(
   output: `${string}.ts`,
   comment?: boolean,
   type?: boolean,
+  relations?: boolean,
 ): Promise<Result<void, Error>> {
+  const baseSchemas = extractSchemas(code, 'valibot')
+  const relationSchemas = extractRelationSchemas(code, 'valibot')
+
   const valibotGeneratedCode = [
-    'import * as v from "valibot"',
+    "import * as v from 'valibot'",
     '',
-    ...extractSchemas(code, 'valibot').map((schema) =>
-      valibotCode(schema, comment ?? false, type ?? false),
-    ),
+    ...baseSchemas.map((schema) => valibotCode(schema, comment ?? false, type ?? false)),
+    ...(relations
+      ? relationSchemas.map((schema) => relationValibotCode(schema, type ?? false))
+      : []),
   ].join('\n')
 
   return await mkdir(path.dirname(output))

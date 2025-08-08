@@ -31,7 +31,14 @@ export async function main(config: Config = getConfig()): Promise<Result<void, E
     .andThen((code) => {
       if (config.zod?.output) {
         return ResultAsync.fromPromise(
-          sizukuZod(code, config.zod.output, config.zod.comment, config.zod.type, config.zod.zod),
+          sizukuZod(
+            code,
+            config.zod.output,
+            config.zod.comment,
+            config.zod.type,
+            config.zod.zod,
+            true,
+          ),
           (e) => (e instanceof Error ? e : new Error(String(e))),
         ).map(() => {
           console.log(`Generated Zod schema at: ${config.zod?.output}`)
@@ -43,7 +50,13 @@ export async function main(config: Config = getConfig()): Promise<Result<void, E
     .andThen((code) => {
       if (config.valibot?.output) {
         return ResultAsync.fromPromise(
-          sizukuValibot(code, config.valibot.output, config.valibot.comment, config.valibot.type),
+          sizukuValibot(
+            code,
+            config.valibot.output,
+            config.valibot.comment,
+            config.valibot.type,
+            true,
+          ),
           (e) => (e instanceof Error ? e : new Error(String(e))),
         ).map(() => {
           console.log(`Generated Valibot schema at: ${config.valibot?.output}`)
