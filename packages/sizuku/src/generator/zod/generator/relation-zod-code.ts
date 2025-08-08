@@ -7,12 +7,12 @@ import { infer } from './infer.js'
 export function relationZodCode(
   schema: {
     name: string
+    baseName?: string
     fields: { name: string; definition: string; description?: string }[]
   },
   withType: boolean,
 ): string {
-    console.log(schema)
-  const base = schema.name.replace(/Relations$/, '')
+  const base = schema.baseName ?? schema.name.replace(/Relations$/, '')
   const relName = schemaName(schema.name)
   const baseSchema = schemaName(base)
   const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')

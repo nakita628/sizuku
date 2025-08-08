@@ -13,6 +13,8 @@ export type ValidationLibrary = 'zod' | 'valibot'
 export type SchemaExtractionResult = {
   /** The name of the table/schema */
   name: string
+  /** Optional base schema/table name (used for relations) */
+  baseName?: string
   /** Array of field definitions with name, validation definition, and description */
   fields: {
     /** Field name */
@@ -445,8 +447,11 @@ export function extractRelationSchemas(
     const initializer = declaration.getInitializer()
     if (!Node.isCallExpression(initializer)) return null
     if (!isRelationFunctionCall(initializer)) return null
+    const relArgs = initializer.getArguments()
+    const baseIdentifier = relArgs.length && Node.isIdentifier(relArgs[0]) ? relArgs[0] : undefined
+    const baseName = baseIdentifier ? baseIdentifier.getText() : undefined
     const fields = extractFieldsFromCall(initializer, sourceText)
-    return { name, fields }
+    return { name, baseName, fields }
   }
 
   return sourceFile

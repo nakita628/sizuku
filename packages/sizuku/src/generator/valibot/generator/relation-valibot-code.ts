@@ -7,11 +7,12 @@ import { inferInput } from './infer-input.js'
 export function relationValibotCode(
   schema: {
     name: string
+    baseName?: string
     fields: { name: string; definition: string; description?: string }[]
   },
   withType: boolean,
 ): string {
-  const base = schema.name.replace(/Relations$/, '')
+  const base = schema.baseName ?? schema.name.replace(/Relations$/, '')
   const relName = schemaName(schema.name)
   const baseSchema = schemaName(base)
   const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
