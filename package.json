@@ -12,6 +12,6 @@
     "release": "pnpm -F sizuku release"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.1.2"
+    "@biomejs/biome": "^2.1.4"
   }
 }

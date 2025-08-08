@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { main } from './index.js'
 
+// Test run
+// pnpm vitest run ./src/index.test.ts
+
 describe('main', () => {
   it('main success', async () => {
     const result = await main({
@@ -18,11 +21,11 @@ describe('main', () => {
         output: 'mermaid-er/ER.md',
       },
     })
-    expect(result.isOk()).toBe(true)
+    expect(result.ok).toBe(true)
   })
   it('main success', async () => {
     // biome-ignore lint: test
     const result = await main('test' as any)
-    expect(result.isErr()).toBe(true)
+    expect(result.ok).toBe(false)
   })
 })

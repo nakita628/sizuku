@@ -1,4 +1,4 @@
-import { infer } from './infer.js'
+import { infer } from '../../../utils/index.js'
 import { zod } from './zod.js'
 
 /**

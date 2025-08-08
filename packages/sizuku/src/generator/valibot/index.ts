@@ -1,5 +1,4 @@
 import path from 'node:path'
-import type { Result } from 'neverthrow'
 import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
 import { extractRelationSchemas, extractSchemas } from '../../shared/helper/extract-schemas.js'
@@ -19,7 +18,16 @@ export async function sizukuValibot(
   comment?: boolean,
   type?: boolean,
   relations?: boolean,
-): Promise<Result<void, Error>> {
+): Promise<
+  | {
+      ok: true
+      value: undefined
+    }
+  | {
+      ok: false
+      error: string
+    }
+> {
   const baseSchemas = extractSchemas(code, 'valibot')
   const relationSchemas = extractRelationSchemas(code, 'valibot')
 
@@ -32,7 +40,29 @@ export async function sizukuValibot(
       : []),
   ].join('\n')
 
-  return await mkdir(path.dirname(output))
-    .andThen(() => fmt(valibotGeneratedCode))
-    .andThen((formatted) => writeFile(output, formatted))
+  const mkdirResult = await mkdir(path.dirname(output))
+  if (!mkdirResult.ok) {
+    return {
+      ok: false,
+      error: mkdirResult.error,
+    }
+  }
+  const fmtResult = await fmt(valibotGeneratedCode)
+  if (!fmtResult.ok) {
+    return {
+      ok: false,
+      error: fmtResult.error,
+    }
+  }
+  const writeFileResult = await writeFile(output, fmtResult.value)
+  if (!writeFileResult.ok) {
+    return {
+      ok: false,
+      error: writeFileResult.error,
+    }
+  }
+  return {
+    ok: true,
+    value: undefined,
+  }
 }

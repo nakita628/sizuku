@@ -1,11 +1,24 @@
 import fs from 'node:fs'
-import type { Result } from 'neverthrow'
-import { err, ok } from 'neverthrow'
 
-export function readFileSync(path: string): Result<string, Error> {
+export function readFileSync(path: string):
+  | {
+      ok: true
+      value: string
+    }
+  | {
+      ok: false
+      error: string
+    } {
   try {
-    return ok(fs.readFileSync(path, 'utf-8'))
+    const result = fs.readFileSync(path, 'utf-8')
+    return {
+      ok: true,
+      value: result,
+    }
   } catch (e) {
-    return err(new Error(String(e)))
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    }
   }
 }

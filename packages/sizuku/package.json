@@ -47,7 +47,6 @@
     "zod": "^4.0.15"
   },
   "dependencies": {
-    "neverthrow": "^8.2.0",
     "prettier": "^3.6.2",
     "ts-morph": "^26.0.0"
   }

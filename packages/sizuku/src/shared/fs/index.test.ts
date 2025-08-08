@@ -22,13 +22,14 @@ describe('readFileSync (integration)', () => {
 
   it('should return Ok when reading an existing file', () => {
     const result = readFileSync(testFilePath)
-    expect(result.isOk()).toBe(true)
-    expect(result._unsafeUnwrap()).toBe('hello world')
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value).toBe('hello world')
+    }
   })
 
   it('should return Err when reading a non-existent file', () => {
     const result = readFileSync(nonExistentPath)
-    expect(result.isErr()).toBe(true)
-    expect(result._unsafeUnwrapErr()).toBeInstanceOf(Error)
+    expect(result.ok).toBe(false)
   })
 })

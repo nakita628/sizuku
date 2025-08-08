@@ -1,5 +1,4 @@
-import { fieldDefinitions } from '../../../shared/generator/field-definitions.js'
-import { schemaName } from '../../../shared/utils/index.js'
+import { capitalize, fieldDefinitions } from '../../../utils/index.js'
 
 /**
  * @param schema
@@ -18,5 +17,5 @@ export function valibot(
   comment: boolean,
 ) {
   const res = fieldDefinitions(schema, comment)
-  return `export const ${schemaName(schema.name)} = v.object({${res}})`
+  return `export const ${capitalize(schema.name)}Schema = v.object({${res}})`
 }
