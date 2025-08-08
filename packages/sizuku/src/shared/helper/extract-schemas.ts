@@ -27,6 +27,19 @@ export type SchemaExtractionResult = {
 }
 
 /**
+ * Relation schema extraction result with required base name.
+ */
+export type RelationSchemaExtractionResult = {
+  name: string
+  baseName: string
+  fields: {
+    name: string
+    definition: string
+    description?: string
+  }[]
+}
+
+/**
  * Field extraction result type containing field metadata.
  */
 type FieldExtractionResult = {
@@ -412,7 +425,7 @@ export function extractValibotSchemas(lines: string[]): SchemaExtractionResult[]
 export function extractRelationSchemas(
   lines: string[],
   library: ValidationLibrary,
-): SchemaExtractionResult[] {
+): RelationSchemaExtractionResult[] {
   const sourceCode = lines.join('\n')
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -440,7 +453,7 @@ export function extractRelationSchemas(
     isRelationFunctionCall,
   )
 
-  function extract(declaration: Node): SchemaExtractionResult | null {
+  function extract(declaration: Node): RelationSchemaExtractionResult | null {
     if (!Node.isVariableDeclaration(declaration)) return null
     const name = declaration.getName()
     if (!name) return null
@@ -449,7 +462,8 @@ export function extractRelationSchemas(
     if (!isRelationFunctionCall(initializer)) return null
     const relArgs = initializer.getArguments()
     const baseIdentifier = relArgs.length && Node.isIdentifier(relArgs[0]) ? relArgs[0] : undefined
-    const baseName = baseIdentifier ? baseIdentifier.getText() : undefined
+    if (!baseIdentifier) return null
+    const baseName = baseIdentifier.getText()
     const fields = extractFieldsFromCall(initializer, sourceText)
     return { name, baseName, fields }
   }
