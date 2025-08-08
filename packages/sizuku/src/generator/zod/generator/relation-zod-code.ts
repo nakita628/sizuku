@@ -1,4 +1,4 @@
-import { capitalize, schemaName } from '../../../shared/utils/index.js'
+import { schemaName } from '../../../shared/utils/index.js'
 import { infer } from './infer.js'
 
 /**
@@ -11,13 +11,12 @@ export function relationZodCode(
   },
   withType: boolean,
 ): string {
+    console.log(schema)
   const base = schema.name.replace(/Relations$/, '')
   const relName = schemaName(schema.name)
   const baseSchema = schemaName(base)
   const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
   const obj = `export const ${relName} = z.object({...${baseSchema}.shape,${fields}})`
-  if (withType) return `${obj}\n\n${infer(schema.name)}\n`
-  return `${obj}\n`
+  if (withType) return `${obj}${infer(schema.name)}`
+  return `${obj}`
 }
-
-

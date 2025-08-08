@@ -3,8 +3,8 @@ import type { Result } from 'neverthrow'
 import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
 import { extractRelationSchemas, extractSchemas } from '../../shared/helper/extract-schemas.js'
-import { valibotCode } from './generator/valibot-code.js'
 import { relationValibotCode } from './generator/relation-valibot-code.js'
+import { valibotCode } from './generator/valibot-code.js'
 
 /**
  * Generate Valibot schema
