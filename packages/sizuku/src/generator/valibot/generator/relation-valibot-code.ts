@@ -1,4 +1,4 @@
-import { inferInput } from '../../../utils/index.js'
+import { capitalize, inferInput } from '../../../utils/index.js'
 
 /**
  * Generates Valibot relation schema code from a relation schema AST extraction.
@@ -13,9 +13,9 @@ export function relationValibotCode(
 ): string {
   const base = schema.baseName
   const relName = `${schema.name}Schema`
-  const baseSchema = `${base}Schema`
+  const baseSchema = `${capitalize(base)}Schema`
   const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
-  const obj = `\nexport const ${relName} = v.object({...${baseSchema}.entries,${fields}})`
+  const obj = `\nexport const ${capitalize(relName)} = v.object({...${baseSchema}.entries,${fields}})`
   if (withType) return `${obj}\n\n${inferInput(schema.name)}\n`
   return `${obj}`
 }

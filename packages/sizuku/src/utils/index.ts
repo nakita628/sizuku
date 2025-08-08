@@ -27,18 +27,12 @@ export function parseFieldComments(
   commentLines: string[],
   tag: '@v.' | '@z.',
 ): { definition: string; description?: string } {
-  console.log('---')
-  console.log(commentLines)
-  console.log('---')
   const cleaned = commentLines.map((line) => line.replace(/^\/\/\/\s*/, '').trim()).filter(Boolean)
-
   const definition = cleaned.find((line) => line.startsWith(tag))?.replace(/^@/, '') ?? ''
-
   const descriptionLines = cleaned.filter(
     (line) => !(line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')),
   )
   const description = descriptionLines.length ? descriptionLines.join(' ') : undefined
-
   return { definition, description }
 }
 
@@ -56,7 +50,6 @@ export function parseFieldComments(
 export function extractFieldComments(sourceText: string, fieldStartPos: number): string[] {
   const beforeField = sourceText.substring(0, fieldStartPos)
   const lines = beforeField.split('\n')
-
   const reverseIndex = lines
     .map((line, index) => ({ line: line.trim(), index }))
     .reverse()
@@ -79,7 +72,6 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number):
       },
       { commentLines: [], shouldStop: false },
     )
-
   return reverseIndex.commentLines
 }
 
