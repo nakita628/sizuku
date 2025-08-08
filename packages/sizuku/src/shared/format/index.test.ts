@@ -5,12 +5,16 @@ import { fmt } from '.'
 // pnpm vitest run ./src/shared/format/index.test.ts
 
 describe('fmt', () => {
-  it('fmt success', async () => {
-    const result = await fmt('const sizuku = "sizuku";')
-    expect(result.isOk()).toBe(true)
+  it.concurrent('returns formatted code as ok result', async () => {
+    const code = "const takibi = 'hono-takibi';"
+    const result = await fmt(code)
+    const expected = `const takibi = 'hono-takibi'
+`
+    expect(result).toStrictEqual({ ok: true, value: expected })
   })
-  it('fmt error', async () => {
-    const result = await fmt('const sizuku = "sizu')
-    expect(result.isErr()).toBe(true)
+
+  it.concurrent('returns error result for invalid code', async () => {
+    const result = await fmt('const = ;')
+    expect(result).toMatchObject({ ok: false })
   })
 })

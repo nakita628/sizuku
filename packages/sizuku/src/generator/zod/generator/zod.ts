@@ -1,4 +1,3 @@
-
 import { capitalize, fieldDefinitions } from '../../../utils/index.js'
 
 /**

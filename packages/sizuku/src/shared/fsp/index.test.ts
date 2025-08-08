@@ -15,19 +15,17 @@ describe('fsp', () => {
       await fsp.rmdir(TEST_DIR, { recursive: true })
     }
   })
-
   describe('mkdir', () => {
     it('returns ok when directory is created', async () => {
       const result = await mkdir(TEST_DIR)
-      expect(result.isOk()).toBe(true)
+      expect(result).toEqual({ ok: true, value: undefined })
       expect(fs.existsSync(TEST_DIR)).toBe(true)
     })
 
     it('returns ok when directory already exists (recursive:true)', async () => {
       await fsp.mkdir(TEST_DIR, { recursive: true })
       const result = await mkdir(TEST_DIR)
-      expect(result.isOk()).toBe(true)
-      expect(fs.existsSync(TEST_DIR)).toBe(true)
+      expect(result).toEqual({ ok: true, value: undefined })
     })
 
     it('returns err for invalid path', async () => {
@@ -36,7 +34,11 @@ describe('fsp', () => {
       await fsp.writeFile(filePath, 'dummy')
       const badPath = path.join(filePath, 'bar')
       const result = await mkdir(badPath)
-      expect(result.isErr()).toBe(true)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(typeof result.error).toBe('string')
+        expect(result.error.length).toBeGreaterThan(0)
+      }
     })
   })
 
@@ -44,11 +46,10 @@ describe('fsp', () => {
     beforeEach(async () => {
       await fsp.mkdir(TEST_DIR, { recursive: true })
     })
-
     it('writes file successfully', async () => {
       const filePath = path.join(TEST_DIR, 'ok.txt')
       const result = await writeFile(filePath, 'hello')
-      expect(result.isOk()).toBe(true)
+      expect(result.ok).toBe(true)
       const text = await fsp.readFile(filePath, 'utf-8')
       expect(text).toBe('hello')
     })
@@ -58,7 +59,11 @@ describe('fsp', () => {
       await fsp.writeFile(filePath, 'dummy')
       const badPath = path.join(filePath, 'bar.txt')
       const result = await writeFile(badPath, 'fail')
-      expect(result.isErr()).toBe(true)
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(typeof result.error).toBe('string')
+        expect(result.error.length).toBeGreaterThan(0)
+      }
     })
   })
 })
