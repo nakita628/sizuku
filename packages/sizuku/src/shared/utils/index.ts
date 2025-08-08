@@ -1,18 +1,4 @@
 /**
- * Capitalize the first letter of a string.
- *
- * @param str - The input string.
- * @returns A new string with the first letter capitalized.
- */
-export function capitalize(str: string): string {
-  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
-}
-
-export function schemaName(str: string): string {
-  return `${str.charAt(0).toUpperCase() + str.slice(1)}Schema`
-}
-
-/**
  * Parse field comments and extract definition line and description.
  *
  * @param commentLines - Raw comment lines (e.g., from source text)

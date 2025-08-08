@@ -1,6 +1,7 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-import { extractFieldComments, parseFieldComments, schemaName } from '../utils/index.js'
+import { capitalize } from '../../utils/index.js'
+import { extractFieldComments, parseFieldComments } from '../utils/index.js'
 
 /**
  * Supported validation library types.
@@ -60,7 +61,7 @@ type FieldExtractionResult = {
  * @returns The generated relation definition string
  */
 function generateRelationDefinition(fnName: string, refTable: string, prefix: 'v' | 'z'): string {
-  const schema = schemaName(refTable)
+  const schema = `${capitalize(refTable)}Schema`
   return fnName === 'many' ? `${prefix}.array(${schema})` : fnName === 'one' ? schema : ''
 }
 

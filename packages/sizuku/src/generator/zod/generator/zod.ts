@@ -1,5 +1,4 @@
 import { fieldDefinitions } from '../../../shared/generator/field-definitions.js'
-import { schemaName } from '../../../shared/utils/index.js'
 
 /**
  * Generates a Zod schema for a given schema and config.
@@ -19,5 +18,5 @@ export function zod(
   },
   comment: boolean,
 ) {
-  return `export const ${schemaName(schema.name)} = z.object({${fieldDefinitions(schema, comment)}})`
+  return `export const ${schema.name}Schema = z.object({${fieldDefinitions(schema, comment)}})`
 }
