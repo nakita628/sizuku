@@ -10,7 +10,7 @@ import { foreignKey, int, numeric, sqliteTable, text, uniqueIndex } from 'drizzl
 export const User = sqliteTable('User', {
   /// Unique identifier for the user
   /// @z.uuid()
-  /// @v.pipe(v.string(), v.uuid()),
+  /// @v.pipe(v.string(), v.uuid())
   id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
   /// User's display name
   /// @z.string()
@@ -18,7 +18,7 @@ export const User = sqliteTable('User', {
   name: text('name').notNull(),
   /// User's biography or profile description
   /// @z.string().optional().default("")
-  ///
+  /// @v.optional(v.string(),"")
   username: text('username').notNull().unique(),
   /// User's biography or profile description
   /// @z.string().optional().default("")
@@ -67,7 +67,7 @@ export const Post = sqliteTable(
   {
     /// Unique identifier for the post
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Body content of the post
     /// @z.string().min(1).max(65535)
@@ -83,7 +83,7 @@ export const Post = sqliteTable(
     updatedAt: numeric('updatedAt').notNull(),
     /// Foreign key referencing User.id
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     userId: text('userId').notNull(),
   },
   (Post) => ({
@@ -102,15 +102,15 @@ export const Follow = sqliteTable(
   {
     /// Unique identifier for the follow relationship
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Foreign key referencing User.id
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     followerId: text('followerId').notNull(),
     /// Foreign key referencing User.id
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     followingId: text('followingId').notNull(),
     /// Timestamp when the follow relationship was created
     /// @z.iso.datetime()
@@ -144,17 +144,18 @@ export const Like = sqliteTable(
   {
     /// Unique identifier for the like relationship
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Foreign key referencing User.id
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     userId: text('userId').notNull(),
     /// Foreign key referencing Post.id
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     postId: text('postId').notNull(),
     /// Timestamp when the like relationship was created
+    /// @z.iso.datetime()
     /// @v.pipe(v.string(),v.isoDate())
     createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
   },
@@ -185,7 +186,7 @@ export const Comment = sqliteTable(
   {
     /// Unique identifier for the comment
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Body content of the comment
     /// @z.string().min(1).max(65535)
@@ -201,11 +202,11 @@ export const Comment = sqliteTable(
     updatedAt: numeric('updatedAt').notNull(),
     /// Foreign key referencing User.id
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     userId: text('userId').notNull(),
     /// Foreign key referencing Post.id
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     postId: text('postId').notNull(),
   },
   (Comment) => ({
@@ -231,7 +232,7 @@ export const Notification = sqliteTable(
   {
     /// Unique identifier for the notification
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
     /// Body content of the notification
     /// @z.string().min(1).max(65535)
@@ -239,7 +240,7 @@ export const Notification = sqliteTable(
     body: text('body').notNull(),
     /// Foreign key referencing User.id
     /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid()),
+    /// @v.pipe(v.string(), v.uuid())
     userId: text('userId').notNull(),
     /// Timestamp when the notification was created
     /// @z.iso.datetime()

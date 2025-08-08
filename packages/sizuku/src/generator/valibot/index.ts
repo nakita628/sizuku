@@ -32,8 +32,6 @@ export async function sizukuValibot(
       : []),
   ].join('\n')
 
-  console.log(valibotGeneratedCode)
-
   return await mkdir(path.dirname(output))
     .andThen(() => fmt(valibotGeneratedCode))
     .andThen((formatted) => writeFile(output, formatted))

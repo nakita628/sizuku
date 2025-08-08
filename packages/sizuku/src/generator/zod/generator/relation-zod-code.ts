@@ -16,7 +16,7 @@ export function relationZodCode(
   const relName = schemaName(schema.name)
   const baseSchema = schemaName(base)
   const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
-  const obj = `export const ${relName} = z.object({...${baseSchema}.shape,${fields}})`
+  const obj = `\nexport const ${relName} = z.object({...${baseSchema}.shape,${fields}})`
   if (withType) return `${obj}\n\n${infer(schema.name)}\n`
   return `${obj}`
 }
