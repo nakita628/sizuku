@@ -2,7 +2,7 @@ import path from 'node:path'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
 import { extractRelations } from '../../utils/index.js'
 import { erContent } from './generator/index.js'
-import { parseTableInfo } from './validator/parse-table-info.js'
+import { parseTableInfo } from './validator/index.js'
 
 /**
  * Generate Mermaid ER diagram

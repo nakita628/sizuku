@@ -1,5 +1,4 @@
-import { fieldDefinitions } from '../../../shared/generator/field-definitions.js'
-import { capitalize } from '../../../utils/index.js'
+import { capitalize, fieldDefinitions } from '../../../utils/index.js'
 
 /**
  * @param schema

@@ -40,6 +40,7 @@ export async function sizukuZod(
   ].join('\n')
 
   return await mkdir(path.dirname(output))
-    .andThen(() => fmt(zodGeneratedCode))
-    .andThen((formatted) => writeFile(output, formatted))
+  .andThen(() => fmt(zodGeneratedCode))
+  .mapErr((err) => new Error(err.message))
+  .andThen((formatted) => writeFile(output, formatted))
 }

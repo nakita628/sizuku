@@ -34,5 +34,6 @@ export async function sizukuValibot(
 
   return await mkdir(path.dirname(output))
     .andThen(() => fmt(valibotGeneratedCode))
+    .mapErr((err) => new Error(err.message))
     .andThen((formatted) => writeFile(output, formatted))
 }
