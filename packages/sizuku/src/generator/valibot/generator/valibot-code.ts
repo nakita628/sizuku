@@ -1,4 +1,4 @@
-import { inferInput } from './infer-input.js'
+import { inferInput } from '../../../utils/index.js'
 import { valibot } from './valibot.js'
 
 /**

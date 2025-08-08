@@ -9,6 +9,9 @@ describe('utils', () => {
     const result = capitalize('user')
     expect(result).toBe('User')
   })
+  it.concurrent('parseFieldComments', () => {
+    
+  })
   it.concurrent('infer', () => {
     const result = infer('User')
     expect(result).toBe('export type User = z.infer<typeof UserSchema>')

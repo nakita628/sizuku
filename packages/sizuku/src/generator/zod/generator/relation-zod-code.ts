@@ -1,4 +1,3 @@
-import { schemaName } from '../../../shared/utils/index.js'
 import { infer } from '../../../utils/index.js'
 
 /**

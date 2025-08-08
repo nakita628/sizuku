@@ -1,7 +1,7 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-import { capitalize } from '../../utils/index.js'
-import { extractFieldComments, parseFieldComments } from '../utils/index.js'
+import { capitalize, extractFieldComments, parseFieldComments } from '../../utils/index.js'
+
 
 /**
  * Supported validation library types.
