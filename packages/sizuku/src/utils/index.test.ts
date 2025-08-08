@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { capitalize, extractFieldComments, infer, inferInput, parseFieldComments } from './index'
+import {
+  buildRelationLine,
+  capitalize,
+  extractFieldComments,
+  extractRelations,
+  infer,
+  inferInput,
+  parseFieldComments,
+} from './index'
 
 // Test run
 // pnpm vitest run ./src/utils/index.test.ts
@@ -71,6 +79,111 @@ export const postRelations = relations(post, ({ one }) => ({
       '/// @z.uuid()',
       '/// @v.pipe(v.string(), v.uuid())',
     ])
+  })
+
+  it.concurrent('extractRelations Test', () => {
+    const result = extractRelations([
+      "export const user = mysqlTable('user', {",
+      '  /// Primary key',
+      '  /// @z.uuid()',
+      '  /// @v.pipe(v.string(), v.uuid())',
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      '  /// Display name',
+      '  /// @z.string().min(1).max(50)',
+      '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+      "  name: varchar('name', { length: 50 }).notNull(),",
+      '})',
+      '',
+      '/// @relation user.id post.userId one-to-many',
+      "export const post = mysqlTable('post', {",
+      '  /// Primary key',
+      '  /// @z.uuid()',
+      '  /// @v.pipe(v.string(), v.uuid())',
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      '  /// Article title',
+      '  /// @z.string().min(1).max(100)',
+      '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
+      "  title: varchar('title', { length: 100 }).notNull(),",
+      '  /// Body content (no length limit)',
+      '  /// @z.string()',
+      '  /// @v.string()',
+      "  content: varchar('content', { length: 65535 }).notNull(),",
+      '  /// Foreign key referencing User.id',
+      '  /// @z.uuid()',
+      '  /// @v.pipe(v.string(), v.uuid())',
+      "  userId: varchar('user_id', { length: 36 }).notNull(),",
+      '})',
+      '',
+      'export const userRelations = relations(user, ({ many }) => ({',
+      '  posts: many(post),',
+      '}))',
+      '',
+      'export const postRelations = relations(post, ({ one }) => ({',
+      '  user: one(user, {',
+      '    fields: [post.userId],',
+      '    references: [user.id],',
+      '  }),',
+      '}))',
+      '',
+    ])
+    const expected = [
+      {
+        fromModel: 'user',
+        fromField: 'id',
+        toModel: 'post',
+        toField: 'userId',
+        type: 'one-to-many',
+      },
+    ]
+    expect(result).toStrictEqual(expected)
+  })
+
+  it.concurrent.each([
+    ['zero-one-to-zero-one', '|o--|o'],
+    ['zero-one-to-one', '|o--||'],
+    ['zero-one-to-zero-many', '|o--}o'],
+    ['zero-one-to-many', '|o--}|'],
+    ['zero-one-to-zero-one-optional', '|o..|o'],
+    ['zero-one-to-one-optional', '|o..||'],
+    ['zero-one-to-zero-many-optional', '|o..}o'],
+    ['zero-one-to-many-optional', '|o..}|'],
+    ['one-to-zero-one', '||--|o'],
+    ['one-to-one', '||--||'],
+    ['one-to-zero-many', '||--}o'],
+    ['one-to-many', '||--}|'],
+    ['one-to-zero-one-optional', '||..|o'],
+    ['one-to-one-optional', '||..||'],
+    ['one-to-zero-many-optional', '||..}o'],
+    ['one-to-many-optional', '||..}|'],
+    ['zero-many-to-zero-one', '}o--|o'],
+    ['zero-many-to-one', '}o--||'],
+    ['zero-many-to-zero-many', '}o--}o'],
+    ['zero-many-to-many', '}o--}|'],
+    ['zero-many-to-zero-one-optional', '}o..|o'],
+    ['zero-many-to-one-optional', '}o..||'],
+    ['zero-many-to-zero-many-optional', '}o..}o'],
+    ['zero-many-to-many-optional', '}o..}|'],
+    ['many-to-zero-one', '}|--|o'],
+    ['many-to-one', '}|--||'],
+    ['many-to-zero-many', '}|--}o'],
+    ['many-to-many', '}|--}|'],
+    ['many-to-zero-one-optional', '}|..|o'],
+    ['many-to-one-optional', '}|..||'],
+    ['many-to-zero-many-optional', '}|..}o'],
+    ['many-to-many-optional', '}|..}|'],
+    ['zero-many-to-zero-one-optional', '}o..|o'],
+    ['zero-many-to-one-optional', '}o..||'],
+    ['zero-many-to-zero-many-optional', '}o..}o'],
+    ['zero-many-to-many-optional', '}o..}|'],
+    ['many-to-zero-one-optional', '}|..|o'],
+    ['many-to-one-optional', '}|..||'],
+    ['many-to-zero-many-optional', '}|..}o'],
+    ['many-to-many-optional', '}|..}|'],
+    ['zero-one-to-zero-one-optional', '|o..|o'],
+    ['zero-one-to-one-optional', '|o..||'],
+  ])('buildRelationLine(%s) -> %s', (input, expected) => {
+    const result = buildRelationLine(input)
+    expect(result).toBe(expected)
   })
 
   it.concurrent('infer', () => {

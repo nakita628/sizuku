@@ -75,6 +75,85 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number):
   return reverseIndex.commentLines
 }
 
+/* ========================================================================== *
+ *  relation
+ * ========================================================================== */
+
+/**
+ * Extracts relations from the given code.
+ *
+ * @param code - The code to extract relations from.
+ * @returns The extracted relations.
+ */
+export function extractRelations(code: string[]): {
+  fromModel: string
+  toModel: string
+  fromField: string
+  toField: string
+  type: string
+}[] {
+  const relations: {
+    fromModel: string
+    toModel: string
+    fromField: string
+    toField: string
+    type: string
+  }[] = []
+  for (const line of code) {
+    const relationMatch = line.match(/@relation\s+(\w+)\.(\w+)\s+(\w+)\.(\w+)\s+(\w+-to-\w+)/)
+    if (relationMatch) {
+      const [_, fromModel, fromField, toModel, toField, type] = relationMatch
+      relations.push({ fromModel, fromField, toModel, toField, type })
+    }
+  }
+  return relations
+}
+
+/**
+ * Build a relation line from a string.
+ *
+ * @param input - The input string.
+ * @returns The built relation line.
+ */
+export function buildRelationLine(input: string): string {
+  const toSymbol = (r: string): string =>
+    r === 'zero-one'
+      ? '|o'
+      : r === 'one'
+        ? '||'
+        : r === 'zero-many'
+          ? '}o'
+          : r === 'many'
+            ? '}|'
+            : (() => {
+                throw new Error(`Invalid relationship: ${r}`)
+              })()
+
+  const isRelationship = (r: string): boolean =>
+    ['zero-one', 'one', 'zero-many', 'many'].includes(r)
+
+  const [fromRaw, toRawWithOptional] = input.split('-to-')
+  if (!(fromRaw && toRawWithOptional)) throw new Error(`Invalid input format: ${input}`)
+
+  const [toRaw, isOptional] = toRawWithOptional.includes('-optional')
+    ? [toRawWithOptional.replace('-optional', ''), true]
+    : [toRawWithOptional, false]
+
+  if (!(isRelationship(fromRaw) && isRelationship(toRaw))) {
+    throw new Error(`Invalid relationship string: ${input}`)
+  }
+
+  const fromSymbol = toSymbol(fromRaw)
+  const toSymbolStr = toSymbol(toRaw)
+  const connector = isOptional ? '..' : '--'
+
+  return `${fromSymbol}${connector}${toSymbolStr}`
+}
+
+/* ========================================================================== *
+ *  zod
+ * ========================================================================== */
+
 /**
  * @param name
  * @returns

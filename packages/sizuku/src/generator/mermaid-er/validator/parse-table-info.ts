@@ -1,6 +1,5 @@
 import type { Expression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-import type { TableInfo } from '../types.js'
 
 type FieldInfo = {
   name: string
@@ -17,7 +16,14 @@ const baseBuilderName = (expr: Expression): string => {
 
 const isFieldInfo = (v: FieldInfo | null): v is FieldInfo => v !== null
 
-export function parseTableInfo(code: string[]): TableInfo[] {
+export function parseTableInfo(code: string[]): {
+  name: string
+  fields: {
+    type: string
+    name: string
+    description: string | null
+  }[]
+}[] {
   const source = code.join('\n')
   const file = new Project({ useInMemoryFileSystem: true }).createSourceFile('temp.ts', source)
 
