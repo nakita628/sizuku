@@ -13,8 +13,6 @@ export const user = mysqlTable('user', {
 })
 
 /// @relation user.id post.userId one-to-many
-/// @z.looseObject
-/// @v.looseObject
 export const post = mysqlTable('post', {
   /// Primary key
   /// @z.uuid()
@@ -34,7 +32,6 @@ export const post = mysqlTable('post', {
   userId: varchar('user_id', { length: 36 }).notNull(),
 })
 
-/// @z.strictObject
 export const userRelations = relations(user, ({ many }) => ({
   posts: many(post),
 }))

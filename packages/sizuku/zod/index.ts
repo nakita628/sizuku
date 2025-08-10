@@ -13,7 +13,7 @@ export const UserSchema = z.object({
 
 export type User = z.infer<typeof UserSchema>
 
-export const PostSchema = z.looseObject({
+export const PostSchema = z.object({
   /**
    * Primary key
    */
@@ -38,6 +38,6 @@ export const UserRelationsSchema = z.object({ ...UserSchema.shape, posts: z.arra
 
 export type UserRelations = z.infer<typeof UserRelationsSchema>
 
-export const PostRelationsSchema = z.looseObject({ ...PostSchema.shape, user: UserSchema })
+export const PostRelationsSchema = z.object({ ...PostSchema.shape, user: UserSchema })
 
 export type PostRelations = z.infer<typeof PostRelationsSchema>
