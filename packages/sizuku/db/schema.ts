@@ -34,6 +34,7 @@ export const post = mysqlTable('post', {
   userId: varchar('user_id', { length: 36 }).notNull(),
 })
 
+/// @z.strictObject
 export const userRelations = relations(user, ({ many }) => ({
   posts: many(post),
 }))

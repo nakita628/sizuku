@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { buildRelationLine, extractRelations } from '../shared/helper/extract-schemas.js'
 import {
   capitalize,
   extractFieldComments,
@@ -7,10 +8,6 @@ import {
   inferInput,
   parseFieldComments,
 } from './index'
-import {
-  buildRelationLine,
-  extractRelations,
-} from '../shared/helper/extract-schemas.js'
 
 // Test run
 // pnpm vitest run ./src/utils/index.test.ts
@@ -31,37 +28,43 @@ describe('utils', () => {
         ['/// Primary key', '/// @z.uuid()', '/// @v.pipe(v.string(), v.uuid())'],
         '@v.',
       ),
-    ).toStrictEqual({ definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key', objectType: undefined })
+    ).toStrictEqual({
+      definition: 'v.pipe(v.string(), v.uuid())',
+      description: 'Primary key',
+      objectType: undefined,
+    })
   })
 
   it.concurrent('parseFieldComments with strictObject', () => {
     expect(
-      parseFieldComments(
-        ['/// @z.strictObject', '/// Primary key', '/// @z.uuid()'],
-        '@z.',
-      ),
+      parseFieldComments(['/// @z.strictObject', '/// Primary key', '/// @z.uuid()'], '@z.'),
     ).toStrictEqual({ definition: 'z.uuid()', description: 'Primary key', objectType: 'strict' })
     expect(
       parseFieldComments(
         ['/// @v.strictObject', '/// Primary key', '/// @v.pipe(v.string(), v.uuid())'],
         '@v.',
       ),
-    ).toStrictEqual({ definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key', objectType: 'strict' })
+    ).toStrictEqual({
+      definition: 'v.pipe(v.string(), v.uuid())',
+      description: 'Primary key',
+      objectType: 'strict',
+    })
   })
 
   it.concurrent('parseFieldComments with looseObject', () => {
     expect(
-      parseFieldComments(
-        ['/// @z.looseObject', '/// Primary key', '/// @z.uuid()'],
-        '@z.',
-      ),
+      parseFieldComments(['/// @z.looseObject', '/// Primary key', '/// @z.uuid()'], '@z.'),
     ).toStrictEqual({ definition: 'z.uuid()', description: 'Primary key', objectType: 'loose' })
     expect(
       parseFieldComments(
         ['/// @v.looseObject', '/// Primary key', '/// @v.pipe(v.string(), v.uuid())'],
         '@v.',
       ),
-    ).toStrictEqual({ definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key', objectType: 'loose' })
+    ).toStrictEqual({
+      definition: 'v.pipe(v.string(), v.uuid())',
+      description: 'Primary key',
+      objectType: 'loose',
+    })
   })
   it.concurrent('extractFieldComments', () => {
     const sourceText = `export const user = mysqlTable('user', {
@@ -115,9 +118,7 @@ export const postRelations = relations(post, ({ one }) => ({
   })
 
   it.concurrent('extractRelations Test', () => {
-    const result = extractRelations([
-      '/// @relation user.id post.userId one-to-many',
-    ])
+    const result = extractRelations(['/// @relation user.id post.userId one-to-many'])
     const expected = [
       {
         fromModel: 'user',

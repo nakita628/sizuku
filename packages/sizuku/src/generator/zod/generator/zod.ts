@@ -19,8 +19,12 @@ export function zod(
   },
   comment: boolean,
 ) {
-  const objectType = schema.objectType === 'strict' ? 'strictObject' : 
-                    schema.objectType === 'loose' ? 'looseObject' : 'object'
-  
+  const objectType =
+    schema.objectType === 'strict'
+      ? 'strictObject'
+      : schema.objectType === 'loose'
+        ? 'looseObject'
+        : 'object'
+
   return `export const ${capitalize(schema.name)}Schema = z.${objectType}({${fieldDefinitions(schema, comment)}})`
 }

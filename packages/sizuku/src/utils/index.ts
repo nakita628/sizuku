@@ -104,15 +104,21 @@ export function splitByNewline(str: string): string[] {
 export function trimString(str: string): string {
   let start = 0
   let end = str.length - 1
-  
-  while (start <= end && (str[start] === ' ' || str[start] === '\t' || str[start] === '\r' || str[start] === '\n')) {
+
+  while (
+    start <= end &&
+    (str[start] === ' ' || str[start] === '\t' || str[start] === '\r' || str[start] === '\n')
+  ) {
     start++
   }
-  
-  while (end >= start && (str[end] === ' ' || str[end] === '\t' || str[end] === '\r' || str[end] === '\n')) {
+
+  while (
+    end >= start &&
+    (str[end] === ' ' || str[end] === '\t' || str[end] === '\r' || str[end] === '\n')
+  ) {
     end--
   }
-  
+
   return str.substring(start, end + 1)
 }
 
@@ -130,21 +136,21 @@ export function parseRelationLine(line: string): {
   type: string
 } | null {
   if (!startsWith(line, '@relation')) return null
-  
+
   const parts = splitByWhitespace(line)
   if (parts.length < 5) return null
-  
+
   const fromParts = splitByDot(parts[1])
   const toParts = splitByDot(parts[2])
-  
+
   if (fromParts.length !== 2 || toParts.length !== 2) return null
-  
+
   return {
     fromModel: fromParts[0],
     fromField: fromParts[1],
     toModel: toParts[0],
     toField: toParts[1],
-    type: parts[3]
+    type: parts[3],
   }
 }
 
@@ -181,11 +187,11 @@ export function splitByWhitespace(str: string): string[] {
   const result: string[] = []
   let current = ''
   let inWord = false
-  
+
   for (let i = 0; i < str.length; i++) {
     const char = str[i]
     const isWhitespace = char === ' ' || char === '\t' || char === '\r' || char === '\n'
-    
+
     if (isWhitespace) {
       if (inWord) {
         result.push(current)
@@ -197,11 +203,11 @@ export function splitByWhitespace(str: string): string[] {
       inWord = true
     }
   }
-  
+
   if (inWord) {
     result.push(current)
   }
-  
+
   return result
 }
 
@@ -214,7 +220,7 @@ export function splitByWhitespace(str: string): string[] {
 export function splitByDot(str: string): string[] {
   const result: string[] = []
   let current = ''
-  
+
   for (let i = 0; i < str.length; i++) {
     if (str[i] === '.') {
       result.push(current)
@@ -223,7 +229,7 @@ export function splitByDot(str: string): string[] {
       current += str[i]
     }
   }
-  
+
   result.push(current)
   return result
 }
@@ -244,26 +250,47 @@ export function parseFieldComments(
   tag: '@v.' | '@z.',
 ): { definition: string; description?: string; objectType?: 'strict' | 'loose' } {
   const cleaned = commentLines.map((line) => removeTripleSlash(line).trim()).filter(isNonEmpty)
-  
+
   // Extract object type from strictObject/looseObject tags
-  const objectTypeLine = cleaned.find((line) => 
-    containsSubstring(line, `${tag.slice(1)}strictObject`) || containsSubstring(line, `${tag.slice(1)}looseObject`)
+  const objectTypeLine = cleaned.find(
+    (line) =>
+      containsSubstring(line, `${tag.slice(1)}strictObject`) ||
+      containsSubstring(line, `${tag.slice(1)}looseObject`),
   )
-  const objectType = objectTypeLine && containsSubstring(objectTypeLine, 'strictObject') ? 'strict' : 
-                    objectTypeLine && containsSubstring(objectTypeLine, 'looseObject') ? 'loose' : undefined
-  
+  const objectType =
+    objectTypeLine && containsSubstring(objectTypeLine, 'strictObject')
+      ? 'strict'
+      : objectTypeLine && containsSubstring(objectTypeLine, 'looseObject')
+        ? 'loose'
+        : undefined
+
   // Extract definition (excluding strictObject/looseObject tags)
-  const definition = cleaned.find((line) => 
-    startsWith(line, tag) && !containsSubstring(line, 'strictObject') && !containsSubstring(line, 'looseObject')
-  ) ? removeAtSign(cleaned.find((line) => 
-    startsWith(line, tag) && !containsSubstring(line, 'strictObject') && !containsSubstring(line, 'looseObject')
-  )!) : ''
-  
+  const definition = cleaned.find(
+    (line) =>
+      startsWith(line, tag) &&
+      !containsSubstring(line, 'strictObject') &&
+      !containsSubstring(line, 'looseObject'),
+  )
+    ? removeAtSign(
+        cleaned.find(
+          (line) =>
+            startsWith(line, tag) &&
+            !containsSubstring(line, 'strictObject') &&
+            !containsSubstring(line, 'looseObject'),
+        )!,
+      )
+    : ''
+
   const descriptionLines = cleaned.filter(
-    (line) => !(containsSubstring(line, '@z.') || containsSubstring(line, '@v.') || containsSubstring(line, '@relation.')),
+    (line) =>
+      !(
+        containsSubstring(line, '@z.') ||
+        containsSubstring(line, '@v.') ||
+        containsSubstring(line, '@relation.')
+      ),
   )
   const description = descriptionLines.length > 0 ? joinWithSpace(descriptionLines) : undefined
-  
+
   return { definition, description, objectType }
 }
 
@@ -305,10 +332,6 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number):
     )
   return reverseIndex.commentLines
 }
-
-
-
-
 
 /* ========================================================================== *
  *  zod

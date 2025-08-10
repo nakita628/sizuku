@@ -1,17 +1,17 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-import { 
-  capitalize, 
-  extractFieldComments, 
-  parseFieldComments, 
-  splitByNewline, 
-  trimString, 
-  startsWith,
+import {
+  capitalize,
   containsSubstring,
-  splitByTo,
+  extractFieldComments,
+  parseFieldComments,
   removeOptionalSuffix,
+  splitByDot,
+  splitByNewline,
+  splitByTo,
   splitByWhitespace,
-  splitByDot
+  startsWith,
+  trimString,
 } from '../../utils/index.js'
 
 /**
@@ -163,7 +163,11 @@ function isRelationFunctionCall(callExpr: CallExpression): boolean {
  * @returns A property node extractor function
  */
 function createExtractFieldFromProperty(
-  parseFieldComments: (commentLines: string[]) => { definition: string; description?: string; objectType?: 'strict' | 'loose' },
+  parseFieldComments: (commentLines: string[]) => {
+    definition: string
+    description?: string
+    objectType?: 'strict' | 'loose'
+  },
 ) {
   return (property: Node, sourceText: string): FieldExtractionResult | null => {
     if (!Node.isPropertyAssignment(property)) return null
@@ -186,7 +190,11 @@ function createExtractFieldFromProperty(
  * @returns Function that extracts relation fields from property
  */
 function createExtractRelationFieldFromProperty(
-  parseFieldComments: (lines: string[]) => { definition: string; description?: string; objectType?: 'strict' | 'loose' },
+  parseFieldComments: (lines: string[]) => {
+    definition: string
+    description?: string
+    objectType?: 'strict' | 'loose'
+  },
   prefix: 'v' | 'z',
 ) {
   return (property: Node, sourceText: string): FieldExtractionResult | null => {
@@ -304,15 +312,22 @@ function createExtractFieldsFromCallExpression(
 function buildSchemaExtractor(
   extractFieldsFromCall: (call: CallExpression, sourceText: string) => FieldExtractionResult[],
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
-  parseFieldComments: (commentLines: string[], tag: '@v.' | '@z.') => { definition: string; description?: string; objectType?: 'strict' | 'loose' },
+  parseFieldComments: (
+    commentLines: string[],
+    tag: '@v.' | '@z.',
+  ) => { definition: string; description?: string; objectType?: 'strict' | 'loose' },
   commentPrefix: '@v.' | '@z.',
 ) {
-  return (variableStatement: Node, sourceText: string, originalSourceCode: string): SchemaExtractionResult | null => {
+  return (
+    variableStatement: Node,
+    sourceText: string,
+    originalSourceCode: string,
+  ): SchemaExtractionResult | null => {
     if (!Node.isVariableStatement(variableStatement)) return null
 
     const declarations = variableStatement.getDeclarations()
     if (declarations.length === 0) return null
-    
+
     const declaration = declarations[0]
     const name = declaration.getName()
     if (!name) return null
@@ -320,9 +335,9 @@ function buildSchemaExtractor(
     // Extract object type from table-level comments
     // Since ts-morph doesn't capture all comments properly, we'll parse the original source
     const statementStart = variableStatement.getStart()
-    const originalSourceLines = originalSourceCode.split('\n')  // Use original source, not AST sourceText
+    const originalSourceLines = originalSourceCode.split('\n') // Use original source, not AST sourceText
     const commentLines: string[] = []
-    
+
     // Find the line number where this statement starts
     let lineNumber = 0
     let charCount = 0
@@ -333,15 +348,15 @@ function buildSchemaExtractor(
       }
       charCount += originalSourceLines[i].length + 1 // +1 for newline
     }
-    
+
     // Collect comments immediately before the statement
     for (let i = lineNumber - 1; i >= 0; i--) {
       const line = originalSourceLines[i]
       const trimmedLine = trimString(line)
-      
+
       // Skip empty lines
       if (trimmedLine === '') continue
-      
+
       // If it's a comment line, add it to our collection
       if (startsWith(trimmedLine, '///')) {
         commentLines.unshift(line)
@@ -350,12 +365,8 @@ function buildSchemaExtractor(
         break
       }
     }
-    
 
-    
     const { objectType } = parseFieldComments(commentLines, commentPrefix)
-    
-
 
     const initializer = declaration.getInitializer()
 
@@ -401,7 +412,6 @@ export function extractSchemas(
   library: ValidationLibrary,
 ): SchemaExtractionResult[] {
   const sourceCode = lines.join('\n')
-  
 
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -431,7 +441,12 @@ export function extractSchemas(
     findObjectLiteralInArgs,
     isRelationFunctionCall,
   )
-  const extractSchema = buildSchemaExtractor(extractFieldsFromCall, extractField, parseFieldComments, commentPrefix)
+  const extractSchema = buildSchemaExtractor(
+    extractFieldsFromCall,
+    extractField,
+    parseFieldComments,
+    commentPrefix,
+  )
 
   return sourceFile
     .getVariableStatements()
@@ -505,7 +520,7 @@ export function extractRelationSchemas(
 
   // First, extract base schemas to get their objectType
   const baseSchemas = extractSchemas(lines, library)
-  const baseSchemaMap = new Map(baseSchemas.map(schema => [schema.name, schema.objectType]))
+  const baseSchemaMap = new Map(baseSchemas.map((schema) => [schema.name, schema.objectType]))
 
   const extractField = createExtractFieldFromProperty((lines) =>
     parseFieldComments(lines, commentPrefix),
@@ -534,10 +549,10 @@ export function extractRelationSchemas(
     if (!baseIdentifier) return null
     const baseName = baseIdentifier.getText()
     const fields = extractFieldsFromCall(initializer, sourceText)
-    
+
     // Inherit objectType from the base schema
     const objectType = baseSchemaMap.get(baseName)
-    
+
     return { name, baseName, fields, objectType }
   }
 
@@ -594,23 +609,23 @@ export function parseRelationLine(line: string): {
   const trimmedLine = trimString(line)
   const cleanLine = startsWith(trimmedLine, '///') ? trimmedLine.substring(3) : trimmedLine
   const finalLine = trimString(cleanLine)
-  
+
   if (!startsWith(finalLine, '@relation')) return null
-  
+
   const parts = splitByWhitespace(finalLine)
   if (parts.length < 4) return null
-  
+
   const fromParts = splitByDot(parts[1])
   const toParts = splitByDot(parts[2])
-  
+
   if (fromParts.length !== 2 || toParts.length !== 2) return null
-  
+
   return {
     fromModel: fromParts[0],
     fromField: fromParts[1],
     toModel: toParts[0],
     toField: toParts[1],
-    type: parts[3]
+    type: parts[3],
   }
 }
 

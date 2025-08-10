@@ -53,7 +53,6 @@ export type User = z.infer<typeof UserSchema>
       false,
     )
 
-    console.log(result)
     const expected = `export const UserSchema = z.object({id:z.uuid(),
 name:z.string().min(1).max(50)})
 `

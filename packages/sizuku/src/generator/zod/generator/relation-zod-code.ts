@@ -16,10 +16,14 @@ export function relationZodCode(
   const relName = `${schema.name}Schema`
   const baseSchema = `${capitalize(base)}Schema`
   const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
-  
-  const objectType = schema.objectType === 'strict' ? 'strictObject' : 
-                    schema.objectType === 'loose' ? 'looseObject' : 'object'
-  
+
+  const objectType =
+    schema.objectType === 'strict'
+      ? 'strictObject'
+      : schema.objectType === 'loose'
+        ? 'looseObject'
+        : 'object'
+
   const obj = `\nexport const ${capitalize(relName)} = z.${objectType}({...${baseSchema}.shape,${fields}})`
   if (withType) return `${obj}\n\n${infer(schema.name)}\n`
   return `${obj}`

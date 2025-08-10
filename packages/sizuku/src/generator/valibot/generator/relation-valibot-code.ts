@@ -16,10 +16,14 @@ export function relationValibotCode(
   const relName = `${schema.name}Schema`
   const baseSchema = `${capitalize(base)}Schema`
   const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
-  
-  const objectType = schema.objectType === 'strict' ? 'strictObject' : 
-                    schema.objectType === 'loose' ? 'looseObject' : 'object'
-  
+
+  const objectType =
+    schema.objectType === 'strict'
+      ? 'strictObject'
+      : schema.objectType === 'loose'
+        ? 'looseObject'
+        : 'object'
+
   const obj = `\nexport const ${capitalize(relName)} = v.${objectType}({...${baseSchema}.entries,${fields}})`
   if (withType) return `${obj}\n\n${inferInput(schema.name)}\n`
   return `${obj}`
