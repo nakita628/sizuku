@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildRelationLine,
   capitalize,
   extractFieldComments,
-  extractRelations,
   fieldDefinitions,
   infer,
   inferInput,
   parseFieldComments,
 } from './index'
+import {
+  buildRelationLine,
+  extractRelations,
+} from '../shared/helper/extract-schemas.js'
 
 // Test run
 // pnpm vitest run ./src/utils/index.test.ts
@@ -23,13 +25,43 @@ describe('utils', () => {
         ['/// Primary key', '/// @z.uuid()', '/// @v.pipe(v.string(), v.uuid())'],
         '@z.',
       ),
-    ).toStrictEqual({ definition: 'z.uuid()', description: 'Primary key' })
+    ).toStrictEqual({ definition: 'z.uuid()', description: 'Primary key', objectType: undefined })
     expect(
       parseFieldComments(
         ['/// Primary key', '/// @z.uuid()', '/// @v.pipe(v.string(), v.uuid())'],
         '@v.',
       ),
-    ).toStrictEqual({ definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key' })
+    ).toStrictEqual({ definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key', objectType: undefined })
+  })
+
+  it.concurrent('parseFieldComments with strictObject', () => {
+    expect(
+      parseFieldComments(
+        ['/// @z.strictObject', '/// Primary key', '/// @z.uuid()'],
+        '@z.',
+      ),
+    ).toStrictEqual({ definition: 'z.uuid()', description: 'Primary key', objectType: 'strict' })
+    expect(
+      parseFieldComments(
+        ['/// @v.strictObject', '/// Primary key', '/// @v.pipe(v.string(), v.uuid())'],
+        '@v.',
+      ),
+    ).toStrictEqual({ definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key', objectType: 'strict' })
+  })
+
+  it.concurrent('parseFieldComments with looseObject', () => {
+    expect(
+      parseFieldComments(
+        ['/// @z.looseObject', '/// Primary key', '/// @z.uuid()'],
+        '@z.',
+      ),
+    ).toStrictEqual({ definition: 'z.uuid()', description: 'Primary key', objectType: 'loose' })
+    expect(
+      parseFieldComments(
+        ['/// @v.looseObject', '/// Primary key', '/// @v.pipe(v.string(), v.uuid())'],
+        '@v.',
+      ),
+    ).toStrictEqual({ definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key', objectType: 'loose' })
   })
   it.concurrent('extractFieldComments', () => {
     const sourceText = `export const user = mysqlTable('user', {
@@ -84,48 +116,7 @@ export const postRelations = relations(post, ({ one }) => ({
 
   it.concurrent('extractRelations Test', () => {
     const result = extractRelations([
-      "export const user = mysqlTable('user', {",
-      '  /// Primary key',
-      '  /// @z.uuid()',
-      '  /// @v.pipe(v.string(), v.uuid())',
-      "  id: varchar('id', { length: 36 }).primaryKey(),",
-      '  /// Display name',
-      '  /// @z.string().min(1).max(50)',
-      '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
-      "  name: varchar('name', { length: 50 }).notNull(),",
-      '})',
-      '',
       '/// @relation user.id post.userId one-to-many',
-      "export const post = mysqlTable('post', {",
-      '  /// Primary key',
-      '  /// @z.uuid()',
-      '  /// @v.pipe(v.string(), v.uuid())',
-      "  id: varchar('id', { length: 36 }).primaryKey(),",
-      '  /// Article title',
-      '  /// @z.string().min(1).max(100)',
-      '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
-      "  title: varchar('title', { length: 100 }).notNull(),",
-      '  /// Body content (no length limit)',
-      '  /// @z.string()',
-      '  /// @v.string()',
-      "  content: varchar('content', { length: 65535 }).notNull(),",
-      '  /// Foreign key referencing User.id',
-      '  /// @z.uuid()',
-      '  /// @v.pipe(v.string(), v.uuid())',
-      "  userId: varchar('user_id', { length: 36 }).notNull(),",
-      '})',
-      '',
-      'export const userRelations = relations(user, ({ many }) => ({',
-      '  posts: many(post),',
-      '}))',
-      '',
-      'export const postRelations = relations(post, ({ one }) => ({',
-      '  user: one(user, {',
-      '    fields: [post.userId],',
-      '    references: [user.id],',
-      '  }),',
-      '}))',
-      '',
     ])
     const expected = [
       {

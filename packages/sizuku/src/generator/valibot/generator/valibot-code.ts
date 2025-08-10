@@ -15,6 +15,7 @@ export function valibotCode(
       definition: string
       description?: string
     }[]
+    objectType?: 'strict' | 'loose'
   },
   comment: boolean,
   type: boolean,

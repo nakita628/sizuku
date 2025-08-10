@@ -1,4 +1,4 @@
-import { buildRelationLine } from '../../../utils/index.js'
+import { buildRelationLine } from '../../../shared/helper/extract-schemas.js'
 
 /**
  * Generate a relation line for a relation

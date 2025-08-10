@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { extractRelations } from '../../utils/index.js'
+import { extractRelations } from '../../shared/helper/extract-schemas.js'
 import { erContent } from './generator/index.js'
 import { parseTableInfo } from './validator/index.js'
 

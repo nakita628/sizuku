@@ -1,8 +1,6 @@
 import { relations } from 'drizzle-orm'
 import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
 
-/// @z.strictObject
-/// @v.strictObject
 export const user = mysqlTable('user', {
   /// Primary key
   /// @z.uuid()
@@ -36,14 +34,10 @@ export const post = mysqlTable('post', {
   userId: varchar('user_id', { length: 36 }).notNull(),
 })
 
-/// @z.strictObject
-/// @v.strictObject
 export const userRelations = relations(user, ({ many }) => ({
   posts: many(post),
 }))
 
-/// @z.strictObject
-/// @v.strictObject
 export const postRelations = relations(post, ({ one }) => ({
   user: one(user, {
     fields: [post.userId],

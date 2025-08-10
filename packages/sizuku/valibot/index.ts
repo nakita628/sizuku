@@ -1,6 +1,6 @@
 import * as v from 'valibot'
 
-export const UserSchema = v.strictObject({
+export const UserSchema = v.object({
   /**
    * Primary key
    */
@@ -34,10 +34,10 @@ export const PostSchema = v.looseObject({
 
 export type Post = v.InferInput<typeof PostSchema>
 
-export const UserRelationsSchema = v.strictObject({ ...UserSchema.entries, posts: v.array(PostSchema) })
+export const UserRelationsSchema = v.object({ ...UserSchema.entries, posts: v.array(PostSchema) })
 
 export type UserRelations = v.InferInput<typeof UserRelationsSchema>
 
-export const PostRelationsSchema = v.strictObject({ ...PostSchema.entries, user: UserSchema })
+export const PostRelationsSchema = v.looseObject({ ...PostSchema.entries, user: UserSchema })
 
 export type PostRelations = v.InferInput<typeof PostRelationsSchema>

@@ -51,6 +51,59 @@ const TEST_CODE = [
   '',
 ]
 
+const TEST_CODE_WITH_OBJECT_TYPES = [
+  '/// @z.strictObject',
+  '/// @v.strictObject',
+  "export const user = mysqlTable('user', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Display name',
+  '  /// @z.string().min(1).max(50)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+  "  name: varchar('name', { length: 50 }).notNull(),",
+  '})',
+  '',
+  '/// @relation user.id post.userId one-to-many',
+  '/// @z.looseObject',
+  '/// @v.looseObject',
+  "export const post = mysqlTable('post', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Article title',
+  '  /// @z.string().min(1).max(100)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
+  "  title: varchar('title', { length: 100 }).notNull(),",
+  '  /// Body content (no length limit)',
+  '  /// @z.string()',
+  '  /// @v.string()',
+  "  content: varchar('content', { length: 65535 }).notNull(),",
+  '  /// Foreign key referencing User.id',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  userId: varchar('user_id', { length: 36 }).notNull(),",
+  '})',
+  '',
+  '/// @z.strictObject',
+  '/// @v.strictObject',
+  'export const userRelations = relations(user, ({ many }) => ({',
+  '  posts: many(post),',
+  '}))',
+  '',
+  '/// @z.strictObject',
+  '/// @v.strictObject',
+  'export const postRelations = relations(post, ({ one }) => ({',
+  '  user: one(user, {',
+  '    fields: [post.userId],',
+  '    references: [user.id],',
+  '  }),',
+  '}))',
+  '',
+]
+
 describe('sizukuZod', () => {
   afterEach(() => {
     if (!fs.existsSync('tmp')) {
@@ -139,6 +192,53 @@ export const PostSchema = v.object({
 })
 
 export type Post = v.InferInput<typeof PostSchema>
+`
+    expect(result).toBe(expected)
+  })
+
+  it('sizukuValibot with strictObject and looseObject', async () => {
+    await sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, 'tmp/valibot-test.ts')
+    const result = await fsp.readFile('tmp/valibot-test.ts', 'utf-8')
+    const expected = `import * as v from 'valibot'
+
+export const UserSchema = v.strictObject({
+  id: v.pipe(v.string(), v.uuid()),
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
+})
+
+export const PostSchema = v.looseObject({
+  id: v.pipe(v.string(), v.uuid()),
+  title: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
+  content: v.string(),
+  userId: v.pipe(v.string(), v.uuid()),
+})
+`
+    expect(result).toBe(expected)
+  })
+
+  it('sizukuValibot with strictObject and looseObject with relations', async () => {
+    await sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, 'tmp/valibot-test.ts', false, false, true)
+    const result = await fsp.readFile('tmp/valibot-test.ts', 'utf-8')
+    const expected = `import * as v from 'valibot'
+
+export const UserSchema = v.strictObject({
+  id: v.pipe(v.string(), v.uuid()),
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
+})
+
+export const PostSchema = v.looseObject({
+  id: v.pipe(v.string(), v.uuid()),
+  title: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
+  content: v.string(),
+  userId: v.pipe(v.string(), v.uuid()),
+})
+
+export const UserRelationsSchema = v.strictObject({
+  ...UserSchema.entries,
+  posts: v.array(PostSchema),
+})
+
+export const PostRelationsSchema = v.looseObject({ ...PostSchema.entries, user: UserSchema })
 `
     expect(result).toBe(expected)
   })
