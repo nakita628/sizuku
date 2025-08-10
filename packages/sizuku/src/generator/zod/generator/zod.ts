@@ -15,8 +15,16 @@ export function zod(
       definition: string
       description?: string
     }[]
+    objectType?: 'strict' | 'loose'
   },
   comment: boolean,
 ) {
-  return `export const ${capitalize(schema.name)}Schema = z.object({${fieldDefinitions(schema, comment)}})`
+  const objectType =
+    schema.objectType === 'strict'
+      ? 'strictObject'
+      : schema.objectType === 'loose'
+        ? 'looseObject'
+        : 'object'
+
+  return `export const ${capitalize(schema.name)}Schema = z.${objectType}({${fieldDefinitions(schema, comment)}})`
 }

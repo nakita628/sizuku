@@ -17,6 +17,7 @@ export function zodCode(
       definition: string
       description?: string
     }[]
+    objectType?: 'strict' | 'loose'
   },
   comment: boolean,
   type: boolean,

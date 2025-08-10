@@ -51,6 +51,59 @@ const TEST_CODE = [
   '',
 ]
 
+const TEST_CODE_WITH_OBJECT_TYPES = [
+  '/// @z.strictObject',
+  '/// @v.strictObject',
+  "export const user = mysqlTable('user', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Display name',
+  '  /// @z.string().min(1).max(50)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+  "  name: varchar('name', { length: 50 }).notNull(),",
+  '})',
+  '',
+  '/// @relation user.id post.userId one-to-many',
+  '/// @z.looseObject',
+  '/// @v.looseObject',
+  "export const post = mysqlTable('post', {",
+  '  /// Primary key',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  '  /// Article title',
+  '  /// @z.string().min(1).max(100)',
+  '  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))',
+  "  title: varchar('title', { length: 100 }).notNull(),",
+  '  /// Body content (no length limit)',
+  '  /// @z.string()',
+  '  /// @v.string()',
+  "  content: varchar('content', { length: 65535 }).notNull(),",
+  '  /// Foreign key referencing User.id',
+  '  /// @z.uuid()',
+  '  /// @v.pipe(v.string(), v.uuid())',
+  "  userId: varchar('user_id', { length: 36 }).notNull(),",
+  '})',
+  '',
+  '/// @z.strictObject',
+  '/// @v.strictObject',
+  'export const userRelations = relations(user, ({ many }) => ({',
+  '  posts: many(post),',
+  '}))',
+  '',
+  '/// @z.strictObject',
+  '/// @v.strictObject',
+  'export const postRelations = relations(post, ({ one }) => ({',
+  '  user: one(user, {',
+  '    fields: [post.userId],',
+  '    references: [user.id],',
+  '  }),',
+  '}))',
+  '',
+]
+
 describe('sizukuZod', () => {
   afterEach(() => {
     if (!fs.existsSync('tmp')) {
@@ -151,6 +204,47 @@ export const PostSchema = z.object({
   content: z.string(),
   userId: z.uuid(),
 })
+`
+    expect(result).toBe(expected)
+  })
+
+  it('sizukuZod with strictObject and looseObject', async () => {
+    await sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, 'tmp/zod-test.ts')
+    const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
+    const expected = `import * as z from 'zod'
+
+export const UserSchema = z.strictObject({ id: z.uuid(), name: z.string().min(1).max(50) })
+
+export const PostSchema = z.looseObject({
+  id: z.uuid(),
+  title: z.string().min(1).max(100),
+  content: z.string(),
+  userId: z.uuid(),
+})
+`
+    expect(result).toBe(expected)
+  })
+
+  it('sizukuZod with strictObject and looseObject with relations', async () => {
+    await sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, 'tmp/zod-test.ts', false, false, undefined, true)
+    const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
+    const expected = `import * as z from 'zod'
+
+export const UserSchema = z.strictObject({ id: z.uuid(), name: z.string().min(1).max(50) })
+
+export const PostSchema = z.looseObject({
+  id: z.uuid(),
+  title: z.string().min(1).max(100),
+  content: z.string(),
+  userId: z.uuid(),
+})
+
+export const UserRelationsSchema = z.strictObject({
+  ...UserSchema.shape,
+  posts: z.array(PostSchema),
+})
+
+export const PostRelationsSchema = z.looseObject({ ...PostSchema.shape, user: UserSchema })
 `
     expect(result).toBe(expected)
   })

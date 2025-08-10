@@ -1,6 +1,17 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
-import { capitalize, extractFieldComments, parseFieldComments } from '../../utils/index.js'
+import {
+  capitalize,
+  containsSubstring,
+  extractFieldComments,
+  parseFieldComments,
+  removeOptionalSuffix,
+  splitByDot,
+  splitByTo,
+  splitByWhitespace,
+  startsWith,
+  trimString,
+} from '../../utils/index.js'
 
 /**
  * Supported validation library types.
@@ -24,6 +35,8 @@ export type SchemaExtractionResult = {
     /** Optional field description from comments */
     description?: string
   }[]
+  /** Object type for schema generation ('strict' | 'loose' | undefined) */
+  objectType?: 'strict' | 'loose'
 }
 
 /**
@@ -37,6 +50,8 @@ export type RelationSchemaExtractionResult = {
     definition: string
     description?: string
   }[]
+  /** Object type for schema generation ('strict' | 'loose' | undefined) */
+  objectType?: 'strict' | 'loose'
 }
 
 /**
@@ -143,11 +158,15 @@ function isRelationFunctionCall(callExpr: CallExpression): boolean {
 /**
  * Creates a field extractor function using a custom parseFieldComments implementation.
  *
- * @param parseFieldComments - A function that parses comment lines into { definition, description }
+ * @param parseFieldComments - A function that parses comment lines into { definition, description, objectType }
  * @returns A property node extractor function
  */
 function createExtractFieldFromProperty(
-  parseFieldComments: (commentLines: string[]) => { definition: string; description?: string },
+  parseFieldComments: (commentLines: string[]) => {
+    definition: string
+    description?: string
+    objectType?: 'strict' | 'loose'
+  },
 ) {
   return (property: Node, sourceText: string): FieldExtractionResult | null => {
     if (!Node.isPropertyAssignment(property)) return null
@@ -170,7 +189,11 @@ function createExtractFieldFromProperty(
  * @returns Function that extracts relation fields from property
  */
 function createExtractRelationFieldFromProperty(
-  parseFieldComments: (lines: string[]) => { definition: string; description?: string },
+  parseFieldComments: (lines: string[]) => {
+    definition: string
+    description?: string
+    objectType?: 'strict' | 'loose'
+  },
   prefix: 'v' | 'z',
 ) {
   return (property: Node, sourceText: string): FieldExtractionResult | null => {
@@ -281,24 +304,75 @@ function createExtractFieldsFromCallExpression(
  *
  * @param extractFieldsFromCall - Function to extract fields from a call expression
  * @param extractFieldFromProperty - Function to extract a single field from an object literal property
+ * @param parseFieldComments - Function to parse field comments with object type support
+ * @param commentPrefix - The comment prefix to use for parsing
  * @returns A function that extracts a schema from a variable declaration node
  */
 function buildSchemaExtractor(
   extractFieldsFromCall: (call: CallExpression, sourceText: string) => FieldExtractionResult[],
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
+  parseFieldComments: (
+    commentLines: string[],
+    tag: '@v.' | '@z.',
+  ) => { definition: string; description?: string; objectType?: 'strict' | 'loose' },
+  commentPrefix: '@v.' | '@z.',
 ) {
-  return (declaration: Node, sourceText: string): SchemaExtractionResult | null => {
-    if (!Node.isVariableDeclaration(declaration)) return null
+  return (
+    variableStatement: Node,
+    sourceText: string,
+    originalSourceCode: string,
+  ): SchemaExtractionResult | null => {
+    if (!Node.isVariableStatement(variableStatement)) return null
 
+    const declarations = variableStatement.getDeclarations()
+    if (declarations.length === 0) return null
+
+    const declaration = declarations[0]
     const name = declaration.getName()
     if (!name) return null
+
+    // Extract object type from table-level comments
+    // Since ts-morph doesn't capture all comments properly, we'll parse the original source
+    const statementStart = variableStatement.getStart()
+    const originalSourceLines = originalSourceCode.split('\n') // Use original source, not AST sourceText
+    const commentLines: string[] = []
+
+    // Find the line number where this statement starts
+    let lineNumber = 0
+    let charCount = 0
+    for (let i = 0; i < originalSourceLines.length; i++) {
+      if (charCount >= statementStart) {
+        lineNumber = i
+        break
+      }
+      charCount += originalSourceLines[i].length + 1 // +1 for newline
+    }
+
+    // Collect comments immediately before the statement
+    for (let i = lineNumber - 1; i >= 0; i--) {
+      const line = originalSourceLines[i]
+      const trimmedLine = trimString(line)
+
+      // Skip empty lines
+      if (trimmedLine === '') continue
+
+      // If it's a comment line, add it to our collection
+      if (startsWith(trimmedLine, '///')) {
+        commentLines.unshift(line)
+      } else {
+        // If we hit a non-comment line, stop collecting
+        break
+      }
+    }
+
+    const { objectType } = parseFieldComments(commentLines, commentPrefix)
 
     const initializer = declaration.getInitializer()
 
     if (Node.isCallExpression(initializer)) {
       if (isRelationFunctionCall(initializer)) return null
       const fields = extractFieldsFromCall(initializer, sourceText)
-      return { name, fields }
+      return { name, fields, objectType }
     }
 
     if (Node.isObjectLiteralExpression(initializer)) {
@@ -306,10 +380,10 @@ function buildSchemaExtractor(
         .getProperties()
         .map((prop) => extractFieldFromProperty(prop, sourceText))
         .filter((field): field is NonNullable<typeof field> => field !== null)
-      return { name, fields }
+      return { name, fields, objectType }
     }
 
-    return { name, fields: [] }
+    return { name, fields: [], objectType }
   }
 }
 
@@ -337,6 +411,7 @@ export function extractSchemas(
   library: ValidationLibrary,
 ): SchemaExtractionResult[] {
   const sourceCode = lines.join('\n')
+
   const project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: {
@@ -365,13 +440,17 @@ export function extractSchemas(
     findObjectLiteralInArgs,
     isRelationFunctionCall,
   )
-  const extractSchema = buildSchemaExtractor(extractFieldsFromCall, extractField)
+  const extractSchema = buildSchemaExtractor(
+    extractFieldsFromCall,
+    extractField,
+    parseFieldComments,
+    commentPrefix,
+  )
 
   return sourceFile
     .getVariableStatements()
     .filter((stmt) => stmt.hasExportKeyword())
-    .flatMap((stmt) => stmt.getDeclarations())
-    .map((decl) => extractSchema(decl, sourceText))
+    .map((stmt) => extractSchema(stmt, sourceText, sourceCode))
     .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
 }
 
@@ -438,6 +517,10 @@ export function extractRelationSchemas(
   const commentPrefix = library === 'zod' ? '@z.' : '@v.'
   const schemaPrefix = library === 'zod' ? 'z' : 'v'
 
+  // First, extract base schemas to get their objectType
+  const baseSchemas = extractSchemas(lines, library)
+  const baseSchemaMap = new Map(baseSchemas.map((schema) => [schema.name, schema.objectType]))
+
   const extractField = createExtractFieldFromProperty((lines) =>
     parseFieldComments(lines, commentPrefix),
   )
@@ -465,7 +548,11 @@ export function extractRelationSchemas(
     if (!baseIdentifier) return null
     const baseName = baseIdentifier.getText()
     const fields = extractFieldsFromCall(initializer, sourceText)
-    return { name, baseName, fields }
+
+    // Inherit objectType from the base schema
+    const objectType = baseSchemaMap.get(baseName)
+
+    return { name, baseName, fields, objectType }
   }
 
   return sourceFile
@@ -474,4 +561,111 @@ export function extractRelationSchemas(
     .flatMap((stmt) => stmt.getDeclarations())
     .map((decl) => extract(decl))
     .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
+}
+
+/**
+ * Extracts relations from the given code.
+ *
+ * @param code - The code to extract relations from.
+ * @returns The extracted relations.
+ */
+export function extractRelations(code: string[]): {
+  fromModel: string
+  toModel: string
+  fromField: string
+  toField: string
+  type: string
+}[] {
+  const relations: {
+    fromModel: string
+    toModel: string
+    fromField: string
+    toField: string
+    type: string
+  }[] = []
+  for (const line of code) {
+    const relation = parseRelationLine(line)
+    if (relation) {
+      relations.push(relation)
+    }
+  }
+  return relations
+}
+
+/**
+ * Parse relation line and extract components.
+ *
+ * @param line - The line to parse.
+ * @returns Parsed relation or null if not a relation line.
+ */
+export function parseRelationLine(line: string): {
+  fromModel: string
+  toModel: string
+  fromField: string
+  toField: string
+  type: string
+} | null {
+  const trimmedLine = trimString(line)
+  const cleanLine = startsWith(trimmedLine, '///') ? trimmedLine.substring(3) : trimmedLine
+  const finalLine = trimString(cleanLine)
+
+  if (!startsWith(finalLine, '@relation')) return null
+
+  const parts = splitByWhitespace(finalLine)
+  if (parts.length < 4) return null
+
+  const fromParts = splitByDot(parts[1])
+  const toParts = splitByDot(parts[2])
+
+  if (fromParts.length !== 2 || toParts.length !== 2) return null
+
+  return {
+    fromModel: fromParts[0],
+    fromField: fromParts[1],
+    toModel: toParts[0],
+    toField: toParts[1],
+    type: parts[3],
+  }
+}
+
+/**
+ * Build a relation line from a string.
+ *
+ * @param input - The input string.
+ * @returns The built relation line.
+ */
+export function buildRelationLine(input: string): string {
+  const toSymbol = (r: string): string =>
+    r === 'zero-one'
+      ? '|o'
+      : r === 'one'
+        ? '||'
+        : r === 'zero-many'
+          ? '}o'
+          : r === 'many'
+            ? '}|'
+            : (() => {
+                throw new Error(`Invalid relationship: ${r}`)
+              })()
+
+  const isRelationship = (r: string): boolean =>
+    ['zero-one', 'one', 'zero-many', 'many'].includes(r)
+
+  const parts = splitByTo(input)
+  if (!parts) throw new Error(`Invalid input format: ${input}`)
+
+  const [fromRaw, toRawWithOptional] = parts
+  const [toRaw, isOptional] = containsSubstring(toRawWithOptional, '-optional')
+    ? [removeOptionalSuffix(toRawWithOptional), true]
+    : [toRawWithOptional, false]
+
+  if (!(isRelationship(fromRaw) && isRelationship(toRaw))) {
+    throw new Error(`Invalid relationship string: ${input}`)
+  }
+
+  const fromSymbol = toSymbol(fromRaw)
+  const toSymbolStr = toSymbol(toRaw)
+  const connector = isOptional ? '..' : '--'
+
+  return `${fromSymbol}${connector}${toSymbolStr}`
 }

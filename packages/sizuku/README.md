@@ -24,8 +24,8 @@ npm install -D sizuku
 Prepare schema.ts:
 
 ```ts
-import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
 import { relations } from 'drizzle-orm'
+import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
 
 export const user = mysqlTable('user', {
   /// Primary key
@@ -49,8 +49,8 @@ export const post = mysqlTable('post', {
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))
   title: varchar('title', { length: 100 }).notNull(),
   /// Body content (no length limit)
-  /// @z.string()
-  /// @v.string()
+  /// @z.string().min(1).max(65535)
+  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
   content: varchar('content', { length: 65535 }).notNull(),
   /// Foreign key referencing User.id
   /// @z.uuid()
@@ -99,7 +99,7 @@ npx sizuku
 ### Zod
 
 ```ts
-import { z } from 'zod/v4'
+import * as z from 'zod'
 
 export const UserSchema = z.object({
   /**
@@ -126,7 +126,7 @@ export const PostSchema = z.object({
   /**
    * Body content (no length limit)
    */
-  content: z.string(),
+  content: z.string().min(1).max(65535),
   /**
    * Foreign key referencing User.id
    */
@@ -134,6 +134,14 @@ export const PostSchema = z.object({
 })
 
 export type Post = z.infer<typeof PostSchema>
+
+export const UserRelationsSchema = z.object({ ...UserSchema.shape, posts: z.array(PostSchema) })
+
+export type UserRelations = z.infer<typeof UserRelationsSchema>
+
+export const PostRelationsSchema = z.object({ ...PostSchema.shape, user: UserSchema })
+
+export type PostRelations = z.infer<typeof PostRelationsSchema>
 ```
 
 ### Valibot
@@ -152,8 +160,6 @@ export const UserSchema = v.object({
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
 })
 
-export type User = v.InferInput<typeof UserSchema>
-
 export const PostSchema = v.object({
   /**
    * Primary key
@@ -166,14 +172,16 @@ export const PostSchema = v.object({
   /**
    * Body content (no length limit)
    */
-  content: v.string(),
+  content: v.pipe(v.string(), v.minLength(1), v.maxLength(65535)),
   /**
    * Foreign key referencing User.id
    */
   userId: v.pipe(v.string(), v.uuid()),
 })
 
-export type Post = v.InferInput<typeof PostSchema>
+export const UserRelationsSchema = v.object({ ...UserSchema.entries, posts: v.array(PostSchema) })
+
+export const PostRelationsSchema = v.object({ ...PostSchema.entries, user: UserSchema })
 ```
 
 ### Mermaid ER
@@ -192,8 +200,6 @@ erDiagram
         varchar userId "Foreign key referencing User.id"
     }
 ```
-
-This project is in **early development** and being maintained by a developer with about 2 years of experience. While I'm doing my best to create a useful tool:
 
 ### ⚠️ WARNING: Potential Breaking Changes Without Notice
 

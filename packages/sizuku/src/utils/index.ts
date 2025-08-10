@@ -12,6 +12,228 @@ export function capitalize(str: string): string {
   return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
 }
 
+/**
+ * Remove triple slash prefix from a string.
+ *
+ * @param str - The input string.
+ * @returns String with triple slash prefix removed.
+ */
+export function removeTripleSlash(str: string): string {
+  return str.startsWith('///') ? str.substring(3) : str
+}
+
+/**
+ * Check if a string is non-empty.
+ *
+ * @param str - The input string.
+ * @returns True if string is non-empty.
+ */
+export function isNonEmpty(str: string): boolean {
+  return str.length > 0
+}
+
+/**
+ * Check if a string contains a substring.
+ *
+ * @param str - The input string.
+ * @param substr - The substring to search for.
+ * @returns True if string contains substring.
+ */
+export function containsSubstring(str: string, substr: string): boolean {
+  return str.indexOf(substr) !== -1
+}
+
+/**
+ * Check if a string starts with a prefix.
+ *
+ * @param str - The input string.
+ * @param prefix - The prefix to check.
+ * @returns True if string starts with prefix.
+ */
+export function startsWith(str: string, prefix: string): boolean {
+  return str.indexOf(prefix) === 0
+}
+
+/**
+ * Remove @ sign from the beginning of a string.
+ *
+ * @param str - The input string.
+ * @returns String with @ sign removed.
+ */
+export function removeAtSign(str: string): string {
+  return str.startsWith('@') ? str.substring(1) : str
+}
+
+/**
+ * Join array of strings with space separator.
+ *
+ * @param arr - Array of strings to join.
+ * @returns Joined string with spaces.
+ */
+export function joinWithSpace(arr: string[]): string {
+  return arr.join(' ')
+}
+
+/**
+ * Split string by newline character.
+ *
+ * @param str - The input string.
+ * @returns Array of strings split by newline.
+ */
+export function splitByNewline(str: string): string[] {
+  const result: string[] = []
+  let current = ''
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '\n') {
+      result.push(current)
+      current = ''
+    } else {
+      current += str[i]
+    }
+  }
+  result.push(current)
+  return result
+}
+
+/**
+ * Trim whitespace from string.
+ *
+ * @param str - The input string.
+ * @returns Trimmed string.
+ */
+export function trimString(str: string): string {
+  let start = 0
+  let end = str.length - 1
+
+  while (
+    start <= end &&
+    (str[start] === ' ' || str[start] === '\t' || str[start] === '\r' || str[start] === '\n')
+  ) {
+    start++
+  }
+
+  while (
+    end >= start &&
+    (str[end] === ' ' || str[end] === '\t' || str[end] === '\r' || str[end] === '\n')
+  ) {
+    end--
+  }
+
+  return str.substring(start, end + 1)
+}
+
+/**
+ * Parse relation line and extract components.
+ *
+ * @param line - The line to parse.
+ * @returns Parsed relation or null if not a relation line.
+ */
+export function parseRelationLine(line: string): {
+  fromModel: string
+  toModel: string
+  fromField: string
+  toField: string
+  type: string
+} | null {
+  if (!startsWith(line, '@relation')) return null
+
+  const parts = splitByWhitespace(line)
+  if (parts.length < 5) return null
+
+  const fromParts = splitByDot(parts[1])
+  const toParts = splitByDot(parts[2])
+
+  if (fromParts.length !== 2 || toParts.length !== 2) return null
+
+  return {
+    fromModel: fromParts[0],
+    fromField: fromParts[1],
+    toModel: toParts[0],
+    toField: toParts[1],
+    type: parts[3],
+  }
+}
+
+/**
+ * Split string by '-to-' delimiter.
+ *
+ * @param str - The input string.
+ * @returns Array with two parts or null if not found.
+ */
+export function splitByTo(str: string): [string, string] | null {
+  const index = str.indexOf('-to-')
+  if (index === -1) return null
+  return [str.substring(0, index), str.substring(index + 4)]
+}
+
+/**
+ * Remove optional suffix from string.
+ *
+ * @param str - The input string.
+ * @returns String with optional suffix removed.
+ */
+export function removeOptionalSuffix(str: string): string {
+  const index = str.indexOf('-optional')
+  return index !== -1 ? str.substring(0, index) : str
+}
+
+/**
+ * Split string by whitespace.
+ *
+ * @param str - The input string.
+ * @returns Array of strings split by whitespace.
+ */
+export function splitByWhitespace(str: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inWord = false
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i]
+    const isWhitespace = char === ' ' || char === '\t' || char === '\r' || char === '\n'
+
+    if (isWhitespace) {
+      if (inWord) {
+        result.push(current)
+        current = ''
+        inWord = false
+      }
+    } else {
+      current += char
+      inWord = true
+    }
+  }
+
+  if (inWord) {
+    result.push(current)
+  }
+
+  return result
+}
+
+/**
+ * Split string by dot character.
+ *
+ * @param str - The input string.
+ * @returns Array of strings split by dot.
+ */
+export function splitByDot(str: string): string[] {
+  const result: string[] = []
+  let current = ''
+
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '.') {
+      result.push(current)
+      current = ''
+    } else {
+      current += str[i]
+    }
+  }
+
+  result.push(current)
+  return result
+}
+
 /* ========================================================================== *
  *  parse
  * ========================================================================== */
@@ -26,14 +248,42 @@ export function capitalize(str: string): string {
 export function parseFieldComments(
   commentLines: string[],
   tag: '@v.' | '@z.',
-): { definition: string; description?: string } {
-  const cleaned = commentLines.map((line) => line.replace(/^\/\/\/\s*/, '').trim()).filter(Boolean)
-  const definition = cleaned.find((line) => line.startsWith(tag))?.replace(/^@/, '') ?? ''
-  const descriptionLines = cleaned.filter(
-    (line) => !(line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')),
+): { definition: string; description?: string; objectType?: 'strict' | 'loose' } {
+  const cleaned = commentLines.map((line) => removeTripleSlash(line).trim()).filter(isNonEmpty)
+
+  // Extract object type from strictObject/looseObject tags
+  const objectTypeLine = cleaned.find(
+    (line) =>
+      containsSubstring(line, `${tag.slice(1)}strictObject`) ||
+      containsSubstring(line, `${tag.slice(1)}looseObject`),
   )
-  const description = descriptionLines.length ? descriptionLines.join(' ') : undefined
-  return { definition, description }
+  const objectType =
+    objectTypeLine && containsSubstring(objectTypeLine, 'strictObject')
+      ? 'strict'
+      : objectTypeLine && containsSubstring(objectTypeLine, 'looseObject')
+        ? 'loose'
+        : undefined
+
+  // Extract definition (excluding strictObject/looseObject tags)
+  const definitionLine = cleaned.find(
+    (line) =>
+      startsWith(line, tag) &&
+      !containsSubstring(line, 'strictObject') &&
+      !containsSubstring(line, 'looseObject'),
+  )
+  const definition = definitionLine ? removeAtSign(definitionLine) : ''
+
+  const descriptionLines = cleaned.filter(
+    (line) =>
+      !(
+        containsSubstring(line, '@z.') ||
+        containsSubstring(line, '@v.') ||
+        containsSubstring(line, '@relation.')
+      ),
+  )
+  const description = descriptionLines.length > 0 ? joinWithSpace(descriptionLines) : undefined
+
+  return { definition, description, objectType }
 }
 
 /* ========================================================================== *
@@ -49,15 +299,15 @@ export function parseFieldComments(
  */
 export function extractFieldComments(sourceText: string, fieldStartPos: number): string[] {
   const beforeField = sourceText.substring(0, fieldStartPos)
-  const lines = beforeField.split('\n')
+  const lines = splitByNewline(beforeField)
   const reverseIndex = lines
-    .map((line, index) => ({ line: line.trim(), index }))
+    .map((line, index) => ({ line: trimString(line), index }))
     .reverse()
     .reduce<{ commentLines: string[]; shouldStop: boolean }>(
       (acc, { line }) => {
         if (acc.shouldStop) return acc
 
-        if (line.startsWith('///')) {
+        if (startsWith(line, '///')) {
           return {
             commentLines: [line, ...acc.commentLines],
             shouldStop: false,
@@ -73,81 +323,6 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number):
       { commentLines: [], shouldStop: false },
     )
   return reverseIndex.commentLines
-}
-
-/* ========================================================================== *
- *  relation
- * ========================================================================== */
-
-/**
- * Extracts relations from the given code.
- *
- * @param code - The code to extract relations from.
- * @returns The extracted relations.
- */
-export function extractRelations(code: string[]): {
-  fromModel: string
-  toModel: string
-  fromField: string
-  toField: string
-  type: string
-}[] {
-  const relations: {
-    fromModel: string
-    toModel: string
-    fromField: string
-    toField: string
-    type: string
-  }[] = []
-  for (const line of code) {
-    const relationMatch = line.match(/@relation\s+(\w+)\.(\w+)\s+(\w+)\.(\w+)\s+(\w+-to-\w+)/)
-    if (relationMatch) {
-      const [_, fromModel, fromField, toModel, toField, type] = relationMatch
-      relations.push({ fromModel, fromField, toModel, toField, type })
-    }
-  }
-  return relations
-}
-
-/**
- * Build a relation line from a string.
- *
- * @param input - The input string.
- * @returns The built relation line.
- */
-export function buildRelationLine(input: string): string {
-  const toSymbol = (r: string): string =>
-    r === 'zero-one'
-      ? '|o'
-      : r === 'one'
-        ? '||'
-        : r === 'zero-many'
-          ? '}o'
-          : r === 'many'
-            ? '}|'
-            : (() => {
-                throw new Error(`Invalid relationship: ${r}`)
-              })()
-
-  const isRelationship = (r: string): boolean =>
-    ['zero-one', 'one', 'zero-many', 'many'].includes(r)
-
-  const [fromRaw, toRawWithOptional] = input.split('-to-')
-  if (!(fromRaw && toRawWithOptional)) throw new Error(`Invalid input format: ${input}`)
-
-  const [toRaw, isOptional] = toRawWithOptional.includes('-optional')
-    ? [toRawWithOptional.replace('-optional', ''), true]
-    : [toRawWithOptional, false]
-
-  if (!(isRelationship(fromRaw) && isRelationship(toRaw))) {
-    throw new Error(`Invalid relationship string: ${input}`)
-  }
-
-  const fromSymbol = toSymbol(fromRaw)
-  const toSymbolStr = toSymbol(toRaw)
-  const connector = isOptional ? '..' : '--'
-
-  return `${fromSymbol}${connector}${toSymbolStr}`
 }
 
 /* ========================================================================== *
