@@ -7,7 +7,6 @@ import {
   parseFieldComments,
   removeOptionalSuffix,
   splitByDot,
-  splitByNewline,
   splitByTo,
   splitByWhitespace,
   startsWith,

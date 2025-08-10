@@ -265,21 +265,13 @@ export function parseFieldComments(
         : undefined
 
   // Extract definition (excluding strictObject/looseObject tags)
-  const definition = cleaned.find(
+  const definitionLine = cleaned.find(
     (line) =>
       startsWith(line, tag) &&
       !containsSubstring(line, 'strictObject') &&
       !containsSubstring(line, 'looseObject'),
   )
-    ? removeAtSign(
-        cleaned.find(
-          (line) =>
-            startsWith(line, tag) &&
-            !containsSubstring(line, 'strictObject') &&
-            !containsSubstring(line, 'looseObject'),
-        )!,
-      )
-    : ''
+  const definition = definitionLine ? removeAtSign(definitionLine) : ''
 
   const descriptionLines = cleaned.filter(
     (line) =>
