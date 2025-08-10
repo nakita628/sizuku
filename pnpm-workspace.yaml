@@ -1,2 +1,4 @@
 packages:
-  - 'packages/*'
+  - packages/*
+overrides:
+  sizuku: link:packages/sizuku

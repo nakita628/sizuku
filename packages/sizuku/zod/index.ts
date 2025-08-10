@@ -1,6 +1,6 @@
 import * as z from 'zod'
 
-export const UserSchema = z.object({
+export const UserSchema = z.strictObject({
   /**
    * Primary key
    */
@@ -13,7 +13,7 @@ export const UserSchema = z.object({
 
 export type User = z.infer<typeof UserSchema>
 
-export const PostSchema = z.object({
+export const PostSchema = z.looseObject({
   /**
    * Primary key
    */
@@ -34,10 +34,10 @@ export const PostSchema = z.object({
 
 export type Post = z.infer<typeof PostSchema>
 
-export const UserRelationsSchema = z.object({ ...UserSchema.shape, posts: z.array(PostSchema) })
+export const UserRelationsSchema = z.strictObject({ ...UserSchema.shape, posts: z.array(PostSchema) })
 
 export type UserRelations = z.infer<typeof UserRelationsSchema>
 
-export const PostRelationsSchema = z.object({ ...PostSchema.shape, user: UserSchema })
+export const PostRelationsSchema = z.strictObject({ ...PostSchema.shape, user: UserSchema })
 
 export type PostRelations = z.infer<typeof PostRelationsSchema>
