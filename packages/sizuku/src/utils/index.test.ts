@@ -222,13 +222,13 @@ export const postRelations = relations(post, ({ one }) => ({
       )
 
       const expected = `/**
-  * Primary key
-  */
-  id:z.uuid(),
-  /**
-  * Display name
-  */
-  name:z.string().min(1).max(50)`
+* Primary key
+*/
+id:z.uuid(),
+/**
+* Display name
+*/
+name:z.string().min(1).max(50)`
 
       expect(result).toBe(expected)
     })
@@ -249,7 +249,7 @@ export const postRelations = relations(post, ({ one }) => ({
         false,
       )
       const expected = `id:z.uuid(),
-  name:z.string().min(1).max(50)`
+name:z.string().min(1).max(50)`
       expect(result).toBe(expected)
     })
   })
