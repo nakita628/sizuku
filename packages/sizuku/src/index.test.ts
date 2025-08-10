@@ -23,7 +23,7 @@ describe('main', () => {
     })
     expect(result.ok).toBe(true)
   })
-  it('main success', async () => {
+  it('main error', async () => {
     // biome-ignore lint: test
     const result = await main('test' as any)
     expect(result.ok).toBe(false)
