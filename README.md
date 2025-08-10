@@ -203,7 +203,7 @@ erDiagram
 
 ### ⚠️ WARNING: Potential Breaking Changes Without Notice
 
-**This package is in active development and may introduce breaking changes without prior notice.
+This package is in active development and may introduce breaking changes without prior notice.
 
 ## License
 
