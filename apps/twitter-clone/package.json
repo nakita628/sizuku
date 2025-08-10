@@ -2,7 +2,9 @@
   "name": "@apps/twitter-clone",
   "private": true,
   "type": "module",
-  "devDependencies": {},
+  "scripts": {
+    "generate": "sizuku"
+  },
   "dependencies": {
     "drizzle-orm": "^0.40.1"
   }
