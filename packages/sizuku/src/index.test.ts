@@ -12,26 +12,11 @@ describe('main', () => {
     fs.rmSync('mermaid-er', { recursive: true, force: true })
   })
   it('main success', async () => {
-    const result = await main({
-      input: 'db/schema.ts',
-      zod: {
-        output: 'zod/index.ts',
-        comment: true,
-        type: true,
-      },
-      valibot: {
-        output: 'valibot/index.ts',
-        comment: true,
-      },
-      mermaid: {
-        output: 'mermaid-er/ER.md',
-      },
-    })
+    const result = await main()
     expect(result.ok).toBe(true)
   })
   it('main error', async () => {
-    // biome-ignore lint: test
-    const result = await main('test' as any)
+    const result = await main()
     expect(result.ok).toBe(false)
   })
 })

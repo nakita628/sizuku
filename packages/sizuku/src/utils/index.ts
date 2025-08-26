@@ -156,7 +156,10 @@ export function removeOptionalSuffix(str: string): string {
  * @returns Array of strings split by whitespace.
  */
 export function splitByWhitespace(str: string): string[] {
-  return str.trim().split(/\s+/).filter((s) => s.length > 0)
+  return str
+    .trim()
+    .split(/\s+/)
+    .filter((s) => s.length > 0)
 }
 
 /**
@@ -201,9 +204,14 @@ export function parseFieldComments(
     : undefined
 
   const definitionLine = cleaned.find(
-    (line) => line.startsWith(tag) && !line.includes('strictObject') && !line.includes('looseObject'),
+    (line) =>
+      line.startsWith(tag) && !line.includes('strictObject') && !line.includes('looseObject'),
   )
-  const definition = definitionLine ? (definitionLine.startsWith('@') ? definitionLine.substring(1) : definitionLine) : ''
+  const definition = definitionLine
+    ? definitionLine.startsWith('@')
+      ? definitionLine.substring(1)
+      : definitionLine
+    : ''
 
   const descriptionLines = cleaned.filter(
     (line) => !(line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')),

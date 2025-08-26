@@ -1,13 +1,13 @@
 {
-  "name": "@apps/twitter-clone",
-  "private": true,
+  "name": "@fixtures/twitter-clone",
   "type": "module",
+  "private": true,
   "scripts": {
-    "generate": "sizuku"
+    "sizuku": "sizuku"
   },
   "dependencies": {
     "drizzle-orm": "^0.40.1",
     "valibot": "1.0.0-rc.3",
-    "zod": "^4.0.17"
+    "zod": "^4.1.3"
   }
 }
