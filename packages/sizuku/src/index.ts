@@ -1,6 +1,5 @@
 // #!/usr/bin/env node
 
-import type { Config } from './config/index.js'
 import { config } from './config/index.js'
 import { sizukuMermaidER } from './generator/mermaid-er/index.js'
 import { sizukuValibot } from './generator/valibot/index.js'
