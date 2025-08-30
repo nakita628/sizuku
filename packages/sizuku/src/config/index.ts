@@ -10,11 +10,13 @@ export type Config = Readonly<{
     comment?: boolean
     type?: boolean
     zod?: 'v4' | 'mini' | '@hono/zod-openapi'
+    relation?: boolean
   }
   valibot?: {
     output: `${string}.ts`
     comment?: boolean
     type?: boolean
+    relations?: boolean
   }
   mermaid?: {
     output: string

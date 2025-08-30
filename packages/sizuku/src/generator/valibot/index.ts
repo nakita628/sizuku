@@ -17,7 +17,7 @@ export async function sizukuValibot(
   output: `${string}.ts`,
   comment?: boolean,
   type?: boolean,
-  relations?: boolean,
+  relation?: boolean,
 ): Promise<
   | {
       ok: true
@@ -35,7 +35,7 @@ export async function sizukuValibot(
     "import * as v from 'valibot'",
     '',
     ...baseSchemas.map((schema) => valibotCode(schema, comment ?? false, type ?? false)),
-    ...(relations
+    ...(relation
       ? relationSchemas.map((schema) => relationValibotCode(schema, type ?? false))
       : []),
   ].join('\n')
