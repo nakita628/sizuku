@@ -34,7 +34,7 @@ export function erContent(
       `    ${table.name} {`,
       ...table.fields.map(
         (field) =>
-          `        ${field.type} ${field.name} ${field.description ? `"${field.description}"` : ''}`,
+          `        ${field.type} ${field.name}${field.description ? ` "${field.description}"` : ''}`,
       ),
       '    }',
     ]),

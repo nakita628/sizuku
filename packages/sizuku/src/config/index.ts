@@ -88,16 +88,16 @@ export async function config(): Promise<
           return { ok: false, error: 'Valibot comment must be a boolean' }
         }
       }
-              if (mod.default.valibot.type !== undefined) {
-          if (typeof mod.default.valibot.type !== 'boolean') {
-            return { ok: false, error: 'Valibot type must be a boolean' }
-          }
+      if (mod.default.valibot.type !== undefined) {
+        if (typeof mod.default.valibot.type !== 'boolean') {
+          return { ok: false, error: 'Valibot type must be a boolean' }
         }
-        if (mod.default.valibot.relation !== undefined) {
-          if (typeof mod.default.valibot.relation !== 'boolean') {
-            return { ok: false, error: 'Valibot relation must be a boolean' }
-          }
+      }
+      if (mod.default.valibot.relation !== undefined) {
+        if (typeof mod.default.valibot.relation !== 'boolean') {
+          return { ok: false, error: 'Valibot relation must be a boolean' }
         }
+      }
     }
     // mermaid
     if (mod.default.mermaid !== undefined) {
