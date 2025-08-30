@@ -52,7 +52,7 @@ export async function main(): Promise<
       c.zod.comment,
       c.zod.type,
       c.zod.zod,
-      true,
+      c.zod.relation,
     )
     if (!zodResult.ok) {
       return {
@@ -70,7 +70,7 @@ export async function main(): Promise<
       c.valibot.output,
       c.valibot.comment,
       c.valibot.type,
-      true,
+      c.valibot.relation,
     )
     if (!valibotResult.ok) {
       return {

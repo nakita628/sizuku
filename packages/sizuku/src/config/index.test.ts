@@ -33,11 +33,13 @@ export default defineConfig({
     comment: true,
     type: true,
     zod: 'v4',
+    relation: true,
   },
   valibot: {
     output: 'valibot/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
   mermaid: {
     output: 'mermaid-er/ER.md',
@@ -49,8 +51,8 @@ export default defineConfig({
       ok: true,
       value: {
         input: 'db/schema.ts',
-        zod: { output: 'zod/index.ts', comment: true, type: true, zod: 'v4' },
-        valibot: { output: 'valibot/index.ts', comment: true, type: true },
+        zod: { output: 'zod/index.ts', comment: true, type: true, zod: 'v4', relation: true },
+        valibot: { output: 'valibot/index.ts', comment: true, type: true, relation: true },
         mermaid: { output: 'mermaid-er/ER.md' },
       },
     })

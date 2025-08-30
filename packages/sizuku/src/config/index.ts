@@ -16,7 +16,7 @@ export type Config = Readonly<{
     output: `${string}.ts`
     comment?: boolean
     type?: boolean
-    relations?: boolean
+    relation?: boolean
   }
   mermaid?: {
     output: string
@@ -71,6 +71,11 @@ export async function config(): Promise<
             return { ok: false, error: 'zod must be v4, mini, or @hono/zod-openapi' }
           }
         }
+        if (mod.default.zod.relation !== undefined) {
+          if (typeof mod.default.zod.relation !== 'boolean') {
+            return { ok: false, error: 'Zod relation must be a boolean' }
+          }
+        }
       }
     }
     // valibot
@@ -83,11 +88,16 @@ export async function config(): Promise<
           return { ok: false, error: 'Valibot comment must be a boolean' }
         }
       }
-      if (mod.default.valibot.type !== undefined) {
-        if (typeof mod.default.valibot.type !== 'boolean') {
-          return { ok: false, error: 'Valibot type must be a boolean' }
+              if (mod.default.valibot.type !== undefined) {
+          if (typeof mod.default.valibot.type !== 'boolean') {
+            return { ok: false, error: 'Valibot type must be a boolean' }
+          }
         }
-      }
+        if (mod.default.valibot.relation !== undefined) {
+          if (typeof mod.default.valibot.relation !== 'boolean') {
+            return { ok: false, error: 'Valibot relation must be a boolean' }
+          }
+        }
     }
     // mermaid
     if (mod.default.mermaid !== undefined) {

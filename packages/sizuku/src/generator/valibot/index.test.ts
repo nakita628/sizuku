@@ -216,7 +216,7 @@ export const PostSchema = v.looseObject({
     expect(result).toBe(expected)
   })
 
-  it('sizukuValibot with strictObject and looseObject with relations', async () => {
+  it('sizukuValibot with strictObject and looseObject with relation', async () => {
     await sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, 'tmp/valibot-test.ts', false, false, true)
     const result = await fsp.readFile('tmp/valibot-test.ts', 'utf-8')
     const expected = `import * as v from 'valibot'

@@ -225,7 +225,7 @@ export const PostSchema = z.looseObject({
     expect(result).toBe(expected)
   })
 
-  it('sizukuZod with strictObject and looseObject with relations', async () => {
+  it('sizukuZod with strictObject and looseObject with relation', async () => {
     await sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, 'tmp/zod-test.ts', false, false, undefined, true)
     const result = await fsp.readFile('tmp/zod-test.ts', 'utf-8')
     const expected = `import * as z from 'zod'
