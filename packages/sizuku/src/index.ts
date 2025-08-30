@@ -1,13 +1,12 @@
 // #!/usr/bin/env node
 
-import type { Config } from './config/index.js'
-import { getConfig } from './config/index.js'
+import { config } from './config/index.js'
 import { sizukuMermaidER } from './generator/mermaid-er/index.js'
 import { sizukuValibot } from './generator/valibot/index.js'
 import { sizukuZod } from './generator/zod/index.js'
 import { readFileSync } from './shared/fs/index.js'
 
-export async function main(config: Config = getConfig()): Promise<
+export async function main(): Promise<
   | {
       ok: true
       value: string
@@ -17,14 +16,17 @@ export async function main(config: Config = getConfig()): Promise<
       error: string
     }
 > {
-  if (!config.input) {
+  const configResult = await config()
+  if (!configResult.ok) {
     return {
       ok: false,
-      error: 'input is not found',
+      error: configResult.error,
     }
   }
 
-  const contentResult = readFileSync(config.input)
+  const c = configResult.value
+
+  const contentResult = readFileSync(c.input)
   if (!contentResult.ok) {
     return {
       ok: false,
@@ -43,14 +45,14 @@ export async function main(config: Config = getConfig()): Promise<
   const results: string[] = []
 
   /* zod */
-  if (config.zod?.output) {
+  if (c.zod?.output) {
     const zodResult = await sizukuZod(
       code,
-      config.zod.output,
-      config.zod.comment,
-      config.zod.type,
-      config.zod.zod,
-      true,
+      c.zod.output,
+      c.zod.comment,
+      c.zod.type,
+      c.zod.zod,
+      c.zod.relation,
     )
     if (!zodResult.ok) {
       return {
@@ -58,17 +60,17 @@ export async function main(config: Config = getConfig()): Promise<
         error: zodResult.error,
       }
     }
-    results.push(`Generated Zod schema at: ${config.zod?.output}`)
+    results.push(`Generated Zod schema at: ${c.zod?.output}`)
   }
 
   /* valibot */
-  if (config.valibot?.output) {
+  if (c.valibot?.output) {
     const valibotResult = await sizukuValibot(
       code,
-      config.valibot.output,
-      config.valibot.comment,
-      config.valibot.type,
-      true,
+      c.valibot.output,
+      c.valibot.comment,
+      c.valibot.type,
+      c.valibot.relation,
     )
     if (!valibotResult.ok) {
       return {
@@ -76,19 +78,19 @@ export async function main(config: Config = getConfig()): Promise<
         error: valibotResult.error,
       }
     }
-    results.push(`Generated Valibot schema at: ${config.valibot?.output}`)
+    results.push(`Generated Valibot schema at: ${c.valibot?.output}`)
   }
 
   /* mermaid */
-  if (config.mermaid?.output) {
-    const mermaidResult = await sizukuMermaidER(code, config.mermaid.output)
+  if (c.mermaid?.output) {
+    const mermaidResult = await sizukuMermaidER(code, c.mermaid.output)
     if (!mermaidResult.ok) {
       return {
         ok: false,
         error: mermaidResult.error,
       }
     }
-    results.push(`Generated Mermaid ER at: ${config.mermaid?.output}`)
+    results.push(`Generated Mermaid ER at: ${c.mermaid?.output}`)
   }
 
   return {

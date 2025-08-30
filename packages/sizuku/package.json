@@ -29,6 +29,12 @@
   "bin": {
     "sizuku": "dist/index.js"
   },
+  "exports": {
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js"
+    }
+  },
   "scripts": {
     "deps": "rm -rf node_modules && pnpm install",
     "build": "tsc",
@@ -48,6 +54,7 @@
   },
   "dependencies": {
     "prettier": "^3.6.2",
-    "ts-morph": "^26.0.0"
+    "ts-morph": "^26.0.0",
+    "tsx": "^4.20.5"
   }
 }

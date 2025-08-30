@@ -51,6 +51,33 @@ const TEST_CODE = [
   '',
 ]
 
+const TEST_CODE_WITHOUT_COMMENTS = [
+  "export const user = mysqlTable('user', {",
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  "  name: varchar('name', { length: 50 }).notNull(),",
+  '})',
+  '',
+  '/// @relation user.id post.userId one-to-many',
+  "export const post = mysqlTable('post', {",
+  "  id: varchar('id', { length: 36 }).primaryKey(),",
+  "  title: varchar('title', { length: 100 }).notNull(),",
+  "  content: varchar('content', { length: 65535 }).notNull(),",
+  "  userId: varchar('user_id', { length: 36 }).notNull(),",
+  '})',
+  '',
+  'export const userRelations = relations(user, ({ many }) => ({',
+  '  posts: many(post),',
+  '}))',
+  '',
+  'export const postRelations = relations(post, ({ one }) => ({',
+  '  user: one(user, {',
+  '    fields: [post.userId],',
+  '    references: [user.id],',
+  '  }),',
+  '}))',
+  '',
+]
+
 describe('sizukuMermaidER', () => {
   afterEach(() => {
     if (!fs.existsSync('tmp')) {
@@ -75,6 +102,26 @@ erDiagram
         varchar title "Article title"
         varchar content "Body content (no length limit)"
         varchar userId "Foreign key referencing User.id"
+    }
+\`\`\``
+    expect(result).toBe(expected)
+  })
+
+  it('sizukuMermaidER without comments', async () => {
+    await sizukuMermaidER(TEST_CODE_WITHOUT_COMMENTS, 'tmp/mermaid-er-test.md')
+    const result = await fsp.readFile('tmp/mermaid-er-test.md', 'utf-8')
+    const expected = `\`\`\`mermaid
+erDiagram
+    user ||--}| post : "(id) - (userId)"
+    user {
+        varchar id
+        varchar name
+    }
+    post {
+        varchar id
+        varchar title
+        varchar content
+        varchar userId
     }
 \`\`\``
     expect(result).toBe(expected)

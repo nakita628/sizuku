@@ -4,7 +4,7 @@ import { Node, Project } from 'ts-morph'
 type FieldInfo = {
   name: string
   type: string
-  description: string
+  description: string | null
 }
 
 const baseBuilderName = (expr: Expression): string => {
@@ -61,7 +61,9 @@ export function parseTableInfo(code: string[]): {
 
           const initText = initExpr.getText()
           const lineIdx = prop.getStartLineNumber() - 1
-          const baseDesc =
+
+          // Find the immediate comment above this field
+          const immediateComment =
             code
               .slice(0, lineIdx)
               .reverse()
@@ -82,10 +84,13 @@ export function parseTableInfo(code: string[]): {
               ? '(FK) '
               : ''
 
+          // Only include description if there's a comment
+          const description = immediateComment ? `${prefix}${immediateComment}`.trim() : null
+
           return {
             name: fieldName,
             type: fieldType,
-            description: `${prefix}${baseDesc}`.trim(),
+            description,
           }
         })
         .filter(isFieldInfo)

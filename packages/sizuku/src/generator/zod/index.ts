@@ -19,7 +19,7 @@ export async function sizukuZod(
   comment?: boolean,
   type?: boolean,
   zod?: 'v4' | 'mini' | '@hono/zod-openapi',
-  relations?: boolean,
+  relation?: boolean,
 ): Promise<
   | {
       ok: true
@@ -44,7 +44,7 @@ export async function sizukuZod(
     importLine,
     '',
     ...baseSchemas.map((schema) => zodCode(schema, comment ?? false, type ?? false)),
-    ...(relations ? relationSchemas.map((schema) => relationZodCode(schema, type ?? false)) : []),
+    ...(relation ? relationSchemas.map((schema) => relationZodCode(schema, type ?? false)) : []),
   ].join('\n')
 
   const mkdirResult = await mkdir(path.dirname(output))
