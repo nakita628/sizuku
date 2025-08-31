@@ -43,7 +43,8 @@ export const user = mysqlTable('user', {
   it('main success', async () => {
     // Create config file
     const configFile = path.join(tmpdir, 'sizuku.config.ts')
-    const configContent = `
+    const configContent = `import { defineConfig } from './src/config/index.js'
+
 export default defineConfig({
   input: 'db/schema.ts',
   zod: {
