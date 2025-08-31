@@ -3,31 +3,31 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { register } from 'tsx/esm/api'
 
-export type Config = Readonly<{
-  input: `${string}.ts`
-  zod?: {
-    output: `${string}.ts`
-    comment?: boolean
-    type?: boolean
-    zod?: 'v4' | 'mini' | '@hono/zod-openapi'
-    relation?: boolean
+export type Config = {
+  readonly input: `${string}.ts`
+  readonly zod?: {
+    readonly output: `${string}.ts`
+    readonly comment?: boolean
+    readonly type?: boolean
+    readonly zod?: 'v4' | 'mini' | '@hono/zod-openapi'
+    readonly relation?: boolean
   }
-  valibot?: {
-    output: `${string}.ts`
-    comment?: boolean
-    type?: boolean
-    relation?: boolean
+  readonly valibot?: {
+    readonly output: `${string}.ts`
+    readonly comment?: boolean
+    readonly type?: boolean
+    readonly relation?: boolean
   }
-  mermaid?: {
-    output: string
+  readonly mermaid?: {
+    readonly output: string
   }
-}>
+}
 
 export async function config(): Promise<
-  | { ok: true; value: Config }
+  | { readonly ok: true; readonly value: Config }
   | {
-      ok: false
-      error: string
+      readonly ok: false
+      readonly error: string
     }
 > {
   const isTs = (o: string): o is `${string}.ts` => o.endsWith('.ts')
@@ -37,9 +37,9 @@ export async function config(): Promise<
   }
   try {
     register()
-    const mod: Readonly<{
-      default: Config
-    }> = await import(pathToFileURL(abs).href)
+    const mod: {
+      readonly default: Config
+    } = await import(pathToFileURL(abs).href)
     if (!('default' in mod)) {
       return { ok: false, error: 'Config must export default object' }
     }

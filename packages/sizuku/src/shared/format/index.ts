@@ -8,24 +8,22 @@ import { format } from 'prettier'
  */
 export async function fmt(code: string): Promise<
   | {
-      ok: true
-      value: string
-      error?: undefined
+      readonly ok: true
+      readonly value: string
     }
   | {
-      ok: false
-      error: string
-      value?: undefined
+      readonly ok: false
+      readonly error: string
     }
 > {
   try {
-    const formatted = await format(code, {
+    const result = await format(code, {
       parser: 'typescript',
       printWidth: 100,
       singleQuote: true,
       semi: false,
     })
-    return { ok: true, value: formatted }
+    return { ok: true, value: result }
   } catch (e) {
     return {
       ok: false,

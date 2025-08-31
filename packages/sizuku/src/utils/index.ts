@@ -70,7 +70,7 @@ export function removeAtSign(str: string): string {
  * @param arr - Array of strings to join.
  * @returns Joined string with spaces.
  */
-export function joinWithSpace(arr: string[]): string {
+export function joinWithSpace(arr: readonly string[]): string {
   return arr.join(' ')
 }
 
@@ -80,7 +80,7 @@ export function joinWithSpace(arr: string[]): string {
  * @param str - The input string.
  * @returns Array of strings split by newline.
  */
-export function splitByNewline(str: string): string[] {
+export function splitByNewline(str: string): readonly string[] {
   return str.split('\n')
 }
 
@@ -155,7 +155,7 @@ export function removeOptionalSuffix(str: string): string {
  * @param str - The input string.
  * @returns Array of strings split by whitespace.
  */
-export function splitByWhitespace(str: string): string[] {
+export function splitByWhitespace(str: string): readonly string[] {
   return str
     .trim()
     .split(/\s+/)
@@ -168,7 +168,7 @@ export function splitByWhitespace(str: string): string[] {
  * @param str - The input string.
  * @returns Array of strings split by dot.
  */
-export function splitByDot(str: string): string[] {
+export function splitByDot(str: string): readonly string[] {
   return str.split('.')
 }
 
@@ -232,7 +232,7 @@ export function parseFieldComments(
  * @param fieldStartPos - The position of the field in the source text.
  * @returns An array of comment lines.
  */
-export function extractFieldComments(sourceText: string, fieldStartPos: number): string[] {
+export function extractFieldComments(sourceText: string, fieldStartPos: number): readonly string[] {
   const beforeField = sourceText.substring(0, fieldStartPos)
   const lines = beforeField.split('\n')
   const reverseIndex = lines
@@ -268,7 +268,7 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number):
  * @param name
  * @returns
  */
-export function infer(name: string) {
+export function infer(name: string): string {
   const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1)
   return `export type ${capitalizedName} = z.infer<typeof ${capitalizedName}Schema>`
 }
@@ -277,7 +277,7 @@ export function infer(name: string) {
  *  valibot
  * ========================================================================== */
 
-export function inferInput(name: string) {
+export function inferInput(name: string): string {
   const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1)
   return `export type ${capitalizedName} = v.InferInput<typeof ${capitalizedName}Schema>`
 }
@@ -292,15 +292,15 @@ export function inferInput(name: string) {
  */
 export function fieldDefinitions(
   schema: {
-    name: string
-    fields: {
-      name: string
-      definition: string
-      description?: string
+    readonly name: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
     }[]
   },
   comment: boolean,
-) {
+): string {
   return schema.fields
     .map(({ name, definition, description }) => {
       const commentCode = description && comment ? `/**\n* ${description}\n*/\n` : ''
