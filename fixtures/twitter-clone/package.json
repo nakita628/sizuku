@@ -11,6 +11,6 @@
     "zod": "^4.1.3"
   },
   "devDependencies": {
-    "sizuku": "^0.3.0"
+    "sizuku": "^0.3.2"
   }
 }
