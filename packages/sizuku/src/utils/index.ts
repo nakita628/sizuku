@@ -232,7 +232,7 @@ export function parseFieldComments(
  * @param fieldStartPos - The position of the field in the source text.
  * @returns An array of comment lines.
  */
-export function extractFieldComments(sourceText: string, fieldStartPos: number): readonly string[] {
+export function extractFieldComments(sourceText: string, fieldStartPos: number): string[] {
   const beforeField = sourceText.substring(0, fieldStartPos)
   const lines = beforeField.split('\n')
   const reverseIndex = lines
