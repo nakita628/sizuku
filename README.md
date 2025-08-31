@@ -73,7 +73,7 @@ export const postRelations = relations(post, ({ one }) => ({
 Prepare sizuku.config.ts:
 
 ```ts
-import defineConfig from 'sizuku/config'
+import { defineConfig } from 'sizuku/config'
 
 export default defineConfig({
   input: 'db/schema.ts',

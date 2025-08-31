@@ -24,7 +24,7 @@ describe('config', () => {
 
   it('should return the default config', async () => {
     const testFilePath = path.join(process.cwd(), 'sizuku.config.ts')
-    const testConfig = `import defineConfig from './src/config/index.js'
+    const testConfig = `import { defineConfig } from './src/config/index.js'
 
 export default defineConfig({
   input: 'db/schema.ts',
