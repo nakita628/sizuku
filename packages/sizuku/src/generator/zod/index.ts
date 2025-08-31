@@ -22,12 +22,12 @@ export async function sizukuZod(
   relation?: boolean,
 ): Promise<
   | {
-      ok: true
-      value: undefined
+      readonly ok: true
+      readonly value: undefined
     }
   | {
-      ok: false
-      error: string
+      readonly ok: false
+      readonly error: string
     }
 > {
   const importLine =

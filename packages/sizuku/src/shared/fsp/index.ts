@@ -8,12 +8,12 @@ import fsp from 'node:fs/promises'
  */
 export async function mkdir(dir: string): Promise<
   | {
-      ok: false
-      error: string
+      readonly ok: false
+      readonly error: string
     }
   | {
-      ok: true
-      value: undefined
+      readonly ok: true
+      readonly value: undefined
     }
 > {
   try {

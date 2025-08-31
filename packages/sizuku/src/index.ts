@@ -8,12 +8,12 @@ import { readFileSync } from './shared/fs/index.js'
 
 export async function main(): Promise<
   | {
-      ok: true
-      value: string
+      readonly ok: true
+      readonly value: string
     }
   | {
-      ok: false
-      error: string
+      readonly ok: false
+      readonly error: string
     }
 > {
   const configResult = await config()

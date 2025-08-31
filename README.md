@@ -70,7 +70,7 @@ export const postRelations = relations(post, ({ one }) => ({
 }))
 ```
 
-Prepare sizuku.json:
+Prepare sizuku.config.ts:
 
 ```ts
 import defineConfig from 'sizuku/config'
@@ -82,11 +82,13 @@ export default defineConfig({
     comment: true,
     type: true,
     zod: 'v4',
+    relation: true,
   },
   valibot: {
     output: 'valibot/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
   mermaid: {
     output: 'mermaid-er/ER.md',

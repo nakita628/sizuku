@@ -2,12 +2,12 @@ import fs from 'node:fs'
 
 export function readFileSync(path: string):
   | {
-      ok: true
-      value: string
+      readonly ok: true
+      readonly value: string
     }
   | {
-      ok: false
-      error: string
+      readonly ok: false
+      readonly error: string
     } {
   try {
     const result = fs.readFileSync(path, 'utf-8')

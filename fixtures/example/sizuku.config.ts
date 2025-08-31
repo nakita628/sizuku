@@ -1,4 +1,4 @@
-import defineConfig from '../../packages/sizuku/src/config/index.js'
+import defineConfig from 'sizuku/config'
 
 export default defineConfig({
   input: 'db/schema.ts',
