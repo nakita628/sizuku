@@ -162,10 +162,10 @@ function isRelationFunctionCall(callExpr: CallExpression): boolean {
  * @returns A property node extractor function
  */
 function createExtractFieldFromProperty(
-  parseFieldComments: (commentLines: string[]) => {
-    definition: string
-    description?: string
-    objectType?: 'strict' | 'loose'
+  parseFieldComments: (commentLines: readonly string[]) => {
+    readonly definition: string
+    readonly description?: string
+    readonly objectType?: 'strict' | 'loose'
   },
 ) {
   return (property: Node, sourceText: string): FieldExtractionResult | null => {
@@ -189,10 +189,10 @@ function createExtractFieldFromProperty(
  * @returns Function that extracts relation fields from property
  */
 function createExtractRelationFieldFromProperty(
-  parseFieldComments: (lines: string[]) => {
-    definition: string
-    description?: string
-    objectType?: 'strict' | 'loose'
+  parseFieldComments: (lines: readonly string[]) => {
+    readonly definition: string
+    readonly description?: string
+    readonly objectType?: 'strict' | 'loose'
   },
   prefix: 'v' | 'z',
 ) {
@@ -312,9 +312,13 @@ function buildSchemaExtractor(
   extractFieldsFromCall: (call: CallExpression, sourceText: string) => FieldExtractionResult[],
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
   parseFieldComments: (
-    commentLines: string[],
+    commentLines: readonly string[],
     tag: '@v.' | '@z.',
-  ) => { definition: string; description?: string; objectType?: 'strict' | 'loose' },
+  ) => {
+    readonly definition: string
+    readonly description?: string
+    readonly objectType?: 'strict' | 'loose'
+  },
   commentPrefix: '@v.' | '@z.',
 ) {
   return (

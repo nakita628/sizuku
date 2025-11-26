@@ -177,6 +177,69 @@ export function splitByDot(str: string): readonly string[] {
  * ========================================================================== */
 
 /**
+ * Clean comment lines by removing triple slash prefix and trimming.
+ *
+ * @param commentLines - Raw comment lines
+ * @returns Cleaned comment lines
+ */
+function cleanCommentLines(commentLines: readonly string[]): readonly string[] {
+  return commentLines
+    .map((line) => (line.startsWith('///') ? line.substring(3) : line).trim())
+    .filter((line) => line.length > 0)
+}
+
+/**
+ * Extract object type from comment lines.
+ *
+ * @param cleaned - Cleaned comment lines
+ * @param tag - The tag to look for
+ * @returns The object type if found
+ */
+function extractObjectType(
+  cleaned: readonly string[],
+  tag: '@v.' | '@z.',
+): 'strict' | 'loose' | undefined {
+  const tagWithoutAt = tag.slice(1)
+  const objectTypeLine = cleaned.find(
+    (line) =>
+      line.includes(`${tagWithoutAt}strictObject`) || line.includes(`${tagWithoutAt}looseObject`),
+  )
+  if (!objectTypeLine) return undefined
+  if (objectTypeLine.includes('strictObject')) return 'strict'
+  if (objectTypeLine.includes('looseObject')) return 'loose'
+  return undefined
+}
+
+/**
+ * Extract definition from comment lines.
+ *
+ * @param cleaned - Cleaned comment lines
+ * @param tag - The tag to look for
+ * @returns The definition string
+ */
+function extractDefinition(cleaned: readonly string[], tag: '@v.' | '@z.'): string {
+  const definitionLine = cleaned.find(
+    (line) =>
+      line.startsWith(tag) && !line.includes('strictObject') && !line.includes('looseObject'),
+  )
+  if (!definitionLine) return ''
+  return definitionLine.startsWith('@') ? definitionLine.substring(1) : definitionLine
+}
+
+/**
+ * Extract description from comment lines.
+ *
+ * @param cleaned - Cleaned comment lines
+ * @returns The description if found
+ */
+function extractDescription(cleaned: readonly string[]): string | undefined {
+  const descriptionLines = cleaned.filter(
+    (line) => !(line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')),
+  )
+  return descriptionLines.length > 0 ? descriptionLines.join(' ') : undefined
+}
+
+/**
  * Parse field comments and extract definition line and description.
  *
  * @param commentLines - Raw comment lines (e.g., from source text)
@@ -184,39 +247,17 @@ export function splitByDot(str: string): readonly string[] {
  * @returns Parsed definition and description
  */
 export function parseFieldComments(
-  commentLines: string[],
+  commentLines: readonly string[],
   tag: '@v.' | '@z.',
-): { definition: string; description?: string; objectType?: 'strict' | 'loose' } {
-  const cleaned = commentLines
-    .map((line) => (line.startsWith('///') ? line.substring(3) : line).trim())
-    .filter((line) => line.length > 0)
-
-  const objectTypeLine = cleaned.find(
-    (line) =>
-      line.includes(`${tag.slice(1)}strictObject`) || line.includes(`${tag.slice(1)}looseObject`),
-  )
-  const objectType = objectTypeLine
-    ? objectTypeLine.includes('strictObject')
-      ? 'strict'
-      : objectTypeLine.includes('looseObject')
-        ? 'loose'
-        : undefined
-    : undefined
-
-  const definitionLine = cleaned.find(
-    (line) =>
-      line.startsWith(tag) && !line.includes('strictObject') && !line.includes('looseObject'),
-  )
-  const definition = definitionLine
-    ? definitionLine.startsWith('@')
-      ? definitionLine.substring(1)
-      : definitionLine
-    : ''
-
-  const descriptionLines = cleaned.filter(
-    (line) => !(line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')),
-  )
-  const description = descriptionLines.length > 0 ? descriptionLines.join(' ') : undefined
+): {
+  readonly definition: string
+  readonly description?: string
+  readonly objectType?: 'strict' | 'loose'
+} {
+  const cleaned = cleanCommentLines(commentLines)
+  const objectType = extractObjectType(cleaned, tag)
+  const definition = extractDefinition(cleaned, tag)
+  const description = extractDescription(cleaned)
 
   return { definition, description, objectType }
 }
@@ -226,35 +267,47 @@ export function parseFieldComments(
  * ========================================================================== */
 
 /**
+ * Process a single line during comment extraction.
+ *
+ * @param acc - The accumulator
+ * @param line - The line to process
+ * @returns Updated accumulator
+ */
+function processCommentLine(
+  acc: { readonly commentLines: readonly string[]; readonly shouldStop: boolean },
+  line: string,
+): { readonly commentLines: readonly string[]; readonly shouldStop: boolean } {
+  if (acc.shouldStop) return acc
+
+  if (line.startsWith('///')) {
+    return {
+      commentLines: [line, ...acc.commentLines],
+      shouldStop: false,
+    }
+  }
+
+  if (line === '') {
+    return acc
+  }
+
+  return { commentLines: acc.commentLines, shouldStop: true }
+}
+
+/**
  * Extract field comments from source text.
  *
  * @param sourceText - The source text to extract comments from.
  * @param fieldStartPos - The position of the field in the source text.
  * @returns An array of comment lines.
  */
-export function extractFieldComments(sourceText: string, fieldStartPos: number): string[] {
+export function extractFieldComments(sourceText: string, fieldStartPos: number): readonly string[] {
   const beforeField = sourceText.substring(0, fieldStartPos)
   const lines = beforeField.split('\n')
   const reverseIndex = lines
     .map((line, index) => ({ line: line.trim(), index }))
     .reverse()
-    .reduce<{ commentLines: string[]; shouldStop: boolean }>(
-      (acc, { line }) => {
-        if (acc.shouldStop) return acc
-
-        if (line.startsWith('///')) {
-          return {
-            commentLines: [line, ...acc.commentLines],
-            shouldStop: false,
-          }
-        }
-
-        if (line === '') {
-          return acc
-        }
-
-        return { commentLines: acc.commentLines, shouldStop: true }
-      },
+    .reduce<{ readonly commentLines: readonly string[]; readonly shouldStop: boolean }>(
+      (acc, { line }) => processCommentLine(acc, line),
       { commentLines: [], shouldStop: false },
     )
   return reverseIndex.commentLines
@@ -268,7 +321,7 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number):
  * @param name
  * @returns
  */
-export function infer(name: string): string {
+export function infer(name: string): `export type ${string} = z.infer<typeof ${string}Schema>` {
   const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1)
   return `export type ${capitalizedName} = z.infer<typeof ${capitalizedName}Schema>`
 }
@@ -277,7 +330,9 @@ export function infer(name: string): string {
  *  valibot
  * ========================================================================== */
 
-export function inferInput(name: string): string {
+export function inferInput(
+  name: string,
+): `export type ${string} = v.InferInput<typeof ${string}Schema>` {
   const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1)
   return `export type ${capitalizedName} = v.InferInput<typeof ${capitalizedName}Schema>`
 }

@@ -6,11 +6,11 @@ import { buildRelationLine } from '../../../shared/helper/extract-schemas.js'
  * @returns The generated relation line
  */
 export function relationLine(relation: {
-  fromModel: string
-  toModel: string
-  fromField: string
-  toField: string
-  type: string
+  readonly fromModel: string
+  readonly toModel: string
+  readonly fromField: string
+  readonly toField: string
+  readonly type: string
 }): string {
   const cardinality = buildRelationLine(relation.type)
 

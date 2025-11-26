@@ -4,20 +4,20 @@ import { zod } from './zod.js'
 /**
  * Generates Zod code for a given schema and config.
  *
- * @function generateZodCode
  * @param schema - The schema to generate code for.
- * @param config - The configuration for the code generation.
+ * @param comment - Whether to include comments in the generated code.
+ * @param type - Whether to include type information in the generated code.
  * @returns The generated Zod code.
  */
 export function zodCode(
   schema: {
-    name: string
-    fields: {
-      name: string
-      definition: string
-      description?: string
+    readonly name: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
     }[]
-    objectType?: 'strict' | 'loose'
+    readonly objectType?: 'strict' | 'loose'
   },
   comment: boolean,
   type: boolean,
