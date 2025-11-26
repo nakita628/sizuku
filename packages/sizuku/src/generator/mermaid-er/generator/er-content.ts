@@ -10,23 +10,23 @@ const ER_FOOTER = ['```'] as const
  * @returns The generated ER content
  */
 export function erContent(
-  relations: {
-    fromModel: string
-    toModel: string
-    fromField: string
-    toField: string
-    type: string
+  relations: readonly {
+    readonly fromModel: string
+    readonly toModel: string
+    readonly fromField: string
+    readonly toField: string
+    readonly type: string
   }[],
-  tables: {
-    name: string
-    fields: {
-      type: string
-      name: string
-      description: string | null
+  tables: readonly {
+    readonly name: string
+    readonly fields: readonly {
+      readonly type: string
+      readonly name: string
+      readonly description: string | null
     }[]
   }[],
-) {
-  const erContent = [
+): string {
+  const content = [
     ...ER_HEADER,
     ...relations.map(relationLine),
     // Generate per-table definitions
@@ -41,5 +41,5 @@ export function erContent(
     ...ER_FOOTER,
   ]
 
-  return erContent.join('\n')
+  return content.join('\n')
 }

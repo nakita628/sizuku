@@ -42,56 +42,85 @@ export async function main(): Promise<
 
   const code = lines.slice(codeStart)
 
-  const results: string[] = []
+  type MessageResult =
+    | { readonly ok: true; readonly value: string }
+    | { readonly ok: false; readonly error: string }
 
   /* zod */
-  if (c.zod?.output) {
-    const zodResult = await sizukuZod(
-      code,
-      c.zod.output,
-      c.zod.comment,
-      c.zod.type,
-      c.zod.zod,
-      c.zod.relation,
-    )
-    if (!zodResult.ok) {
-      return {
-        ok: false,
-        error: zodResult.error,
-      }
-    }
-    results.push(`Generated Zod schema at: ${c.zod?.output}`)
+  const zodMessage: MessageResult | null = c.zod?.output
+    ? await (async (): Promise<MessageResult> => {
+        const zodConfig = c.zod
+        if (!zodConfig?.output) {
+          return { ok: false, error: 'Zod config is missing' }
+        }
+        const zodResult = await sizukuZod(
+          code,
+          zodConfig.output,
+          zodConfig.comment,
+          zodConfig.type,
+          zodConfig.zod,
+          zodConfig.relation,
+        )
+        if (!zodResult.ok) {
+          return { ok: false, error: zodResult.error }
+        }
+        return { ok: true, value: `Generated Zod schema at: ${zodConfig.output}` }
+      })()
+    : null
+
+  if (zodMessage && !zodMessage.ok) {
+    return { ok: false, error: zodMessage.error }
   }
 
   /* valibot */
-  if (c.valibot?.output) {
-    const valibotResult = await sizukuValibot(
-      code,
-      c.valibot.output,
-      c.valibot.comment,
-      c.valibot.type,
-      c.valibot.relation,
-    )
-    if (!valibotResult.ok) {
-      return {
-        ok: false,
-        error: valibotResult.error,
-      }
-    }
-    results.push(`Generated Valibot schema at: ${c.valibot?.output}`)
+  const valibotMessage: MessageResult | null = c.valibot?.output
+    ? await (async (): Promise<MessageResult> => {
+        const valibotConfig = c.valibot
+        if (!valibotConfig?.output) {
+          return { ok: false, error: 'Valibot config is missing' }
+        }
+        const valibotResult = await sizukuValibot(
+          code,
+          valibotConfig.output,
+          valibotConfig.comment,
+          valibotConfig.type,
+          valibotConfig.relation,
+        )
+        if (!valibotResult.ok) {
+          return { ok: false, error: valibotResult.error }
+        }
+        return { ok: true, value: `Generated Valibot schema at: ${valibotConfig.output}` }
+      })()
+    : null
+
+  if (valibotMessage && !valibotMessage.ok) {
+    return { ok: false, error: valibotMessage.error }
   }
 
   /* mermaid */
-  if (c.mermaid?.output) {
-    const mermaidResult = await sizukuMermaidER(code, c.mermaid.output)
-    if (!mermaidResult.ok) {
-      return {
-        ok: false,
-        error: mermaidResult.error,
-      }
-    }
-    results.push(`Generated Mermaid ER at: ${c.mermaid?.output}`)
+  const mermaidMessage: MessageResult | null = c.mermaid?.output
+    ? await (async (): Promise<MessageResult> => {
+        const mermaidConfig = c.mermaid
+        if (!mermaidConfig?.output) {
+          return { ok: false, error: 'Mermaid config is missing' }
+        }
+        const mermaidResult = await sizukuMermaidER(code, mermaidConfig.output)
+        if (!mermaidResult.ok) {
+          return { ok: false, error: mermaidResult.error }
+        }
+        return { ok: true, value: `Generated Mermaid ER at: ${mermaidConfig.output}` }
+      })()
+    : null
+
+  if (mermaidMessage && !mermaidMessage.ok) {
+    return { ok: false, error: mermaidMessage.error }
   }
+
+  const results = [
+    zodMessage?.ok ? zodMessage.value : null,
+    valibotMessage?.ok ? valibotMessage.value : null,
+    mermaidMessage?.ok ? mermaidMessage.value : null,
+  ].filter((msg): msg is string => msg !== null)
 
   return {
     ok: true,
