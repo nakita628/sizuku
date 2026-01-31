@@ -1,0 +1,69 @@
+Table User {
+  id text [pk, note: 'Unique identifier for the user']
+  name text [note: 'User\'s display name']
+  username text [note: 'User\'s biography or profile description']
+  bio text [note: 'User\'s biography or profile description']
+  email text [note: 'User\'s unique email address']
+  emailVerified numeric [note: 'Timestamp of email verification']
+  image text [note: 'URL of user\'s image']
+  coverImage text [note: 'URL of user\'s cover image']
+  profileImage text [note: 'URL of user\'s profile image']
+  hashedPassword text [note: 'Hashed password for security']
+  createdAt numeric [note: 'Timestamp when the user was created']
+  updatedAt numeric [note: 'Timestamp when the user was last updated']
+  hasNotification int [note: 'Flag indicating if user has unread notifications']
+}
+
+Table Post {
+  id text [pk, note: 'Unique identifier for the post']
+  body text [note: 'Body content of the post']
+  createdAt numeric [note: 'Timestamp when the post was created']
+  updatedAt numeric [note: 'Timestamp when the post was last updated']
+  userId text [note: 'Foreign key referencing User.id']
+}
+
+Table Follow {
+  id text [pk, note: 'Unique identifier for the follow relationship']
+  followerId text [note: 'Foreign key referencing User.id']
+  followingId text [note: 'Foreign key referencing User.id']
+  createdAt numeric [note: 'Timestamp when the follow relationship was created']
+}
+
+Table Like {
+  id text [pk, note: 'Unique identifier for the like relationship']
+  userId text [note: 'Foreign key referencing User.id']
+  postId text [note: 'Foreign key referencing Post.id']
+  createdAt numeric [note: 'Timestamp when the like relationship was created']
+}
+
+Table Comment {
+  id text [pk, note: 'Unique identifier for the comment']
+  body text [note: 'Body content of the comment']
+  createdAt numeric [note: 'Timestamp when the comment was created']
+  updatedAt numeric [note: 'Timestamp when the comment was last updated']
+  userId text [note: 'Foreign key referencing User.id']
+  postId text [note: 'Foreign key referencing Post.id']
+}
+
+Table Notification {
+  id text [pk, note: 'Unique identifier for the notification']
+  body text [note: 'Body content of the notification']
+  userId text [note: 'Foreign key referencing User.id']
+  createdAt numeric [note: 'Timestamp when the notification was created']
+}
+
+Ref Post_userId_User_id_fk: Post.userId > User.id
+
+Ref Follow_followerId_User_id_fk: Follow.followerId > User.id
+
+Ref Follow_followingId_User_id_fk: Follow.followingId > User.id
+
+Ref Like_userId_User_id_fk: Like.userId > User.id
+
+Ref Like_postId_Post_id_fk: Like.postId > Post.id
+
+Ref Comment_userId_User_id_fk: Comment.userId > User.id
+
+Ref Comment_postId_Post_id_fk: Comment.postId > Post.id
+
+Ref Notification_userId_User_id_fk: Notification.userId > User.id

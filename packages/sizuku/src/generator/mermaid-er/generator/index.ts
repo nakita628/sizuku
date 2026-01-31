@@ -1,2 +1,1 @@
-export { erContent } from './er-content.js'
-export { relationLine } from './relation-line.js'
+export { erContent, erContentFromMergedSchema } from './er-content.js'

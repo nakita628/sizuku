@@ -1,4 +1,4 @@
-import { capitalize, inferInput } from '../../../utils/index.js'
+import { inferInput, makeCapitalized } from '../../../utils/index.js'
 
 /**
  * Generates Valibot relation schema code from a relation schema AST extraction.
@@ -22,7 +22,7 @@ export function relationValibotCode(
 ): string {
   const base = schema.baseName
   const relName = `${schema.name}Schema`
-  const baseSchema = `${capitalize(base)}Schema`
+  const baseSchema = `${makeCapitalized(base)}Schema`
   const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
   const objectType =
     schema.objectType === 'strict'
@@ -30,7 +30,7 @@ export function relationValibotCode(
       : schema.objectType === 'loose'
         ? 'looseObject'
         : 'object'
-  const obj = `\nexport const ${capitalize(relName)} = v.${objectType}({...${baseSchema}.entries,${fields}})`
+  const obj = `\nexport const ${makeCapitalized(relName)} = v.${objectType}({...${baseSchema}.entries,${fields}})`
   if (withType) return `${obj}\n\n${inferInput(schema.name)}\n`
   return `${obj}`
 }

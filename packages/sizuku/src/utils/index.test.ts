@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { buildRelationLine, extractRelations } from '../shared/helper/extract-schemas.js'
 import {
-  capitalize,
   extractFieldComments,
   fieldDefinitions,
   infer,
   inferInput,
+  makeCapitalized,
   parseFieldComments,
 } from './index'
 
@@ -13,9 +13,9 @@ import {
 // pnpm vitest run ./src/utils/index.test.ts
 
 describe('utils', () => {
-  describe('capitalize', () => {
-    it.concurrent('capitalize', () => {
-      expect(capitalize('user')).toBe('User')
+  describe('makeCapitalized', () => {
+    it.concurrent('makeCapitalized', () => {
+      expect(makeCapitalized('user')).toBe('User')
     })
   })
 

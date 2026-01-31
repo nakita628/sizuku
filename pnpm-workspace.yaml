@@ -1,4 +1,5 @@
 packages:
   - packages/*
+  - fixtures/*
 overrides:
   sizuku: link:packages/sizuku

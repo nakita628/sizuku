@@ -1,0 +1,75 @@
+Table User {
+  id text [pk, note: 'User ID']
+  email text [note: 'Email address']
+  passwordHash text [note: 'Hashed password (null for OAuth-only users)']
+  name text [note: 'Display name']
+  avatarUrl text [note: 'Profile image URL']
+  role text [note: 'User role']
+  emailVerified int [note: 'Email verification status']
+  isActive int [note: 'Account active status']
+  createdAt text [note: 'Account creation timestamp']
+  updatedAt text [note: 'Last update timestamp']
+  lastLoginAt text [note: 'Last login timestamp']
+}
+
+Table OAuthAccount {
+  id text [pk, note: 'OAuth account ID']
+  userId text [note: 'User ID']
+  provider text [note: 'OAuth provider']
+  providerAccountId text [note: 'Provider account ID']
+  accessToken text [note: 'Access token from provider']
+  refreshToken text [note: 'Refresh token from provider']
+  expiresAt text [note: 'Token expiration timestamp']
+  createdAt text [note: 'Account creation timestamp']
+}
+
+Table TwoFactorSetting {
+  id text [pk, note: '2FA setting ID']
+  userId text [note: 'User ID']
+  enabled int [note: '2FA enabled status']
+  method text [note: '2FA method']
+  totpSecret text [note: 'TOTP secret (encrypted)']
+  phoneNumber text [note: 'Phone number for SMS (E.164 format)']
+  backupCodes text [note: 'Backup codes (hashed, JSON array)']
+  verifiedAt text [note: 'Last verified timestamp']
+  createdAt text [note: 'Creation timestamp']
+  updatedAt text [note: 'Last update timestamp']
+}
+
+Table RefreshToken {
+  id text [pk, note: 'Refresh token ID']
+  userId text [note: 'User ID']
+  tokenHash text [note: 'Token hash (SHA-256)']
+  deviceInfo text [note: 'Device/client identifier']
+  ipAddress text [note: 'IP address at creation']
+  expiresAt text [note: 'Token expiration timestamp']
+  createdAt text [note: 'Token creation timestamp']
+  revoked int [note: 'Revocation status']
+}
+
+Table EmailVerification {
+  id text [pk, note: 'Verification ID']
+  userId text [note: 'User ID']
+  tokenHash text [note: 'Verification token (hashed)']
+  expiresAt text [note: 'Token expiration timestamp']
+  createdAt text [note: 'Creation timestamp']
+}
+
+Table PasswordReset {
+  id text [pk, note: 'Reset ID']
+  userId text [note: 'User ID']
+  tokenHash text [note: 'Reset token (hashed)']
+  expiresAt text [note: 'Token expiration timestamp']
+  used int [note: 'Used status']
+  createdAt text [note: 'Creation timestamp']
+}
+
+Ref OAuthAccount_userId_User_id_fk: OAuthAccount.userId > User.id
+
+Ref TwoFactorSetting_userId_User_id_fk: TwoFactorSetting.userId > User.id
+
+Ref RefreshToken_userId_User_id_fk: RefreshToken.userId > User.id
+
+Ref EmailVerification_userId_User_id_fk: EmailVerification.userId > User.id
+
+Ref PasswordReset_userId_User_id_fk: PasswordReset.userId > User.id

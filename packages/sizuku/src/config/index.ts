@@ -2,161 +2,84 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { register } from 'tsx/esm/api'
+import { z } from 'zod'
 
-export type Config = {
-  readonly input: `${string}.ts`
-  readonly zod?: {
-    readonly output: `${string}.ts`
-    readonly comment?: boolean
-    readonly type?: boolean
-    readonly zod?: 'v4' | 'mini' | '@hono/zod-openapi'
-    readonly relation?: boolean
-  }
-  readonly valibot?: {
-    readonly output: `${string}.ts`
-    readonly comment?: boolean
-    readonly type?: boolean
-    readonly relation?: boolean
-  }
-  readonly mermaid?: {
-    readonly output: string
-  }
-}
+// ============================================================================
+// Schema Definitions
+// ============================================================================
 
-type ValidationResult = { readonly ok: true } | { readonly ok: false; readonly error: string }
+const tsFileSchema = z.string().endsWith('.ts') as z.ZodType<`${string}.ts`>
+const dbmlFileSchema = z.string().endsWith('.dbml') as z.ZodType<`${string}.dbml`>
 
-/**
- * Validate boolean field if defined.
- *
- * @param value - The value to validate
- * @param fieldName - The name of the field
- * @returns Validation result
- */
-function validateBoolean(value: unknown, fieldName: string): ValidationResult {
-  if (value !== undefined && typeof value !== 'boolean') {
-    return { ok: false, error: `${fieldName} must be a boolean` }
-  }
-  return { ok: true }
-}
+const zodConfigSchema = z
+  .object({
+    output: tsFileSchema,
+    comment: z.boolean().optional(),
+    type: z.boolean().optional(),
+    zod: z.enum(['v4', 'mini', '@hono/zod-openapi']).optional(),
+    relation: z.boolean().optional(),
+  })
+  .optional()
 
-/**
- * Validate TypeScript file path.
- *
- * @param value - The value to validate
- * @param fieldName - The name of the field
- * @returns Validation result
- */
-function validateTsFile(value: string, fieldName: string): ValidationResult {
-  const isTs = (o: string): o is `${string}.ts` => o.endsWith('.ts')
-  if (!isTs(value)) {
-    return { ok: false, error: `${fieldName} must be a .ts file` }
-  }
-  return { ok: true }
-}
+const valibotConfigSchema = z
+  .object({
+    output: tsFileSchema,
+    comment: z.boolean().optional(),
+    type: z.boolean().optional(),
+    relation: z.boolean().optional(),
+  })
+  .optional()
 
-/**
- * Validate Zod configuration.
- *
- * @param zodConfig - The Zod configuration to validate
- * @returns Validation result
- */
-function validateZodConfig(zodConfig: Config['zod']): ValidationResult {
-  if (!zodConfig) return { ok: true }
+const arktypeConfigSchema = z
+  .object({
+    output: tsFileSchema,
+    comment: z.boolean().optional(),
+    type: z.boolean().optional(),
+  })
+  .optional()
 
-  const outputValidation = validateTsFile(zodConfig.output, 'Zod output')
-  if (!outputValidation.ok) return outputValidation
+const effectConfigSchema = z
+  .object({
+    output: tsFileSchema,
+    comment: z.boolean().optional(),
+    type: z.boolean().optional(),
+  })
+  .optional()
 
-  const commentValidation = validateBoolean(zodConfig.comment, 'Zod comment')
-  if (!commentValidation.ok) return commentValidation
+const mermaidConfigSchema = z
+  .object({
+    output: z.string(),
+  })
+  .optional()
 
-  const typeValidation = validateBoolean(zodConfig.type, 'Zod type')
-  if (!typeValidation.ok) return typeValidation
+const dbmlConfigSchema = z
+  .object({
+    output: dbmlFileSchema,
+  })
+  .optional()
 
-  if (
-    zodConfig.zod !== undefined &&
-    zodConfig.zod !== 'v4' &&
-    zodConfig.zod !== 'mini' &&
-    zodConfig.zod !== '@hono/zod-openapi'
-  ) {
-    return { ok: false, error: 'zod must be v4, mini, or @hono/zod-openapi' }
-  }
+const configSchema = z.object({
+  input: tsFileSchema,
+  zod: zodConfigSchema,
+  valibot: valibotConfigSchema,
+  arktype: arktypeConfigSchema,
+  effect: effectConfigSchema,
+  mermaid: mermaidConfigSchema,
+  dbml: dbmlConfigSchema,
+})
 
-  const relationValidation = validateBoolean(zodConfig.relation, 'Zod relation')
-  if (!relationValidation.ok) return relationValidation
+// ============================================================================
+// Type Exports
+// ============================================================================
 
-  return { ok: true }
-}
+export type Config = z.infer<typeof configSchema>
 
-/**
- * Validate Valibot configuration.
- *
- * @param valibotConfig - The Valibot configuration to validate
- * @returns Validation result
- */
-function validateValibotConfig(valibotConfig: Config['valibot']): ValidationResult {
-  if (!valibotConfig) return { ok: true }
-
-  const outputValidation = validateTsFile(valibotConfig.output, 'Valibot output')
-  if (!outputValidation.ok) return outputValidation
-
-  const commentValidation = validateBoolean(valibotConfig.comment, 'Valibot comment')
-  if (!commentValidation.ok) return commentValidation
-
-  const typeValidation = validateBoolean(valibotConfig.type, 'Valibot type')
-  if (!typeValidation.ok) return typeValidation
-
-  const relationValidation = validateBoolean(valibotConfig.relation, 'Valibot relation')
-  if (!relationValidation.ok) return relationValidation
-
-  return { ok: true }
-}
-
-/**
- * Validate Mermaid configuration.
- *
- * @param mermaidConfig - The Mermaid configuration to validate
- * @returns Validation result
- */
-function validateMermaidConfig(mermaidConfig: Config['mermaid']): ValidationResult {
-  if (!mermaidConfig) return { ok: true }
-
-  if (typeof mermaidConfig.output !== 'string') {
-    return { ok: false, error: 'Mermaid output must be a string' }
-  }
-
-  return { ok: true }
-}
-
-/**
- * Validate configuration object.
- *
- * @param cfg - The configuration to validate
- * @returns Validation result with validated config
- */
-function validateConfig(
-  cfg: Config,
-): { readonly ok: true; readonly value: Config } | { readonly ok: false; readonly error: string } {
-  const inputValidation = validateTsFile(cfg.input, 'Input')
-  if (!inputValidation.ok) return inputValidation
-
-  const zodValidation = validateZodConfig(cfg.zod)
-  if (!zodValidation.ok) return zodValidation
-
-  const valibotValidation = validateValibotConfig(cfg.valibot)
-  if (!valibotValidation.ok) return valibotValidation
-
-  const mermaidValidation = validateMermaidConfig(cfg.mermaid)
-  if (!mermaidValidation.ok) return mermaidValidation
-
-  return { ok: true, value: cfg }
-}
+// ============================================================================
+// Config Loading
+// ============================================================================
 
 export async function config(): Promise<
-  | { readonly ok: true; readonly value: Config }
-  | {
-      readonly ok: false
-      readonly error: string
-    }
+  { readonly ok: true; readonly value: Config } | { readonly ok: false; readonly error: string }
 > {
   const abs = resolve(process.cwd(), 'sizuku.config.ts')
   if (!existsSync(abs)) {
@@ -164,16 +87,24 @@ export async function config(): Promise<
   }
   try {
     register()
-    const mod: {
-      readonly default: Config
-    } = await import(pathToFileURL(abs).href)
+    const mod: { readonly default: unknown } = await import(pathToFileURL(abs).href)
+
     if (!('default' in mod)) {
       return { ok: false, error: 'Config must export default object' }
     }
     if (mod.default === undefined) {
       return { ok: false, error: 'Config default is undefined' }
     }
-    return validateConfig(mod.default)
+
+    const result = configSchema.safeParse(mod.default)
+    if (!result.success) {
+      const errors = result.error.issues
+        .map((e) => `${e.path.map(String).join('.')}: ${e.message}`)
+        .join(', ')
+      return { ok: false, error: errors }
+    }
+
+    return { ok: true, value: result.data }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }

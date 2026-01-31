@@ -1,4 +1,4 @@
-import { capitalize, infer } from '../../../utils/index.js'
+import { infer, makeCapitalized } from '../../../utils/index.js'
 
 /**
  * Generates Zod relation schema code from a relation schema AST extraction.
@@ -22,7 +22,7 @@ export function relationZodCode(
 ): string {
   const base = schema.baseName
   const relName = `${schema.name}Schema`
-  const baseSchema = `${capitalize(base)}Schema`
+  const baseSchema = `${makeCapitalized(base)}Schema`
   const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
   const objectType =
     schema.objectType === 'strict'
@@ -30,7 +30,7 @@ export function relationZodCode(
       : schema.objectType === 'loose'
         ? 'looseObject'
         : 'object'
-  const obj = `\nexport const ${capitalize(relName)} = z.${objectType}({...${baseSchema}.shape,${fields}})`
+  const obj = `\nexport const ${makeCapitalized(relName)} = z.${objectType}({...${baseSchema}.shape,${fields}})`
   if (withType) return `${obj}\n\n${infer(schema.name)}\n`
   return `${obj}`
 }
