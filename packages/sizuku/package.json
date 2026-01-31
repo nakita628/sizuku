@@ -68,7 +68,7 @@
     "prettier": "^3.6.2",
     "ts-morph": "^27.0.2",
     "tsx": "^4.20.6",
-    "utils-lab": "file:../../../utils-lab",
+    "utils-lab": "^0.0.2",
     "zod": "^4.1.13"
   }
 }
