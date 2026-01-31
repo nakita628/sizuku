@@ -57,3 +57,31 @@ export async function writeFile(
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
 }
+
+/**
+ * Writes binary data to a file, creating it if necessary.
+ *
+ * @param path - File path to write.
+ * @param data - Binary data to write.
+ * @returns A `Result` that is `ok` on success, otherwise an error message.
+ */
+export async function writeFileBinary(
+  path: string,
+  data: Buffer,
+): Promise<
+  | {
+      ok: true
+      value: undefined
+    }
+  | {
+      ok: false
+      error: string
+    }
+> {
+  try {
+    await fsp.writeFile(path, data)
+    return { ok: true, value: undefined }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}

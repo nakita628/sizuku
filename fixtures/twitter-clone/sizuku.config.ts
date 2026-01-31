@@ -15,7 +15,24 @@ export default defineConfig({
     type: true,
     relation: true,
   },
+  arktype: {
+    output: 'arktype/index.ts',
+    comment: true,
+    type: true,
+  },
+  effect: {
+    output: 'effect/index.ts',
+    comment: true,
+    type: true,
+  },
   mermaid: {
     output: 'mermaid-er/ER.md',
+  },
+  dbml: {
+    output: 'dbml/schema.dbml',
+  },
+  svg: {
+    output: 'docs/er-diagram.png',
+    format: 'png',
   },
 })

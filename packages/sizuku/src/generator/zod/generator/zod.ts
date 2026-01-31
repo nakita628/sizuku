@@ -1,4 +1,5 @@
-import { capitalize, fieldDefinitions } from '../../../utils/index.js'
+import { makeCapitalized, makeZodObject } from 'utils-lab'
+import { fieldDefinitions } from '../../../utils/index.js'
 
 /**
  * Generates a Zod schema for a given schema and config.
@@ -19,11 +20,13 @@ export function zod(
   },
   comment: boolean,
 ): string {
-  const objectType =
+  const wrapperType =
     schema.objectType === 'strict'
       ? 'strictObject'
       : schema.objectType === 'loose'
         ? 'looseObject'
         : 'object'
-  return `export const ${capitalize(schema.name)}Schema = z.${objectType}({${fieldDefinitions(schema, comment)}})`
+  const inner = fieldDefinitions(schema, comment)
+  const objectCode = makeZodObject(inner, wrapperType)
+  return `export const ${makeCapitalized(schema.name)}Schema = ${objectCode}`
 }

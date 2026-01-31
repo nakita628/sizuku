@@ -1,4 +1,5 @@
-import { capitalize, fieldDefinitions } from '../../../utils/index.js'
+import { makeCapitalized, makeValibotObject } from 'utils-lab'
+import { fieldDefinitions } from '../../../utils/index.js'
 
 /**
  * Generates a Valibot schema for a given schema and config.
@@ -19,12 +20,13 @@ export function valibot(
   },
   comment: boolean,
 ): string {
-  const res = fieldDefinitions(schema, comment)
-  const objectType =
+  const wrapperType =
     schema.objectType === 'strict'
       ? 'strictObject'
       : schema.objectType === 'loose'
         ? 'looseObject'
         : 'object'
-  return `export const ${capitalize(schema.name)}Schema = v.${objectType}({${res}})`
+  const inner = fieldDefinitions(schema, comment)
+  const objectCode = makeValibotObject(inner, wrapperType)
+  return `export const ${makeCapitalized(schema.name)}Schema = ${objectCode}`
 }

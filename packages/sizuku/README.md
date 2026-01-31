@@ -6,7 +6,11 @@
 
 - 💎 Automatically generates [Zod](https://zod.dev/) schemas from your Drizzle schema
 - 🤖 Automatically generates [Valibot](https://valibot.dev/) schemas from your Drizzle schema
+- 🏹 Automatically generates [ArkType](https://arktype.io/) schemas from your Drizzle schema
+- ⚡ Automatically generates [Effect Schema](https://effect.website/docs/schema/introduction/) from your Drizzle schema
 - 📊 Creates [Mermaid](https://mermaid.js.org/) ER diagrams
+- 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files
+- 🖼️ Outputs ER diagrams as **PNG/SVG** images using [dbml-renderer](https://github.com/softwaretechnik-berlin/dbml-renderer)
 
 
 ## Getting Started
@@ -90,8 +94,25 @@ export default defineConfig({
     type: true,
     relation: true,
   },
+  arktype: {
+    output: 'arktype/index.ts',
+    comment: true,
+    type: true,
+  },
+  effect: {
+    output: 'effect/index.ts',
+    comment: true,
+    type: true,
+  },
   mermaid: {
     output: 'mermaid-er/ER.md',
+  },
+  dbml: {
+    output: 'dbml/schema.dbml',
+  },
+  svg: {
+    output: 'docs/er-diagram.png',
+    format: 'png',
   },
 })
 ```
@@ -214,6 +235,86 @@ erDiagram
         varchar userId "Foreign key referencing User.id"
     }
 ```
+
+### DBML
+
+```dbml
+Table user {
+  id varchar [pk, note: 'Primary key']
+  name varchar [note: 'Display name']
+}
+
+Table post {
+  id varchar [pk, note: 'Primary key']
+  title varchar [note: 'Article title']
+  content varchar [note: 'Body content (no length limit)']
+  userId varchar [note: 'Foreign key referencing User.id']
+}
+
+Ref post_userId_user_id_fk: post.userId > user.id
+```
+
+### PNG/SVG
+
+The `svg` generator outputs ER diagrams as PNG or SVG images using [dbml-renderer](https://github.com/softwaretechnik-berlin/dbml-renderer).
+
+Output: `docs/er-diagram.png`
+
+## Configuration
+
+### Zod Options
+
+| Option     | Type      | Default        | Description                                                      |
+|------------|-----------|----------------|------------------------------------------------------------------|
+| `output`   | `string`  | `zod/index.ts` | Output file path                                                 |
+| `type`     | `boolean` | `false`        | Generate TypeScript types                                        |
+| `comment`  | `boolean` | `false`        | Include schema documentation                                     |
+| `zod`      | `string`  | `'v4'`         | Zod import version (`'mini'`, `'@hono/zod-openapi'`, or `'v4'`)  |
+| `relation` | `boolean` | `false`        | Generate relation schemas                                        |
+
+### Valibot Options
+
+| Option     | Type      | Default            | Description                  |
+|------------|-----------|--------------------|------------------------------|
+| `output`   | `string`  | `valibot/index.ts` | Output file path             |
+| `type`     | `boolean` | `false`            | Generate TypeScript types    |
+| `comment`  | `boolean` | `false`            | Include schema documentation |
+| `relation` | `boolean` | `false`            | Generate relation schemas    |
+
+### ArkType Options
+
+| Option    | Type      | Default            | Description                  |
+|-----------|-----------|--------------------|------------------------------|
+| `output`  | `string`  | `arktype/index.ts` | Output file path             |
+| `type`    | `boolean` | `false`            | Generate TypeScript types    |
+| `comment` | `boolean` | `false`            | Include schema documentation |
+
+### Effect Options
+
+| Option    | Type      | Default           | Description                  |
+|-----------|-----------|-------------------|------------------------------|
+| `output`  | `string`  | `effect/index.ts` | Output file path             |
+| `type`    | `boolean` | `false`           | Generate TypeScript types    |
+| `comment` | `boolean` | `false`           | Include schema documentation |
+
+### Mermaid Options
+
+| Option   | Type     | Default          | Description      |
+|----------|----------|------------------|------------------|
+| `output` | `string` | `mermaid-er/ER.md` | Output file path |
+
+### DBML Options
+
+| Option   | Type     | Default            | Description      |
+|----------|----------|--------------------|------------------|
+| `output` | `string` | `dbml/schema.dbml` | Output file path |
+
+### SVG Options
+
+| Option   | Type     | Default               | Description                              |
+|----------|----------|-----------------------|------------------------------------------|
+| `output` | `string` | `docs/er-diagram.png` | Output file path                         |
+| `format` | `string` | `png`                 | Output format (`png`, `svg`, or `dot`)   |
 
 ### ⚠️ WARNING: Potential Breaking Changes Without Notice
 

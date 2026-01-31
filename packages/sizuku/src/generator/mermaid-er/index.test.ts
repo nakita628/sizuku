@@ -18,7 +18,6 @@ const TEST_CODE = [
   "  name: varchar('name', { length: 50 }).notNull(),",
   '})',
   '',
-  '/// @relation user.id post.userId one-to-many',
   "export const post = mysqlTable('post', {",
   '  /// Primary key',
   '  /// @z.uuid()',
@@ -35,19 +34,8 @@ const TEST_CODE = [
   '  /// Foreign key referencing User.id',
   '  /// @z.uuid()',
   '  /// @v.pipe(v.string(), v.uuid())',
-  "  userId: varchar('user_id', { length: 36 }).notNull(),",
+  "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id),",
   '})',
-  '',
-  'export const userRelations = relations(user, ({ many }) => ({',
-  '  posts: many(post),',
-  '}))',
-  '',
-  'export const postRelations = relations(post, ({ one }) => ({',
-  '  user: one(user, {',
-  '    fields: [post.userId],',
-  '    references: [user.id],',
-  '  }),',
-  '}))',
   '',
 ]
 
@@ -57,22 +45,98 @@ const TEST_CODE_WITHOUT_COMMENTS = [
   "  name: varchar('name', { length: 50 }).notNull(),",
   '})',
   '',
-  '/// @relation user.id post.userId one-to-many',
   "export const post = mysqlTable('post', {",
   "  id: varchar('id', { length: 36 }).primaryKey(),",
   "  title: varchar('title', { length: 100 }).notNull(),",
   "  content: varchar('content', { length: 65535 }).notNull(),",
-  "  userId: varchar('user_id', { length: 36 }).notNull(),",
+  "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id),",
   '})',
   '',
-  'export const userRelations = relations(user, ({ many }) => ({',
-  '  posts: many(post),',
+]
+
+// Test code with foreignKey() constraints
+const TEST_CODE_WITH_FOREIGN_KEY = [
+  "import { foreignKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'",
+  '',
+  "export const User = sqliteTable('User', {",
+  "  id: text('id').notNull().primaryKey(),",
+  "  name: text('name').notNull(),",
+  '})',
+  '',
+  'export const Post = sqliteTable(',
+  "  'Post',",
+  '  {',
+  "    id: text('id').notNull().primaryKey(),",
+  "    body: text('body').notNull(),",
+  "    userId: text('userId').notNull(),",
+  '  },',
+  '  (Post) => ({',
+  '    Post_user_fkey: foreignKey({',
+  "      name: 'Post_user_fkey',",
+  '      columns: [Post.userId],',
+  '      foreignColumns: [User.id],',
+  '    })',
+  '      .onDelete("cascade")',
+  '      .onUpdate("cascade"),',
+  '  }),',
+  ')',
+  '',
+]
+
+// Test code with relations() blocks
+const TEST_CODE_WITH_RELATIONS_BLOCK = [
+  "import { relations } from 'drizzle-orm'",
+  "import { sqliteTable, text } from 'drizzle-orm/sqlite-core'",
+  '',
+  "export const User = sqliteTable('User', {",
+  "  id: text('id').notNull().primaryKey(),",
+  "  name: text('name').notNull(),",
+  '})',
+  '',
+  "export const Post = sqliteTable('Post', {",
+  "  id: text('id').notNull().primaryKey(),",
+  "  body: text('body').notNull(),",
+  "  userId: text('userId').notNull(),",
+  '})',
+  '',
+  'export const PostRelations = relations(Post, ({ one }) => ({',
+  '  user: one(User, {',
+  '    fields: [Post.userId],',
+  '    references: [User.id],',
+  '  }),',
   '}))',
   '',
-  'export const postRelations = relations(post, ({ one }) => ({',
-  '  user: one(user, {',
-  '    fields: [post.userId],',
-  '    references: [user.id],',
+]
+
+// Test code without imports (simulates how sizuku actually processes code)
+const TEST_CODE_WITHOUT_IMPORTS = [
+  "export const User = sqliteTable('User', {",
+  "  id: text('id').notNull().primaryKey(),",
+  "  name: text('name').notNull(),",
+  '})',
+  '',
+  'export const Post = sqliteTable(',
+  "  'Post',",
+  '  {',
+  "    id: text('id').notNull().primaryKey(),",
+  "    body: text('body').notNull(),",
+  "    userId: text('userId').notNull(),",
+  '  },',
+  '  (Post) => ({',
+  '    Post_user_fkey: foreignKey({',
+  "      name: 'Post_user_fkey',",
+  '      columns: [Post.userId],',
+  '      foreignColumns: [User.id],',
+  '    })',
+  '      .onDelete("cascade")',
+  '      .onUpdate("cascade"),',
+  '  }),',
+  ')',
+  '',
+  'export const PostRelations = relations(Post, ({ one }) => ({',
+  '  user: one(User, {',
+  '    fields: [Post.userId],',
+  '    references: [User.id],',
   '  }),',
   '}))',
   '',
@@ -94,14 +158,14 @@ describe('sizukuMermaidER', () => {
 erDiagram
     user ||--}| post : "(id) - (userId)"
     user {
-        varchar id "(PK) Primary key"
+        varchar id PK "Primary key"
         varchar name "Display name"
     }
     post {
-        varchar id "(PK) Primary key"
+        varchar id PK "Primary key"
         varchar title "Article title"
         varchar content "Body content (no length limit)"
-        varchar userId "Foreign key referencing User.id"
+        varchar userId FK "Foreign key referencing User.id"
     }
 \`\`\``
     expect(result).toBe(expected)
@@ -114,16 +178,40 @@ erDiagram
 erDiagram
     user ||--}| post : "(id) - (userId)"
     user {
-        varchar id
+        varchar id PK
         varchar name
     }
     post {
-        varchar id
+        varchar id PK
         varchar title
         varchar content
-        varchar userId
+        varchar userId FK
     }
 \`\`\``
     expect(result).toBe(expected)
+  })
+
+  it('detects relations from foreignKey() constraints', async () => {
+    await sizukuMermaidER(TEST_CODE_WITH_FOREIGN_KEY, 'tmp/mermaid-er-test.md')
+    const result = await fsp.readFile('tmp/mermaid-er-test.md', 'utf-8')
+    // Check that relation is detected
+    expect(result).toContain('User ||--}| Post')
+    expect(result).toContain('(id) - (userId)')
+  })
+
+  it('detects relations from relations() blocks', async () => {
+    await sizukuMermaidER(TEST_CODE_WITH_RELATIONS_BLOCK, 'tmp/mermaid-er-test.md')
+    const result = await fsp.readFile('tmp/mermaid-er-test.md', 'utf-8')
+    // Check that relation is detected
+    expect(result).toContain('User ||--}| Post')
+    expect(result).toContain('(id) - (userId)')
+  })
+
+  it('detects relations without imports (simulates real usage)', async () => {
+    await sizukuMermaidER(TEST_CODE_WITHOUT_IMPORTS, 'tmp/mermaid-er-test.md')
+    const result = await fsp.readFile('tmp/mermaid-er-test.md', 'utf-8')
+    // Check that relation is detected from both foreignKey() and relations()
+    expect(result).toContain('User ||--}| Post')
+    expect(result).toContain('(id) - (userId)')
   })
 })

@@ -1,9 +1,9 @@
 import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
 import {
-  capitalize,
   containsSubstring,
   extractFieldComments,
+  makeCapitalized,
   parseFieldComments,
   removeOptionalSuffix,
   splitByDot,
@@ -11,12 +11,13 @@ import {
   splitByWhitespace,
   startsWith,
   trimString,
+  type ValidationTag,
 } from '../../utils/index.js'
 
 /**
  * Supported validation library types.
  */
-export type ValidationLibrary = 'zod' | 'valibot'
+export type ValidationLibrary = 'zod' | 'valibot' | 'arktype' | 'effect'
 
 /**
  * Schema extraction result type containing table name and field definitions.
@@ -67,16 +68,37 @@ type FieldExtractionResult = {
 }
 
 /**
+ * Schema prefix type for validation libraries.
+ */
+type SchemaPrefix = 'z' | 'v' | 'type' | 'Schema'
+
+/**
  * Generates relation definition based on function name and reference table.
  *
  * @param fnName - The relation function name ('many' or 'one')
  * @param refTable - The referenced table name
- * @param prefix - Schema prefix ('v' or 'z') for validation library
+ * @param prefix - Schema prefix for validation library
  * @returns The generated relation definition string
  */
-function generateRelationDefinition(fnName: string, refTable: string, prefix: 'v' | 'z'): string {
-  const schema = `${capitalize(refTable)}Schema`
-  return fnName === 'many' ? `${prefix}.array(${schema})` : fnName === 'one' ? schema : ''
+function generateRelationDefinition(
+  fnName: string,
+  refTable: string,
+  prefix: SchemaPrefix,
+): string {
+  const schema = `${makeCapitalized(refTable)}Schema`
+  if (fnName === 'many') {
+    if (prefix === 'type') {
+      return `${schema}.array()`
+    }
+    if (prefix === 'Schema') {
+      return `Schema.Array(${schema})`
+    }
+    return `${prefix}.array(${schema})`
+  }
+  if (fnName === 'one') {
+    return schema
+  }
+  return ''
 }
 
 /**
@@ -185,7 +207,7 @@ function createExtractFieldFromProperty(
  * Creates a relation field extractor function.
  *
  * @param parseFieldComments - Function to parse field comments
- * @param prefix - Schema prefix ('v' or 'z') for validation library
+ * @param prefix - Schema prefix for validation library
  * @returns Function that extracts relation fields from property
  */
 function createExtractRelationFieldFromProperty(
@@ -194,7 +216,7 @@ function createExtractRelationFieldFromProperty(
     readonly description?: string
     readonly objectType?: 'strict' | 'loose'
   },
-  prefix: 'v' | 'z',
+  prefix: SchemaPrefix,
 ) {
   return (property: Node, sourceText: string): FieldExtractionResult | null => {
     if (!Node.isPropertyAssignment(property)) return null
@@ -313,13 +335,13 @@ function buildSchemaExtractor(
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
   parseFieldComments: (
     commentLines: readonly string[],
-    tag: '@v.' | '@z.',
+    tag: ValidationTag,
   ) => {
     readonly definition: string
     readonly description?: string
     readonly objectType?: 'strict' | 'loose'
   },
-  commentPrefix: '@v.' | '@z.',
+  commentPrefix: ValidationTag,
 ) {
   return (
     variableStatement: Node,
@@ -427,8 +449,22 @@ export function extractSchemas(
   const sourceFile = project.createSourceFile('temp.ts', sourceCode)
   const sourceText = sourceFile.getFullText()
 
-  const commentPrefix = library === 'zod' ? '@z.' : '@v.'
-  const schemaPrefix = library === 'zod' ? 'z' : 'v'
+  const commentPrefix: ValidationTag =
+    library === 'zod'
+      ? '@z.'
+      : library === 'valibot'
+        ? '@v.'
+        : library === 'arktype'
+          ? '@a.'
+          : '@e.'
+  const schemaPrefix: SchemaPrefix =
+    library === 'zod'
+      ? 'z'
+      : library === 'valibot'
+        ? 'v'
+        : library === 'arktype'
+          ? 'type'
+          : 'Schema'
 
   const extractField = createExtractFieldFromProperty((lines) =>
     parseFieldComments(lines, commentPrefix),
@@ -497,6 +533,44 @@ export function extractValibotSchemas(lines: string[]): SchemaExtractionResult[]
 }
 
 /**
+ * Extracts ArkType schemas from TypeScript source code using AST analysis.
+ *
+ * This function processes exported variable declarations to extract table schemas
+ * with their field definitions and comments. It automatically handles ArkType schema extraction.
+ *
+ * @param lines - Array of source code lines to process
+ * @returns Array of extracted schemas with field definitions
+ *
+ * @example
+ * ```typescript
+ * const schemas = extractArktypeSchemas(sourceLines)
+ * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: '"string.uuid"', description: 'Primary key' }] }]
+ * ```
+ */
+export function extractArktypeSchemas(lines: string[]): SchemaExtractionResult[] {
+  return extractSchemas(lines, 'arktype')
+}
+
+/**
+ * Extracts Effect schemas from TypeScript source code using AST analysis.
+ *
+ * This function processes exported variable declarations to extract table schemas
+ * with their field definitions and comments. It automatically handles Effect schema extraction.
+ *
+ * @param lines - Array of source code lines to process
+ * @returns Array of extracted schemas with field definitions
+ *
+ * @example
+ * ```typescript
+ * const schemas = extractEffectSchemas(sourceLines)
+ * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: 'Schema.UUID', description: 'Primary key' }] }]
+ * ```
+ */
+export function extractEffectSchemas(lines: string[]): SchemaExtractionResult[] {
+  return extractSchemas(lines, 'effect')
+}
+
+/**
  * Extracts relation schemas from `relations(...)` declarations using AST analysis.
  *
  * This returns entries like `userRelations` and `postRelations` with fields
@@ -518,8 +592,22 @@ export function extractRelationSchemas(
   const sourceFile = project.createSourceFile('temp.ts', sourceCode)
   const sourceText = sourceFile.getFullText()
 
-  const commentPrefix = library === 'zod' ? '@z.' : '@v.'
-  const schemaPrefix = library === 'zod' ? 'z' : 'v'
+  const commentPrefix: ValidationTag =
+    library === 'zod'
+      ? '@z.'
+      : library === 'valibot'
+        ? '@v.'
+        : library === 'arktype'
+          ? '@a.'
+          : '@e.'
+  const schemaPrefix: SchemaPrefix =
+    library === 'zod'
+      ? 'z'
+      : library === 'valibot'
+        ? 'v'
+        : library === 'arktype'
+          ? 'type'
+          : 'Schema'
 
   // First, extract base schemas to get their objectType
   const baseSchemas = extractSchemas(lines, library)

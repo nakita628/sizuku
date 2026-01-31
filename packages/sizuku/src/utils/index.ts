@@ -1,16 +1,16 @@
+import { makeCapitalized, makeCleanedCommentLines, makeValibotInfer, makeZodInfer } from 'utils-lab'
+
+/**
+ * Tag type for validation library prefixes.
+ */
+export type ValidationTag = '@z.' | '@v.' | '@a.' | '@e.'
+
+// Re-export makeCapitalized from utils-lab for use in other modules
+export { makeCapitalized } from 'utils-lab'
+
 /* ========================================================================== *
  *  text
  * ========================================================================== */
-
-/**
- * Capitalize the first letter of a string.
- *
- * @param str - The input string.
- * @returns A new string with the first letter capitalized.
- */
-export function capitalize(str: string): string {
-  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
-}
 
 /**
  * Remove triple slash prefix from a string.
@@ -178,14 +178,13 @@ export function splitByDot(str: string): readonly string[] {
 
 /**
  * Clean comment lines by removing triple slash prefix and trimming.
+ * Uses makeCleanedCommentLines from utils-lab.
  *
  * @param commentLines - Raw comment lines
  * @returns Cleaned comment lines
  */
-function cleanCommentLines(commentLines: readonly string[]): readonly string[] {
-  return commentLines
-    .map((line) => (line.startsWith('///') ? line.substring(3) : line).trim())
-    .filter((line) => line.length > 0)
+export function cleanCommentLines(commentLines: readonly string[]): readonly string[] {
+  return makeCleanedCommentLines(commentLines)
 }
 
 /**
@@ -197,7 +196,7 @@ function cleanCommentLines(commentLines: readonly string[]): readonly string[] {
  */
 function extractObjectType(
   cleaned: readonly string[],
-  tag: '@v.' | '@z.',
+  tag: ValidationTag,
 ): 'strict' | 'loose' | undefined {
   const tagWithoutAt = tag.slice(1)
   const objectTypeLine = cleaned.find(
@@ -217,13 +216,22 @@ function extractObjectType(
  * @param tag - The tag to look for
  * @returns The definition string
  */
-function extractDefinition(cleaned: readonly string[], tag: '@v.' | '@z.'): string {
+function extractDefinition(cleaned: readonly string[], tag: ValidationTag): string {
   const definitionLine = cleaned.find(
     (line) =>
       line.startsWith(tag) && !line.includes('strictObject') && !line.includes('looseObject'),
   )
   if (!definitionLine) return ''
-  return definitionLine.startsWith('@') ? definitionLine.substring(1) : definitionLine
+  // Remove the @ sign
+  const withoutAt = definitionLine.startsWith('@') ? definitionLine.substring(1) : definitionLine
+  // For arktype (@a.) and effect (@e.), remove the library prefix to get the raw definition
+  // For zod (@z.) and valibot (@v.), keep the library prefix
+  if (tag === '@a.' || tag === '@e.') {
+    // Remove the 'a.' or 'e.' prefix
+    const prefix = tag.substring(1) // 'a.' or 'e.'
+    return withoutAt.startsWith(prefix) ? withoutAt.substring(prefix.length) : withoutAt
+  }
+  return withoutAt
 }
 
 /**
@@ -234,7 +242,14 @@ function extractDefinition(cleaned: readonly string[], tag: '@v.' | '@z.'): stri
  */
 function extractDescription(cleaned: readonly string[]): string | undefined {
   const descriptionLines = cleaned.filter(
-    (line) => !(line.includes('@z.') || line.includes('@v.') || line.includes('@relation.')),
+    (line) =>
+      !(
+        line.includes('@z.') ||
+        line.includes('@v.') ||
+        line.includes('@a.') ||
+        line.includes('@e.') ||
+        line.includes('@relation.')
+      ),
   )
   return descriptionLines.length > 0 ? descriptionLines.join(' ') : undefined
 }
@@ -243,12 +258,12 @@ function extractDescription(cleaned: readonly string[]): string | undefined {
  * Parse field comments and extract definition line and description.
  *
  * @param commentLines - Raw comment lines (e.g., from source text)
- * @param tag - The tag to look for (e.g., '@v.' or '@z.')
+ * @param tag - The tag to look for (e.g., '@v.', '@z.', '@a.', or '@e.')
  * @returns Parsed definition and description
  */
 export function parseFieldComments(
   commentLines: readonly string[],
-  tag: '@v.' | '@z.',
+  tag: ValidationTag,
 ): {
   readonly definition: string
   readonly description?: string
@@ -318,23 +333,31 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number):
  * ========================================================================== */
 
 /**
- * @param name
- * @returns
+ * Creates `z.infer` type for the specified model.
+ * Uses makeZodInfer from utils-lab with capitalized model name.
+ *
+ * @param name - The model name
+ * @returns The generated TypeScript type definition line using Zod.
  */
 export function infer(name: string): `export type ${string} = z.infer<typeof ${string}Schema>` {
-  const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1)
-  return `export type ${capitalizedName} = z.infer<typeof ${capitalizedName}Schema>`
+  return makeZodInfer(makeCapitalized(name))
 }
 
 /* ========================================================================== *
  *  valibot
  * ========================================================================== */
 
+/**
+ * Creates `v.InferInput` type for the specified model.
+ * Uses makeValibotInfer from utils-lab with capitalized model name.
+ *
+ * @param name - The model name
+ * @returns The generated TypeScript type definition line using Valibot.
+ */
 export function inferInput(
   name: string,
 ): `export type ${string} = v.InferInput<typeof ${string}Schema>` {
-  const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1)
-  return `export type ${capitalizedName} = v.InferInput<typeof ${capitalizedName}Schema>`
+  return makeValibotInfer(makeCapitalized(name))
 }
 
 /* ========================================================================== *
@@ -362,4 +385,36 @@ export function fieldDefinitions(
       return `${commentCode}${name}:${definition}`
     })
     .join(',\n')
+}
+
+/* ========================================================================== *
+ *  arktype
+ * ========================================================================== */
+
+/**
+ * Creates ArkType infer type for the specified model.
+ *
+ * @param name - The model name
+ * @returns The generated TypeScript type definition line using ArkType.
+ */
+export function inferArktype(name: string): `export type ${string} = typeof ${string}Schema.infer` {
+  const capitalized = makeCapitalized(name)
+  return `export type ${capitalized} = typeof ${capitalized}Schema.infer` as const
+}
+
+/* ========================================================================== *
+ *  effect
+ * ========================================================================== */
+
+/**
+ * Creates Effect Schema infer type for the specified model.
+ *
+ * @param name - The model name
+ * @returns The generated TypeScript type definition line using Effect Schema.
+ */
+export function inferEffect(
+  name: string,
+): `export type ${string} = Schema.Schema.Type<typeof ${string}Schema>` {
+  const capitalized = makeCapitalized(name)
+  return `export type ${capitalized} = Schema.Schema.Type<typeof ${capitalized}Schema>` as const
 }

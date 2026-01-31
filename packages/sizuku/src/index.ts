@@ -1,7 +1,11 @@
 // #!/usr/bin/env node
 
 import { config } from './config/index.js'
+import { sizukuArktype } from './generator/arktype/index.js'
+import { sizukuDBML } from './generator/dbml/index.js'
+import { sizukuEffect } from './generator/effect/index.js'
 import { sizukuMermaidER } from './generator/mermaid-er/index.js'
+import { sizukuSVG } from './generator/svg/index.js'
 import { sizukuValibot } from './generator/valibot/index.js'
 import { sizukuZod } from './generator/zod/index.js'
 import { readFileSync } from './shared/fs/index.js'
@@ -97,6 +101,54 @@ export async function main(): Promise<
     return { ok: false, error: valibotMessage.error }
   }
 
+  /* arktype */
+  const arktypeMessage: MessageResult | null = c.arktype?.output
+    ? await (async (): Promise<MessageResult> => {
+        const arktypeConfig = c.arktype
+        if (!arktypeConfig?.output) {
+          return { ok: false, error: 'ArkType config is missing' }
+        }
+        const arktypeResult = await sizukuArktype(
+          code,
+          arktypeConfig.output,
+          arktypeConfig.comment,
+          arktypeConfig.type,
+        )
+        if (!arktypeResult.ok) {
+          return { ok: false, error: arktypeResult.error }
+        }
+        return { ok: true, value: `Generated ArkType schema at: ${arktypeConfig.output}` }
+      })()
+    : null
+
+  if (arktypeMessage && !arktypeMessage.ok) {
+    return { ok: false, error: arktypeMessage.error }
+  }
+
+  /* effect */
+  const effectMessage: MessageResult | null = c.effect?.output
+    ? await (async (): Promise<MessageResult> => {
+        const effectConfig = c.effect
+        if (!effectConfig?.output) {
+          return { ok: false, error: 'Effect config is missing' }
+        }
+        const effectResult = await sizukuEffect(
+          code,
+          effectConfig.output,
+          effectConfig.comment,
+          effectConfig.type,
+        )
+        if (!effectResult.ok) {
+          return { ok: false, error: effectResult.error }
+        }
+        return { ok: true, value: `Generated Effect schema at: ${effectConfig.output}` }
+      })()
+    : null
+
+  if (effectMessage && !effectMessage.ok) {
+    return { ok: false, error: effectMessage.error }
+  }
+
   /* mermaid */
   const mermaidMessage: MessageResult | null = c.mermaid?.output
     ? await (async (): Promise<MessageResult> => {
@@ -116,10 +168,52 @@ export async function main(): Promise<
     return { ok: false, error: mermaidMessage.error }
   }
 
+  /* dbml */
+  const dbmlMessage: MessageResult | null = c.dbml?.output
+    ? await (async (): Promise<MessageResult> => {
+        const dbmlConfig = c.dbml
+        if (!dbmlConfig?.output) {
+          return { ok: false, error: 'DBML config is missing' }
+        }
+        const dbmlResult = await sizukuDBML(code, dbmlConfig.output)
+        if (!dbmlResult.ok) {
+          return { ok: false, error: dbmlResult.error }
+        }
+        return { ok: true, value: `Generated DBML schema at: ${dbmlConfig.output}` }
+      })()
+    : null
+
+  if (dbmlMessage && !dbmlMessage.ok) {
+    return { ok: false, error: dbmlMessage.error }
+  }
+
+  /* svg */
+  const svgMessage: MessageResult | null = c.svg?.output
+    ? await (async (): Promise<MessageResult> => {
+        const svgConfig = c.svg
+        if (!svgConfig?.output) {
+          return { ok: false, error: 'SVG config is missing' }
+        }
+        const svgResult = await sizukuSVG(code, svgConfig.output, svgConfig.format)
+        if (!svgResult.ok) {
+          return { ok: false, error: svgResult.error }
+        }
+        return { ok: true, value: `Generated SVG diagram at: ${svgConfig.output}` }
+      })()
+    : null
+
+  if (svgMessage && !svgMessage.ok) {
+    return { ok: false, error: svgMessage.error }
+  }
+
   const results = [
     zodMessage?.ok ? zodMessage.value : null,
     valibotMessage?.ok ? valibotMessage.value : null,
+    arktypeMessage?.ok ? arktypeMessage.value : null,
+    effectMessage?.ok ? effectMessage.value : null,
     mermaidMessage?.ok ? mermaidMessage.value : null,
+    dbmlMessage?.ok ? dbmlMessage.value : null,
+    svgMessage?.ok ? svgMessage.value : null,
   ].filter((msg): msg is string => msg !== null)
 
   return {
