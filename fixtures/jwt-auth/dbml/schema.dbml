@@ -5,8 +5,8 @@ Table User {
   name text [note: 'Display name']
   avatarUrl text [note: 'Profile image URL']
   role text [note: 'User role']
-  emailVerified int [note: 'Email verification status']
-  isActive int [note: 'Account active status']
+  emailVerified integer [note: 'Email verification status']
+  isActive integer [note: 'Account active status']
   createdAt text [note: 'Account creation timestamp']
   updatedAt text [note: 'Last update timestamp']
   lastLoginAt text [note: 'Last login timestamp']
@@ -26,7 +26,7 @@ Table OAuthAccount {
 Table TwoFactorSetting {
   id text [pk, note: '2FA setting ID']
   userId text [note: 'User ID']
-  enabled int [note: '2FA enabled status']
+  enabled integer [note: '2FA enabled status']
   method text [note: '2FA method']
   totpSecret text [note: 'TOTP secret (encrypted)']
   phoneNumber text [note: 'Phone number for SMS (E.164 format)']
@@ -44,7 +44,7 @@ Table RefreshToken {
   ipAddress text [note: 'IP address at creation']
   expiresAt text [note: 'Token expiration timestamp']
   createdAt text [note: 'Token creation timestamp']
-  revoked int [note: 'Revocation status']
+  revoked integer [note: 'Revocation status']
 }
 
 Table EmailVerification {
@@ -60,7 +60,7 @@ Table PasswordReset {
   userId text [note: 'User ID']
   tokenHash text [note: 'Reset token (hashed)']
   expiresAt text [note: 'Token expiration timestamp']
-  used int [note: 'Used status']
+  used integer [note: 'Used status']
   createdAt text [note: 'Creation timestamp']
 }
 

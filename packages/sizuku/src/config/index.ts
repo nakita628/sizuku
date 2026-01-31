@@ -58,6 +58,13 @@ const dbmlConfigSchema = z
   })
   .optional()
 
+const svgConfigSchema = z
+  .object({
+    output: z.string(),
+    format: z.enum(['svg', 'png', 'dot']).optional(),
+  })
+  .optional()
+
 const configSchema = z.object({
   input: tsFileSchema,
   zod: zodConfigSchema,
@@ -66,6 +73,7 @@ const configSchema = z.object({
   effect: effectConfigSchema,
   mermaid: mermaidConfigSchema,
   dbml: dbmlConfigSchema,
+  svg: svgConfigSchema,
 })
 
 // ============================================================================

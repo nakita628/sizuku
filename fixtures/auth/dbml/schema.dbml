@@ -6,7 +6,7 @@ Table User {
   image text [note: 'Profile image URL']
   password text [note: 'Hashed password']
   role text [note: 'Role of the user (ADMIN or USER)']
-  isTwoFactorEnabled int [note: 'Whether 2FA is enabled']
+  isTwoFactorEnabled integer [note: 'Whether 2FA is enabled']
 }
 
 Table Account {
@@ -17,7 +17,7 @@ Table Account {
   providerAccountId text [note: 'Provider-specific account ID']
   refresh_token text [note: 'Refresh token']
   access_token text [note: 'Access token']
-  expires_at int [note: 'Expiration time (UNIX timestamp)']
+  expires_at integer [note: 'Expiration time (UNIX timestamp)']
   token_type text [note: 'Token type (e.g., Bearer)']
   scope text [note: 'OAuth scope']
   id_token text [note: 'ID token']

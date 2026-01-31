@@ -5,6 +5,7 @@ import { sizukuArktype } from './generator/arktype/index.js'
 import { sizukuDBML } from './generator/dbml/index.js'
 import { sizukuEffect } from './generator/effect/index.js'
 import { sizukuMermaidER } from './generator/mermaid-er/index.js'
+import { sizukuSVG } from './generator/svg/index.js'
 import { sizukuValibot } from './generator/valibot/index.js'
 import { sizukuZod } from './generator/zod/index.js'
 import { readFileSync } from './shared/fs/index.js'
@@ -186,6 +187,25 @@ export async function main(): Promise<
     return { ok: false, error: dbmlMessage.error }
   }
 
+  /* svg */
+  const svgMessage: MessageResult | null = c.svg?.output
+    ? await (async (): Promise<MessageResult> => {
+        const svgConfig = c.svg
+        if (!svgConfig?.output) {
+          return { ok: false, error: 'SVG config is missing' }
+        }
+        const svgResult = await sizukuSVG(code, svgConfig.output, svgConfig.format)
+        if (!svgResult.ok) {
+          return { ok: false, error: svgResult.error }
+        }
+        return { ok: true, value: `Generated SVG diagram at: ${svgConfig.output}` }
+      })()
+    : null
+
+  if (svgMessage && !svgMessage.ok) {
+    return { ok: false, error: svgMessage.error }
+  }
+
   const results = [
     zodMessage?.ok ? zodMessage.value : null,
     valibotMessage?.ok ? valibotMessage.value : null,
@@ -193,6 +213,7 @@ export async function main(): Promise<
     effectMessage?.ok ? effectMessage.value : null,
     mermaidMessage?.ok ? mermaidMessage.value : null,
     dbmlMessage?.ok ? dbmlMessage.value : null,
+    svgMessage?.ok ? svgMessage.value : null,
   ].filter((msg): msg is string => msg !== null)
 
   return {

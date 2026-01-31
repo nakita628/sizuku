@@ -11,7 +11,7 @@ Table User {
   hashedPassword text [note: 'Hashed password for security']
   createdAt numeric [note: 'Timestamp when the user was created']
   updatedAt numeric [note: 'Timestamp when the user was last updated']
-  hasNotification int [note: 'Flag indicating if user has unread notifications']
+  hasNotification integer [note: 'Flag indicating if user has unread notifications']
 }
 
 Table Post {

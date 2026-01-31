@@ -15,4 +15,8 @@ export default defineConfig({
   dbml: {
     output: 'dbml/schema.dbml',
   },
+  svg: {
+    output: 'docs/er-diagram.png',
+    format: 'png',
+  },
 })

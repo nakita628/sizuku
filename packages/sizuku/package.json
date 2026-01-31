@@ -63,10 +63,12 @@
     }
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@softwaretechnik/dbml-renderer": "^1.0.31",
     "prettier": "^3.6.2",
     "ts-morph": "^27.0.2",
     "tsx": "^4.20.6",
-    "utils-lab": "^0.0.2",
+    "utils-lab": "file:../../../utils-lab",
     "zod": "^4.1.13"
   }
 }
