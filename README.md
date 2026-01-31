@@ -1,3 +1,5 @@
+![img](https://github.com/nakita628/sizuku/blob/main/assets/img/sizuku.png)
+
 # Sizuku
 
 **[Sizuku](https://www.npmjs.com/package/sizuku)** is a tool that generates validation schemas for Zod and Valibot, as well as ER diagrams, from [Drizzle](https://orm.drizzle.team/) schemas annotated with comments.
