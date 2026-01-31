@@ -486,7 +486,7 @@ export function extractRelationsFromSchema(code: readonly string[]): readonly Re
 
       // Third argument: constraints (foreignKey, indexes, etc.)
       const constraintArg = args[2]
-      if (constraintArg) {
+      if (constraintArg && Node.isExpression(constraintArg)) {
         const fkRelations = extractRelationsFromForeignKeyConstraints(varName, constraintArg)
         relations.push(...fkRelations)
       }
