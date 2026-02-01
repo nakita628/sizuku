@@ -1,8 +1,9 @@
 import path from 'node:path'
 import { fmt } from '../../shared/format/index.js'
 import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { extractSchemas } from '../../shared/helper/extract-schemas.js'
+import { extractRelationSchemas, extractSchemas } from '../../shared/helper/extract-schemas.js'
 import { arktypeCode } from './generator/arktype-code.js'
+import { makeRelationArktypeCode } from './generator/relation-arktype-code.js'
 
 /**
  * Generate ArkType schema
@@ -10,12 +11,14 @@ import { arktypeCode } from './generator/arktype-code.js'
  * @param output - The output file path
  * @param comment - Whether to include comments in the generated code
  * @param type - Whether to include type information in the generated code
+ * @param relation - Whether to include relation schemas in the generated code
  */
 export async function sizukuArktype(
   code: string[],
   output: `${string}.ts`,
   comment?: boolean,
   type?: boolean,
+  relation?: boolean,
 ): Promise<
   | {
       readonly ok: true
@@ -29,11 +32,15 @@ export async function sizukuArktype(
   const importLine = `import { type } from 'arktype'`
 
   const baseSchemas = extractSchemas(code, 'arktype')
+  const relationSchemas = extractRelationSchemas(code, 'arktype')
 
   const arktypeGeneratedCode = [
     importLine,
     '',
     ...baseSchemas.map((schema) => arktypeCode(schema, comment ?? false, type ?? false)),
+    ...(relation
+      ? relationSchemas.map((schema) => makeRelationArktypeCode(schema, type ?? false))
+      : []),
   ].join('\n')
 
   const mkdirResult = await mkdir(path.dirname(output))
