@@ -5,7 +5,6 @@ import { sizukuArktype } from './generator/arktype/index.js'
 import { sizukuDBML } from './generator/dbml/index.js'
 import { sizukuEffect } from './generator/effect/index.js'
 import { sizukuMermaidER } from './generator/mermaid-er/index.js'
-import { sizukuSVG } from './generator/svg/index.js'
 import { sizukuValibot } from './generator/valibot/index.js'
 import { sizukuZod } from './generator/zod/index.js'
 import { readFileSync } from './shared/fs/index.js'
@@ -24,7 +23,7 @@ export async function main(): Promise<
   if (!configResult.ok) {
     return {
       ok: false,
-      error: configResult.error,
+      error: `❌ ${configResult.error}`,
     }
   }
 
@@ -34,7 +33,7 @@ export async function main(): Promise<
   if (!contentResult.ok) {
     return {
       ok: false,
-      error: contentResult.error,
+      error: `❌ ${contentResult.error}`,
     }
   }
 
@@ -55,7 +54,7 @@ export async function main(): Promise<
     ? await (async (): Promise<MessageResult> => {
         const zodConfig = c.zod
         if (!zodConfig?.output) {
-          return { ok: false, error: 'Zod config is missing' }
+          return { ok: false, error: '❌ Zod config is missing' }
         }
         const zodResult = await sizukuZod(
           code,
@@ -66,9 +65,9 @@ export async function main(): Promise<
           zodConfig.relation,
         )
         if (!zodResult.ok) {
-          return { ok: false, error: zodResult.error }
+          return { ok: false, error: `❌ ${zodResult.error}` }
         }
-        return { ok: true, value: `Generated Zod schema at: ${zodConfig.output}` }
+        return { ok: true, value: `💧 Generated Zod schema at: ${zodConfig.output}` }
       })()
     : null
 
@@ -81,7 +80,7 @@ export async function main(): Promise<
     ? await (async (): Promise<MessageResult> => {
         const valibotConfig = c.valibot
         if (!valibotConfig?.output) {
-          return { ok: false, error: 'Valibot config is missing' }
+          return { ok: false, error: '❌ Valibot config is missing' }
         }
         const valibotResult = await sizukuValibot(
           code,
@@ -91,9 +90,9 @@ export async function main(): Promise<
           valibotConfig.relation,
         )
         if (!valibotResult.ok) {
-          return { ok: false, error: valibotResult.error }
+          return { ok: false, error: `❌ ${valibotResult.error}` }
         }
-        return { ok: true, value: `Generated Valibot schema at: ${valibotConfig.output}` }
+        return { ok: true, value: `💧 Generated Valibot schema at: ${valibotConfig.output}` }
       })()
     : null
 
@@ -106,7 +105,7 @@ export async function main(): Promise<
     ? await (async (): Promise<MessageResult> => {
         const arktypeConfig = c.arktype
         if (!arktypeConfig?.output) {
-          return { ok: false, error: 'ArkType config is missing' }
+          return { ok: false, error: '❌ ArkType config is missing' }
         }
         const arktypeResult = await sizukuArktype(
           code,
@@ -115,9 +114,9 @@ export async function main(): Promise<
           arktypeConfig.type,
         )
         if (!arktypeResult.ok) {
-          return { ok: false, error: arktypeResult.error }
+          return { ok: false, error: `❌ ${arktypeResult.error}` }
         }
-        return { ok: true, value: `Generated ArkType schema at: ${arktypeConfig.output}` }
+        return { ok: true, value: `💧 Generated ArkType schema at: ${arktypeConfig.output}` }
       })()
     : null
 
@@ -130,7 +129,7 @@ export async function main(): Promise<
     ? await (async (): Promise<MessageResult> => {
         const effectConfig = c.effect
         if (!effectConfig?.output) {
-          return { ok: false, error: 'Effect config is missing' }
+          return { ok: false, error: '❌ Effect config is missing' }
         }
         const effectResult = await sizukuEffect(
           code,
@@ -139,9 +138,9 @@ export async function main(): Promise<
           effectConfig.type,
         )
         if (!effectResult.ok) {
-          return { ok: false, error: effectResult.error }
+          return { ok: false, error: `❌ ${effectResult.error}` }
         }
-        return { ok: true, value: `Generated Effect schema at: ${effectConfig.output}` }
+        return { ok: true, value: `💧 Generated Effect schema at: ${effectConfig.output}` }
       })()
     : null
 
@@ -154,13 +153,13 @@ export async function main(): Promise<
     ? await (async (): Promise<MessageResult> => {
         const mermaidConfig = c.mermaid
         if (!mermaidConfig?.output) {
-          return { ok: false, error: 'Mermaid config is missing' }
+          return { ok: false, error: '❌ Mermaid config is missing' }
         }
         const mermaidResult = await sizukuMermaidER(code, mermaidConfig.output)
         if (!mermaidResult.ok) {
-          return { ok: false, error: mermaidResult.error }
+          return { ok: false, error: `❌ ${mermaidResult.error}` }
         }
-        return { ok: true, value: `Generated Mermaid ER at: ${mermaidConfig.output}` }
+        return { ok: true, value: `💧 Generated Mermaid ER at: ${mermaidConfig.output}` }
       })()
     : null
 
@@ -173,37 +172,18 @@ export async function main(): Promise<
     ? await (async (): Promise<MessageResult> => {
         const dbmlConfig = c.dbml
         if (!dbmlConfig?.output) {
-          return { ok: false, error: 'DBML config is missing' }
+          return { ok: false, error: '❌ DBML config is missing' }
         }
         const dbmlResult = await sizukuDBML(code, dbmlConfig.output)
         if (!dbmlResult.ok) {
           return { ok: false, error: dbmlResult.error }
         }
-        return { ok: true, value: `Generated DBML schema at: ${dbmlConfig.output}` }
+        return { ok: true, value: `💧 Generated DBML and ER diagram at: ${dbmlConfig.output}/` }
       })()
     : null
 
   if (dbmlMessage && !dbmlMessage.ok) {
     return { ok: false, error: dbmlMessage.error }
-  }
-
-  /* svg */
-  const svgMessage: MessageResult | null = c.svg?.output
-    ? await (async (): Promise<MessageResult> => {
-        const svgConfig = c.svg
-        if (!svgConfig?.output) {
-          return { ok: false, error: 'SVG config is missing' }
-        }
-        const svgResult = await sizukuSVG(code, svgConfig.output, svgConfig.format)
-        if (!svgResult.ok) {
-          return { ok: false, error: svgResult.error }
-        }
-        return { ok: true, value: `Generated SVG diagram at: ${svgConfig.output}` }
-      })()
-    : null
-
-  if (svgMessage && !svgMessage.ok) {
-    return { ok: false, error: svgMessage.error }
   }
 
   const results = [
@@ -213,7 +193,6 @@ export async function main(): Promise<
     effectMessage?.ok ? effectMessage.value : null,
     mermaidMessage?.ok ? mermaidMessage.value : null,
     dbmlMessage?.ok ? dbmlMessage.value : null,
-    svgMessage?.ok ? svgMessage.value : null,
   ].filter((msg): msg is string => msg !== null)
 
   return {
