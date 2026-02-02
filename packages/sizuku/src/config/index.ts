@@ -9,7 +9,7 @@ import { z } from 'zod'
 // ============================================================================
 
 const tsFileSchema = z.string().endsWith('.ts') as z.ZodType<`${string}.ts`>
-const dbmlFileSchema = z.string().endsWith('.dbml') as z.ZodType<`${string}.dbml`>
+const directorySchema = z.string()
 
 const zodConfigSchema = z
   .object({
@@ -54,14 +54,7 @@ const mermaidConfigSchema = z
 
 const dbmlConfigSchema = z
   .object({
-    output: dbmlFileSchema,
-  })
-  .optional()
-
-const svgConfigSchema = z
-  .object({
-    output: z.string(),
-    format: z.enum(['svg', 'png', 'dot']).optional(),
+    output: directorySchema,
   })
   .optional()
 
@@ -73,7 +66,6 @@ const configSchema = z.object({
   effect: effectConfigSchema,
   mermaid: mermaidConfigSchema,
   dbml: dbmlConfigSchema,
-  svg: svgConfigSchema,
 })
 
 // ============================================================================

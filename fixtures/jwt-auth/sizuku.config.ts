@@ -29,10 +29,6 @@ export default defineConfig({
     output: 'mermaid-er/ER.md',
   },
   dbml: {
-    output: 'dbml/schema.dbml',
-  },
-  svg: {
-    output: 'docs/er-diagram.png',
-    format: 'png',
+    output: 'docs',
   },
 })
