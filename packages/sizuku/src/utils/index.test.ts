@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRelationLine, extractRelations } from '../shared/helper/extract-schemas.js'
+import { buildRelationLine, extractRelations } from '../helper/extract-schemas.js'
 import {
   extractFieldComments,
   fieldDefinitions,

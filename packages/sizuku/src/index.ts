@@ -7,7 +7,7 @@ import { sizukuEffect } from './generator/effect/index.js'
 import { sizukuMermaidER } from './generator/mermaid-er/index.js'
 import { sizukuValibot } from './generator/valibot/index.js'
 import { sizukuZod } from './generator/zod/index.js'
-import { readFileSync } from './shared/fs/index.js'
+import { readFileSync } from './fsp/index.js'
 
 export async function main(): Promise<
   | {

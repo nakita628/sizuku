@@ -1,12 +1,59 @@
-import { makeCapitalized, makeCleanedCommentLines, makeValibotInfer, makeZodInfer } from 'utils-lab'
-
 /**
  * Tag type for validation library prefixes.
  */
 export type ValidationTag = '@z.' | '@v.' | '@a.' | '@e.'
 
-// Re-export makeCapitalized from utils-lab for use in other modules
-export { makeCapitalized } from 'utils-lab'
+/**
+ * Capitalize the first character of a string.
+ *
+ * @param str - The input string.
+ * @returns String with first character capitalized.
+ */
+export function makeCapitalized(str: string): string {
+  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
+}
+
+/**
+ * Generates a Zod object wrapper.
+ *
+ * @param inner - The inner field definitions string.
+ * @param wrapperType - The object wrapper type.
+ * @returns The generated Zod object string.
+ */
+export function makeZodObject(
+  inner: string,
+  wrapperType: 'object' | 'strictObject' | 'looseObject' = 'object',
+): string {
+  switch (wrapperType) {
+    case 'strictObject':
+      return `z.strictObject({${inner}})`
+    case 'looseObject':
+      return `z.looseObject({${inner}})`
+    default:
+      return `z.object({${inner}})`
+  }
+}
+
+/**
+ * Generates a Valibot object wrapper.
+ *
+ * @param inner - The inner field definitions string.
+ * @param wrapperType - The object wrapper type.
+ * @returns The generated Valibot object string.
+ */
+export function makeValibotObject(
+  inner: string,
+  wrapperType: 'object' | 'strictObject' | 'looseObject' = 'object',
+): string {
+  switch (wrapperType) {
+    case 'strictObject':
+      return `v.strictObject({${inner}})`
+    case 'looseObject':
+      return `v.looseObject({${inner}})`
+    default:
+      return `v.object({${inner}})`
+  }
+}
 
 /* ========================================================================== *
  *  text
@@ -178,13 +225,12 @@ export function splitByDot(str: string): readonly string[] {
 
 /**
  * Clean comment lines by removing triple slash prefix and trimming.
- * Uses makeCleanedCommentLines from utils-lab.
  *
  * @param commentLines - Raw comment lines
  * @returns Cleaned comment lines
  */
 export function cleanCommentLines(commentLines: readonly string[]): readonly string[] {
-  return makeCleanedCommentLines(commentLines)
+  return commentLines.map((line) => line.replace(/^\/\/\/\s*/, '').trim()).filter(Boolean)
 }
 
 /**
@@ -334,13 +380,13 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number):
 
 /**
  * Creates `z.infer` type for the specified model.
- * Uses makeZodInfer from utils-lab with capitalized model name.
  *
  * @param name - The model name
  * @returns The generated TypeScript type definition line using Zod.
  */
 export function infer(name: string): `export type ${string} = z.infer<typeof ${string}Schema>` {
-  return makeZodInfer(makeCapitalized(name))
+  const modelName = makeCapitalized(name)
+  return `export type ${modelName} = z.infer<typeof ${modelName}Schema>`
 }
 
 /* ========================================================================== *
@@ -349,7 +395,6 @@ export function infer(name: string): `export type ${string} = z.infer<typeof ${s
 
 /**
  * Creates `v.InferInput` type for the specified model.
- * Uses makeValibotInfer from utils-lab with capitalized model name.
  *
  * @param name - The model name
  * @returns The generated TypeScript type definition line using Valibot.
@@ -357,7 +402,8 @@ export function infer(name: string): `export type ${string} = z.infer<typeof ${s
 export function inferInput(
   name: string,
 ): `export type ${string} = v.InferInput<typeof ${string}Schema>` {
-  return makeValibotInfer(makeCapitalized(name))
+  const modelName = makeCapitalized(name)
+  return `export type ${modelName} = v.InferInput<typeof ${modelName}Schema>`
 }
 
 /* ========================================================================== *

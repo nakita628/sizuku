@@ -1,9 +1,67 @@
 import path from 'node:path'
-import { fmt } from '../../shared/format/index.js'
-import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { extractRelationSchemas, extractSchemas } from '../../shared/helper/extract-schemas.js'
-import { arktypeCode } from './generator/arktype-code.js'
-import { makeRelationArktypeCode } from './generator/relation-arktype-code.js'
+import { fmt } from '../../format/index.js'
+import { mkdir, writeFile } from '../../fsp/index.js'
+import { extractRelationSchemas, extractSchemas } from '../../helper/extract-schemas.js'
+import { fieldDefinitions, inferArktype, makeCapitalized } from '../../utils/index.js'
+
+function arktype(
+  schema: {
+    readonly name: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
+    }[]
+    readonly objectType?: 'strict' | 'loose'
+  },
+  comment: boolean,
+): string {
+  const inner = fieldDefinitions(schema, comment)
+  return `export const ${makeCapitalized(schema.name)}Schema = type({${inner}})`
+}
+
+export function arktypeCode(
+  schema: {
+    readonly name: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
+    }[]
+    readonly objectType?: 'strict' | 'loose'
+  },
+  comment: boolean,
+  type: boolean,
+): string {
+  const arktypeSchema = arktype(schema, comment)
+  if (type) {
+    const arktypeInfer = inferArktype(schema.name)
+    return `${arktypeSchema}\n\n${arktypeInfer}\n`
+  }
+  return `${arktypeSchema}\n`
+}
+
+export function makeRelationArktypeCode(
+  schema: {
+    readonly name: string
+    readonly baseName: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
+    }[]
+    readonly objectType?: 'strict' | 'loose'
+  },
+  withType: boolean,
+): string {
+  const base = schema.baseName
+  const relName = `${schema.name}Schema`
+  const baseSchema = `${makeCapitalized(base)}Schema`
+  const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
+  const obj = `\nexport const ${makeCapitalized(relName)} = type({...${baseSchema}.t,${fields}})`
+  if (withType) return `${obj}\n\n${inferArktype(schema.name)}\n`
+  return `${obj}`
+}
 
 /**
  * Generate ArkType schema

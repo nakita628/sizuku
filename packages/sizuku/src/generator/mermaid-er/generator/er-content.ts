@@ -1,4 +1,4 @@
-import type { MergedSchema } from '../../../shared/runtime/types.js'
+import type { MergedSchema } from '../../../helper/runtime/types.js'
 
 const ER_HEADER = ['```mermaid', 'erDiagram'] as const
 const ER_FOOTER = ['```'] as const

@@ -12,7 +12,7 @@ import {
   startsWith,
   trimString,
   type ValidationTag,
-} from '../../utils/index.js'
+} from '../utils/index.js'
 
 /**
  * Supported validation library types.

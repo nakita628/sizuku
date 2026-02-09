@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import { afterEach, describe, expect, it } from 'vitest'
-import { sizukuValibot } from './index.js'
+import { relationValibotCode, sizukuValibot, valibotCode } from './index.js'
 
 // Test run
 // pnpm vitest run ./src/generator/valibot/index.test.ts
@@ -104,7 +104,120 @@ const TEST_CODE_WITH_OBJECT_TYPES = [
   '',
 ]
 
-describe('sizukuZod', () => {
+describe('valibotCode', () => {
+  it.concurrent('valibotCode comment true type true', () => {
+    const result = valibotCode(
+      {
+        name: 'user',
+        fields: [
+          {
+            name: 'id',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: 'Primary key',
+          },
+          {
+            name: 'name',
+            definition: 'v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+            description: 'Display name',
+          },
+        ],
+      },
+      true,
+      true,
+    )
+
+    const expected = `export const UserSchema = v.object({/**
+* Primary key
+*/
+id:v.pipe(v.string(), v.uuid()),
+/**
+* Display name
+*/
+name:v.pipe(v.string(), v.minLength(1), v.maxLength(50))})
+
+export type User = v.InferInput<typeof UserSchema>
+`
+
+    expect(result).toBe(expected)
+  })
+  it.concurrent('valibotCode comment false type false', () => {
+    const result = valibotCode(
+      {
+        name: 'user',
+        fields: [
+          {
+            name: 'id',
+            definition: 'v.pipe(v.string(), v.uuid())',
+            description: 'Primary key',
+          },
+          {
+            name: 'name',
+            definition: 'v.pipe(v.string(), v.minLength(1), v.maxLength(50))',
+            description: 'Display name',
+          },
+        ],
+      },
+      false,
+      false,
+    )
+
+    const expected = `export const UserSchema = v.object({id:v.pipe(v.string(), v.uuid()),
+name:v.pipe(v.string(), v.minLength(1), v.maxLength(50))})
+`
+    expect(result).toBe(expected)
+  })
+})
+
+describe('relationValibotCode', () => {
+  it.concurrent('relationValibotCode strict objectType strict', () => {
+    const result = relationValibotCode(
+      {
+        name: 'userRelations',
+        baseName: 'user',
+        fields: [
+          {
+            name: 'posts',
+            definition: 'z.array(PostSchema)',
+            description: undefined,
+          },
+        ],
+        objectType: 'strict',
+      },
+      true,
+    )
+    const expected = `
+export const UserRelationsSchema = v.strictObject({...UserSchema.entries,posts:z.array(PostSchema)})
+
+export type UserRelations = v.InferInput<typeof UserRelationsSchema>
+`
+    expect(result).toBe(expected)
+  })
+  it.concurrent('relationValibotCode objectType loose', () => {
+    const result = relationValibotCode(
+      {
+        name: 'userRelations',
+        baseName: 'user',
+        fields: [
+          {
+            name: 'posts',
+            definition: 'z.array(PostSchema)',
+            description: undefined,
+          },
+        ],
+        objectType: 'loose',
+      },
+      true,
+    )
+    const expected = `
+export const UserRelationsSchema = v.looseObject({...UserSchema.entries,posts:z.array(PostSchema)})
+
+export type UserRelations = v.InferInput<typeof UserRelationsSchema>
+`
+    expect(result).toBe(expected)
+  })
+})
+
+describe('sizukuValibot', () => {
   afterEach(() => {
     if (!fs.existsSync('tmp')) {
       fs.rmdirSync('tmp', { recursive: true })

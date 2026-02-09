@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import { afterEach, describe, expect, it } from 'vitest'
-import { sizukuZod } from './index.js'
+import { relationZodCode, sizukuZod, zodCode } from './index.js'
 
 // Test run
 // pnpm vitest run ./src/generator/zod/index.test.ts
@@ -103,6 +103,111 @@ const TEST_CODE_WITH_OBJECT_TYPES = [
   '}))',
   '',
 ]
+
+describe('zodCode', () => {
+  it.concurrent('zodCode comment true type true', () => {
+    const result = zodCode(
+      {
+        name: 'user',
+        fields: [
+          { name: 'id', definition: 'z.uuid()', description: 'Primary key' },
+          {
+            name: 'name',
+            definition: 'z.string().min(1).max(50)',
+            description: 'Display name',
+          },
+        ],
+      },
+      true,
+      true,
+    )
+
+    const expected = `export const UserSchema = z.object({/**
+* Primary key
+*/
+id:z.uuid(),
+/**
+* Display name
+*/
+name:z.string().min(1).max(50)})
+
+export type User = z.infer<typeof UserSchema>
+`
+    expect(result).toBe(expected)
+  })
+
+  it.concurrent('zodCode comment false type false', () => {
+    const result = zodCode(
+      {
+        name: 'user',
+        fields: [
+          { name: 'id', definition: 'z.uuid()', description: 'Primary key' },
+          {
+            name: 'name',
+            definition: 'z.string().min(1).max(50)',
+            description: 'Display name',
+          },
+        ],
+      },
+      false,
+      false,
+    )
+
+    const expected = `export const UserSchema = z.object({id:z.uuid(),
+name:z.string().min(1).max(50)})
+`
+    expect(result).toBe(expected)
+  })
+})
+
+describe('relationZodCode', () => {
+  it.concurrent('relationZodCode strict objectType strict', () => {
+    const result = relationZodCode(
+      {
+        name: 'userRelations',
+        baseName: 'user',
+        fields: [
+          {
+            name: 'posts',
+            definition: 'z.array(PostSchema)',
+            description: undefined,
+          },
+        ],
+        objectType: 'strict',
+      },
+      true,
+    )
+    const expected = `
+export const UserRelationsSchema = z.strictObject({...UserSchema.shape,posts:z.array(PostSchema)})
+
+export type UserRelations = z.infer<typeof UserRelationsSchema>
+`
+    expect(result).toBe(expected)
+  })
+  it.concurrent('relationZodCode objectType loose', () => {
+    const result = relationZodCode(
+      {
+        name: 'userRelations',
+        baseName: 'user',
+        fields: [
+          {
+            name: 'posts',
+            definition: 'z.array(PostSchema)',
+            description: undefined,
+          },
+        ],
+        objectType: 'loose',
+      },
+      true,
+    )
+    const expected = `
+export const UserRelationsSchema = z.looseObject({...UserSchema.shape,posts:z.array(PostSchema)})
+
+export type UserRelations = z.infer<typeof UserRelationsSchema>
+`
+    expect(result).toBe(expected)
+  })
+})
 
 describe('sizukuZod', () => {
   afterEach(() => {

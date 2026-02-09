@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fmt } from '.'
 
 // Test run
-// pnpm vitest run ./src/shared/format/index.test.ts
+// pnpm vitest run ./src/format/index.test.ts
 
 describe('fmt', () => {
   it.concurrent('returns formatted code as ok result', async () => {
