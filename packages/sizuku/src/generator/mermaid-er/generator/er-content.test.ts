@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { MergedSchema } from '../../../shared/runtime/types.js'
+import type { MergedSchema } from '../../../helper/runtime/types.js'
 import { erContent, erContentFromMergedSchema } from '.'
 
 // Test run

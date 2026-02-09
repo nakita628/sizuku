@@ -1,9 +1,67 @@
 import path from 'node:path'
-import { fmt } from '../../shared/format/index.js'
-import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { extractRelationSchemas, extractSchemas } from '../../shared/helper/extract-schemas.js'
-import { effectCode } from './generator/effect-code.js'
-import { makeRelationEffectCode } from './generator/relation-effect-code.js'
+import { fmt } from '../../format/index.js'
+import { mkdir, writeFile } from '../../fsp/index.js'
+import { extractRelationSchemas, extractSchemas } from '../../helper/extract-schemas.js'
+import { fieldDefinitions, inferEffect, makeCapitalized } from '../../utils/index.js'
+
+function effect(
+  schema: {
+    readonly name: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
+    }[]
+    readonly objectType?: 'strict' | 'loose'
+  },
+  comment: boolean,
+): string {
+  const inner = fieldDefinitions(schema, comment)
+  return `export const ${makeCapitalized(schema.name)}Schema = Schema.Struct({${inner}})`
+}
+
+export function effectCode(
+  schema: {
+    readonly name: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
+    }[]
+    readonly objectType?: 'strict' | 'loose'
+  },
+  comment: boolean,
+  type: boolean,
+): string {
+  const effectSchema = effect(schema, comment)
+  if (type) {
+    const effectInfer = inferEffect(schema.name)
+    return `${effectSchema}\n\n${effectInfer}\n`
+  }
+  return `${effectSchema}\n`
+}
+
+export function makeRelationEffectCode(
+  schema: {
+    readonly name: string
+    readonly baseName: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
+    }[]
+    readonly objectType?: 'strict' | 'loose'
+  },
+  withType: boolean,
+): string {
+  const base = schema.baseName
+  const relName = `${schema.name}Schema`
+  const baseSchema = `${makeCapitalized(base)}Schema`
+  const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
+  const obj = `\nexport const ${makeCapitalized(relName)} = Schema.Struct({...${baseSchema}.fields,${fields}})`
+  if (withType) return `${obj}\n\n${inferEffect(schema.name)}\n`
+  return `${obj}`
+}
 
 /**
  * Generate Effect schema

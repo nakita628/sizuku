@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { extractSchemas, extractValibotSchemas, extractZodSchemas } from './extract-schemas.js'
 
 // Test run
-// pnpm vitest run ./src/shared/helper/extract-schemas.test.ts
+// pnpm vitest run ./src/helper/extract-schemas.test.ts
 
 describe('extractSchemas', () => {
   const sourceCode = [

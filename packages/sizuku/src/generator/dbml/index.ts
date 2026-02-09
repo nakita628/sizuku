@@ -1,6 +1,6 @@
 import { Resvg } from '@resvg/resvg-js'
 import { run } from '@softwaretechnik/dbml-renderer'
-import { mkdir, writeFile, writeFileBinary } from '../../shared/fsp/index.js'
+import { mkdir, writeFile, writeFileBinary } from '../../fsp/index.js'
 import { extractRelationsFromSchema, parseTableInfo } from '../mermaid-er/validator/index.js'
 import { dbmlContent } from './generator/index.js'
 

@@ -1,6 +1,6 @@
 import path from 'node:path'
-import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import type { MergedSchema } from '../../shared/runtime/types.js'
+import { mkdir, writeFile } from '../../fsp/index.js'
+import type { MergedSchema } from '../../helper/runtime/types.js'
 import { erContent, erContentFromMergedSchema } from './generator/index.js'
 import { extractRelationsFromSchema, parseTableInfo } from './validator/index.js'
 

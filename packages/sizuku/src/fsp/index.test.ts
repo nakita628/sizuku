@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdir, writeFile } from '.'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { mkdir, readFileSync, writeFile } from '.'
 
 // Test run
-// pnpm vitest run ./src/shared/fsp/index.test.ts
+// pnpm vitest run ./src/fsp/index.test.ts
 
 const TEST_DIR = path.join(process.cwd(), 'test-tmp-dir')
 
@@ -65,5 +65,34 @@ describe('fsp', () => {
         expect(result.error.length).toBeGreaterThan(0)
       }
     })
+  })
+})
+
+describe('readFileSync (integration)', () => {
+  const testFilePath = path.join(TEST_DIR, 'test-file.txt')
+  const nonExistentPath = path.join(TEST_DIR, 'no-such-file.txt')
+
+  beforeAll(async () => {
+    await fsp.mkdir(TEST_DIR, { recursive: true })
+    fs.writeFileSync(testFilePath, 'hello world', 'utf-8')
+  })
+
+  afterAll(async () => {
+    if (fs.existsSync(TEST_DIR)) {
+      await fsp.rm(TEST_DIR, { recursive: true })
+    }
+  })
+
+  it('should return Ok when reading an existing file', () => {
+    const result = readFileSync(testFilePath)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value).toBe('hello world')
+    }
+  })
+
+  it('should return Err when reading a non-existent file', () => {
+    const result = readFileSync(nonExistentPath)
+    expect(result.ok).toBe(false)
   })
 })

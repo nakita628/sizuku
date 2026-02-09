@@ -1,9 +1,86 @@
 import path from 'node:path'
-import { fmt } from '../../shared/format/index.js'
-import { mkdir, writeFile } from '../../shared/fsp/index.js'
-import { extractRelationSchemas, extractSchemas } from '../../shared/helper/extract-schemas.js'
-import { relationValibotCode } from './generator/relation-valibot-code.js'
-import { valibotCode } from './generator/valibot-code.js'
+import { fmt } from '../../format/index.js'
+import { mkdir, writeFile } from '../../fsp/index.js'
+import { extractRelationSchemas, extractSchemas } from '../../helper/extract-schemas.js'
+import {
+  fieldDefinitions,
+  inferInput,
+  makeCapitalized,
+  makeValibotObject,
+} from '../../utils/index.js'
+
+function valibot(
+  schema: {
+    readonly name: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
+    }[]
+    readonly objectType?: 'strict' | 'loose'
+  },
+  comment: boolean,
+): string {
+  const wrapperType =
+    schema.objectType === 'strict'
+      ? 'strictObject'
+      : schema.objectType === 'loose'
+        ? 'looseObject'
+        : 'object'
+  const inner = fieldDefinitions(schema, comment)
+  const objectCode = makeValibotObject(inner, wrapperType)
+  return `export const ${makeCapitalized(schema.name)}Schema = ${objectCode}`
+}
+
+export function valibotCode(
+  schema: {
+    readonly name: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
+    }[]
+    readonly objectType?: 'strict' | 'loose'
+  },
+  comment: boolean,
+  type: boolean,
+): string {
+  const valibotSchema = valibot(schema, comment)
+
+  if (type) {
+    const valibotInfer = inferInput(schema.name)
+    return `${valibotSchema}\n\n${valibotInfer}\n`
+  }
+  return `${valibotSchema}\n`
+}
+
+export function relationValibotCode(
+  schema: {
+    readonly name: string
+    readonly baseName: string
+    readonly fields: {
+      readonly name: string
+      readonly definition: string
+      readonly description?: string
+    }[]
+    readonly objectType?: 'strict' | 'loose'
+  },
+  withType: boolean,
+): string {
+  const base = schema.baseName
+  const relName = `${schema.name}Schema`
+  const baseSchema = `${makeCapitalized(base)}Schema`
+  const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
+  const objectType =
+    schema.objectType === 'strict'
+      ? 'strictObject'
+      : schema.objectType === 'loose'
+        ? 'looseObject'
+        : 'object'
+  const obj = `\nexport const ${makeCapitalized(relName)} = v.${objectType}({...${baseSchema}.entries,${fields}})`
+  if (withType) return `${obj}\n\n${inferInput(schema.name)}\n`
+  return `${obj}`
+}
 
 /**
  * Generate Valibot schema
