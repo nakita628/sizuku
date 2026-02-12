@@ -2,7 +2,7 @@
 
 # Sizuku
 
-**[Sizuku](https://www.npmjs.com/package/sizuku)** is a tool that generates validation schemas for Zod and Valibot, as well as ER diagrams, from [Drizzle](https://orm.drizzle.team/) schemas annotated with comments.
+**[Sizuku](https://www.npmjs.com/package/sizuku)** is a tool that generates validation schemas for Zod, Valibot, ArkType, and Effect Schema, as well as ER diagrams, from [Drizzle](https://orm.drizzle.team/) schemas.
 
 ## Features
 
@@ -263,6 +263,61 @@ Table post {
 }
 
 Ref post_userId_user_id_fk: post.userId > user.id
+```
+
+## Configuration
+
+See [fixtures/example/sizuku.config.ts](./fixtures/example/sizuku.config.ts) for full configuration options.
+
+```typescript
+import { defineConfig } from 'sizuku/config'
+
+export default defineConfig({
+  // Input: Path to Drizzle schema file (must end with .ts)
+  input: 'db/schema.ts',
+
+  // Zod Schema Generator
+  zod: {
+    output: 'zod/index.ts',       // Output file path (must end with .ts)
+    comment: true,                 // Include schema documentation (default: false)
+    type: true,                    // Generate TypeScript types (default: false)
+    zod: 'v4',                     // Zod import: 'v4' | 'mini' | '@hono/zod-openapi' (default: 'v4')
+    relation: true,                // Generate relation schemas (default: false)
+  },
+
+  // Valibot Schema Generator
+  valibot: {
+    output: 'valibot/index.ts',
+    comment: true,
+    type: true,
+    relation: true,
+  },
+
+  // ArkType Schema Generator
+  arktype: {
+    output: 'arktype/index.ts',
+    comment: true,
+    type: true,
+  },
+
+  // Effect Schema Generator
+  effect: {
+    output: 'effect/index.ts',
+    comment: true,
+    type: true,
+  },
+
+  // Mermaid ER Diagram Generator
+  mermaid: {
+    output: 'mermaid-er/ER.md',    // Output file path
+  },
+
+  // DBML + ER Diagram PNG Generator
+  // Outputs both schema.dbml and er-diagram.png to the specified directory
+  dbml: {
+    output: 'docs',                // Output directory path
+  },
+})
 ```
 
 ### ⚠️ WARNING: Potential Breaking Changes Without Notice
