@@ -35,6 +35,7 @@ const arktypeConfigSchema = z
     output: tsFileSchema,
     comment: z.boolean().optional(),
     type: z.boolean().optional(),
+    relation: z.boolean().optional(),
   })
   .optional()
 
@@ -43,6 +44,7 @@ const effectConfigSchema = z
     output: tsFileSchema,
     comment: z.boolean().optional(),
     type: z.boolean().optional(),
+    relation: z.boolean().optional(),
   })
   .optional()
 
@@ -54,7 +56,10 @@ const mermaidConfigSchema = z
 
 const dbmlConfigSchema = z
   .object({
-    output: directorySchema,
+    output: z.string().refine(
+      (s) => s.endsWith('.dbml') || s.endsWith('.png'),
+      { message: 'output must end with .dbml or .png' },
+    ),
   })
   .optional()
 

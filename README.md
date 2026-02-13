@@ -11,7 +11,8 @@
 - 🏹 Automatically generates [ArkType](https://arktype.io/) schemas from your Drizzle schema
 - ⚡ Automatically generates [Effect Schema](https://effect.website/docs/schema/introduction/) from your Drizzle schema
 - 📊 Creates [Mermaid](https://mermaid.js.org/) ER diagrams
-- 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files with ER diagram PNG
+- 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files
+- 🖼️ Outputs ER diagrams as **PNG** images using [dbml-renderer](https://github.com/softwaretechnik-berlin/dbml-renderer)
 
 ## Getting Started
 
@@ -35,10 +36,14 @@ export const user = mysqlTable('user', {
   /// Primary key
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
   id: varchar('id', { length: 36 }).primaryKey(),
   /// Display name
   /// @z.string().min(1).max(50)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))
+  /// @a."1 <= string <= 50"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50))
   name: varchar('name', { length: 50 }).notNull(),
 })
 
@@ -47,18 +52,26 @@ export const post = mysqlTable('post', {
   /// Primary key
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
   id: varchar('id', { length: 36 }).primaryKey(),
   /// Article title
   /// @z.string().min(1).max(100)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))
+  /// @a."1 <= string <= 100"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))
   title: varchar('title', { length: 100 }).notNull(),
   /// Body content (no length limit)
   /// @z.string().min(1).max(65535)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
+  /// @a."1 <= string <= 65535"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
   content: varchar('content', { length: 65535 }).notNull(),
   /// Foreign key referencing User.id
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
   userId: varchar('user_id', { length: 36 }).notNull(),
 })
 
@@ -74,7 +87,7 @@ export const postRelations = relations(post, ({ one }) => ({
 }))
 ```
 
-Prepare sizuku.config.ts (see [fixtures/example/sizuku.config.ts](./fixtures/example/sizuku.config.ts) for full configuration options):
+Prepare sizuku.config.ts:
 
 ```ts
 import { defineConfig } from 'sizuku/config'
@@ -98,11 +111,13 @@ export default defineConfig({
     output: 'arktype/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
   effect: {
     output: 'effect/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
   mermaid: {
     output: 'mermaid-er/ER.md',
@@ -225,6 +240,62 @@ export const PostRelationsSchema = v.object({ ...PostSchema.entries, user: UserS
 export type PostRelations = v.InferInput<typeof PostRelationsSchema>
 ```
 
+### ArkType
+
+```ts
+import { type } from 'arktype'
+
+export const UserSchema = type({
+  /** Primary key */
+  id: 'string.uuid',
+  /** Display name */
+  name: '1 <= string <= 50',
+})
+
+export type User = typeof UserSchema.infer
+
+export const PostSchema = type({
+  /** Primary key */
+  id: 'string.uuid',
+  /** Article title */
+  title: '1 <= string <= 100',
+  /** Body content (no length limit) */
+  content: '1 <= string <= 65535',
+  /** Foreign key referencing User.id */
+  userId: 'string.uuid',
+})
+
+export type Post = typeof PostSchema.infer
+```
+
+### Effect Schema
+
+```ts
+import { Schema } from 'effect'
+
+export const UserSchema = Schema.Struct({
+  /** Primary key */
+  id: Schema.UUID,
+  /** Display name */
+  name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
+})
+
+export type User = Schema.Schema.Type<typeof UserSchema>
+
+export const PostSchema = Schema.Struct({
+  /** Primary key */
+  id: Schema.UUID,
+  /** Article title */
+  title: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
+  /** Body content (no length limit) */
+  content: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535)),
+  /** Foreign key referencing User.id */
+  userId: Schema.UUID,
+})
+
+export type Post = Schema.Schema.Type<typeof PostSchema>
+```
+
 ### Mermaid ER
 
 ```mermaid
@@ -267,8 +338,6 @@ Ref post_userId_user_id_fk: post.userId > user.id
 
 ## Configuration
 
-See [fixtures/example/sizuku.config.ts](./fixtures/example/sizuku.config.ts) for full configuration options.
-
 ```typescript
 import { defineConfig } from 'sizuku/config'
 
@@ -298,6 +367,7 @@ export default defineConfig({
     output: 'arktype/index.ts',
     comment: true,
     type: true,
+    relation: true,                // Generate relation schemas (default: false)
   },
 
   // Effect Schema Generator
@@ -305,6 +375,7 @@ export default defineConfig({
     output: 'effect/index.ts',
     comment: true,
     type: true,
+    relation: true,                // Generate relation schemas (default: false)
   },
 
   // Mermaid ER Diagram Generator
@@ -313,7 +384,7 @@ export default defineConfig({
   },
 
   // DBML + ER Diagram PNG Generator
-  // Outputs both schema.dbml and er-diagram.png to the specified directory
+  // Outputs schema.dbml and er-diagram.png to the specified directory
   dbml: {
     output: 'docs',                // Output directory path
   },
@@ -326,4 +397,4 @@ This package is in active development and may introduce breaking changes without
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](https://github.com/nakita628/hono-takibi?tab=MIT-1-ov-file) for more information.
+Distributed under the MIT License. See [LICENSE](https://github.com/nakita628/sizuku?tab=MIT-1-ov-file) for more information.

@@ -44,6 +44,9 @@ export default defineConfig({
   mermaid: {
     output: 'mermaid-er/ER.md',
   },
+  dbml: {
+    output: 'docs/schema.dbml',
+  },
 })`
     fs.writeFileSync(testFilePath, testConfig, 'utf-8')
 
@@ -54,6 +57,7 @@ export default defineConfig({
         zod: { output: 'zod/index.ts', comment: true, type: true, zod: 'v4', relation: true },
         valibot: { output: 'valibot/index.ts', comment: true, type: true, relation: true },
         mermaid: { output: 'mermaid-er/ER.md' },
+        dbml: { output: 'docs/schema.dbml' },
       },
     })
   })

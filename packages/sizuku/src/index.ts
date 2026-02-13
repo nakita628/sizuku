@@ -2,7 +2,7 @@
 
 import { config } from './config/index.js'
 import { sizukuArktype } from './generator/arktype/index.js'
-import { sizukuDBML } from './generator/dbml/index.js'
+import { sizukuErd } from './generator/dbml/index.js'
 import { sizukuEffect } from './generator/effect/index.js'
 import { sizukuMermaidER } from './generator/mermaid-er/index.js'
 import { sizukuValibot } from './generator/valibot/index.js'
@@ -112,6 +112,7 @@ export async function main(): Promise<
           arktypeConfig.output,
           arktypeConfig.comment,
           arktypeConfig.type,
+          arktypeConfig.relation,
         )
         if (!arktypeResult.ok) {
           return { ok: false, error: `❌ ${arktypeResult.error}` }
@@ -136,6 +137,7 @@ export async function main(): Promise<
           effectConfig.output,
           effectConfig.comment,
           effectConfig.type,
+          effectConfig.relation,
         )
         if (!effectResult.ok) {
           return { ok: false, error: `❌ ${effectResult.error}` }
@@ -174,11 +176,11 @@ export async function main(): Promise<
         if (!dbmlConfig?.output) {
           return { ok: false, error: '❌ DBML config is missing' }
         }
-        const dbmlResult = await sizukuDBML(code, dbmlConfig.output)
+        const dbmlResult = await sizukuErd(code, dbmlConfig.output)
         if (!dbmlResult.ok) {
           return { ok: false, error: dbmlResult.error }
         }
-        return { ok: true, value: `💧 Generated DBML and ER diagram at: ${dbmlConfig.output}/` }
+        return { ok: true, value: `💧 Generated DBML at: ${dbmlConfig.output}` }
       })()
     : null
 

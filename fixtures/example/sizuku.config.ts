@@ -75,11 +75,11 @@ export default defineConfig({
     output: 'mermaid-er/ER.md',
   },
 
-  // DBML + ER Diagram PNG Generator
-  // Outputs both schema.dbml and er-diagram.png to the specified directory
+  // DBML / PNG Generator
+  // Output file extension determines format: .dbml or .png
   // Options:
-  //   output - Output directory path
+  //   output - Output file path (must end with .dbml or .png)
   dbml: {
-    output: 'docs',
+    output: 'docs/schema.dbml',
   },
 })

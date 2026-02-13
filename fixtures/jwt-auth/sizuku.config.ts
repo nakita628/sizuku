@@ -29,6 +29,6 @@ export default defineConfig({
     output: 'mermaid-er/ER.md',
   },
   dbml: {
-    output: 'docs',
+    output: 'docs/schema.dbml',
   },
 })
