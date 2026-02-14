@@ -31,6 +31,6 @@ export default defineConfig({
     output: 'mermaid-er/ER.md',
   },
   dbml: {
-    output: 'docs/schema.dbml',
+    output: 'docs/er-diagram.png',
   },
 })

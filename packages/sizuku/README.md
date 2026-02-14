@@ -125,9 +125,6 @@ export default defineConfig({
   dbml: {
     output: 'docs/schema.dbml',
   },
-  png: {
-    output: 'docs/er-diagram.png',
-  },
 })
 ```
 
@@ -145,7 +142,6 @@ Output:
 💧 Generated Effect schema at: effect/index.ts
 💧 Generated Mermaid ER at: mermaid-er/ER.md
 💧 Generated DBML at: docs/schema.dbml
-💧 Generated ER diagram PNG at: docs/er-diagram.png
 ```
 
 ### Zod
@@ -319,15 +315,10 @@ erDiagram
 
 ### DBML
 
-The `dbml` generator outputs a DBML schema file to the specified path:
+The `dbml` generator outputs a DBML schema file or ER diagram PNG depending on the file extension:
 
-- `docs/schema.dbml` - DBML schema file
-
-### ER Diagram PNG
-
-The `png` generator outputs an ER diagram PNG image to the specified path:
-
-- `docs/er-diagram.png` - ER diagram image
+- `.dbml` extension: outputs a DBML schema file
+- `.png` extension: outputs an ER diagram PNG image
 
 ```dbml
 Table user {
@@ -392,14 +383,10 @@ export default defineConfig({
     output: 'mermaid-er/ER.md',    // Output file path
   },
 
-  // DBML Generator
+  // DBML / ER Diagram PNG Generator
+  // Use .dbml extension for DBML text, .png extension for ER diagram image
   dbml: {
-    output: 'docs/schema.dbml',    // DBML file output path (must end with .dbml)
-  },
-
-  // ER Diagram PNG Generator
-  png: {
-    output: 'docs/er-diagram.png', // PNG file output path (must end with .png)
+    output: 'docs/schema.dbml',    // Output file path (must end with .dbml or .png)
   },
 })
 ```
