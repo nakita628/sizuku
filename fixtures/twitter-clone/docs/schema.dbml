@@ -1,69 +1,67 @@
-Table User {
+Table users {
   id text [pk, note: 'Unique identifier for the user']
   name text [note: 'User\'s display name']
-  username text [note: 'User\'s biography or profile description']
+  username text [note: 'User\'s unique username']
   bio text [note: 'User\'s biography or profile description']
   email text [note: 'User\'s unique email address']
-  emailVerified numeric [note: 'Timestamp of email verification']
+  emailVerified integer [note: 'Timestamp of email verification']
   image text [note: 'URL of user\'s image']
   coverImage text [note: 'URL of user\'s cover image']
   profileImage text [note: 'URL of user\'s profile image']
   hashedPassword text [note: 'Hashed password for security']
-  createdAt numeric [note: 'Timestamp when the user was created']
-  updatedAt numeric [note: 'Timestamp when the user was last updated']
+  createdAt integer [note: 'Timestamp when the user was created']
+  updatedAt integer [note: 'Timestamp when the user was last updated']
   hasNotification integer [note: 'Flag indicating if user has unread notifications']
 }
 
-Table Post {
+Table posts {
   id text [pk, note: 'Unique identifier for the post']
   body text [note: 'Body content of the post']
-  createdAt numeric [note: 'Timestamp when the post was created']
-  updatedAt numeric [note: 'Timestamp when the post was last updated']
-  userId text [note: 'Foreign key referencing User.id']
+  createdAt integer [note: 'Timestamp when the post was created']
+  updatedAt integer [note: 'Timestamp when the post was last updated']
+  userId text [note: 'Foreign key referencing users.id']
 }
 
-Table Follow {
-  id text [pk, note: 'Unique identifier for the follow relationship']
-  followerId text [note: 'Foreign key referencing User.id']
-  followingId text [note: 'Foreign key referencing User.id']
-  createdAt numeric [note: 'Timestamp when the follow relationship was created']
+Table follows {
+  followerId text [note: 'Foreign key referencing users.id']
+  followingId text [note: 'Foreign key referencing users.id']
+  createdAt integer [note: 'Timestamp when the follow relationship was created']
 }
 
-Table Like {
-  id text [pk, note: 'Unique identifier for the like relationship']
-  userId text [note: 'Foreign key referencing User.id']
-  postId text [note: 'Foreign key referencing Post.id']
-  createdAt numeric [note: 'Timestamp when the like relationship was created']
+Table likes {
+  userId text [note: 'Foreign key referencing users.id']
+  postId text [note: 'Foreign key referencing posts.id']
+  createdAt integer [note: 'Timestamp when the like relationship was created']
 }
 
-Table Comment {
+Table comments {
   id text [pk, note: 'Unique identifier for the comment']
   body text [note: 'Body content of the comment']
-  createdAt numeric [note: 'Timestamp when the comment was created']
-  updatedAt numeric [note: 'Timestamp when the comment was last updated']
-  userId text [note: 'Foreign key referencing User.id']
-  postId text [note: 'Foreign key referencing Post.id']
+  createdAt integer [note: 'Timestamp when the comment was created']
+  updatedAt integer [note: 'Timestamp when the comment was last updated']
+  userId text [note: 'Foreign key referencing users.id']
+  postId text [note: 'Foreign key referencing posts.id']
 }
 
-Table Notification {
+Table notifications {
   id text [pk, note: 'Unique identifier for the notification']
   body text [note: 'Body content of the notification']
-  userId text [note: 'Foreign key referencing User.id']
-  createdAt numeric [note: 'Timestamp when the notification was created']
+  userId text [note: 'Foreign key referencing users.id']
+  createdAt integer [note: 'Timestamp when the notification was created']
 }
 
-Ref Post_userId_User_id_fk: Post.userId > User.id
+Ref posts_userId_users_id_fk: posts.userId > users.id
 
-Ref Follow_followerId_User_id_fk: Follow.followerId > User.id
+Ref follows_followerId_users_id_fk: follows.followerId > users.id
 
-Ref Follow_followingId_User_id_fk: Follow.followingId > User.id
+Ref follows_followingId_users_id_fk: follows.followingId > users.id
 
-Ref Like_userId_User_id_fk: Like.userId > User.id
+Ref likes_userId_users_id_fk: likes.userId > users.id
 
-Ref Like_postId_Post_id_fk: Like.postId > Post.id
+Ref likes_postId_posts_id_fk: likes.postId > posts.id
 
-Ref Comment_userId_User_id_fk: Comment.userId > User.id
+Ref comments_userId_users_id_fk: comments.userId > users.id
 
-Ref Comment_postId_Post_id_fk: Comment.postId > Post.id
+Ref comments_postId_posts_id_fk: comments.postId > posts.id
 
-Ref Notification_userId_User_id_fk: Notification.userId > User.id
+Ref notifications_userId_users_id_fk: notifications.userId > users.id

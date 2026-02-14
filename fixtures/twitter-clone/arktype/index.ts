@@ -1,6 +1,6 @@
 import { type } from 'arktype'
 
-export const UserSchema = type({
+export const UsersSchema = type({
   /**
    * Unique identifier for the user
    */
@@ -10,9 +10,9 @@ export const UserSchema = type({
    */
   name: string,
   /**
-   * User's biography or profile description
+   * User's unique username
    */
-  username: 'string | undefined',
+  username: '1 <= string <= 50',
   /**
    * User's biography or profile description
    */
@@ -55,9 +55,9 @@ export const UserSchema = type({
   hasNotification: 'boolean = false',
 })
 
-export type User = typeof UserSchema.infer
+export type Users = typeof UsersSchema.infer
 
-export const PostSchema = type({
+export const PostsSchema = type({
   /**
    * Unique identifier for the post
    */
@@ -75,24 +75,20 @@ export const PostSchema = type({
    */
   updatedAt: 'string.date.iso',
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: 'string.uuid',
 })
 
-export type Post = typeof PostSchema.infer
+export type Posts = typeof PostsSchema.infer
 
-export const FollowSchema = type({
+export const FollowsSchema = type({
   /**
-   * Unique identifier for the follow relationship
-   */
-  id: 'string.uuid',
-  /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   followerId: 'string.uuid',
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   followingId: 'string.uuid',
   /**
@@ -101,19 +97,15 @@ export const FollowSchema = type({
   createdAt: 'string.date.iso',
 })
 
-export type Follow = typeof FollowSchema.infer
+export type Follows = typeof FollowsSchema.infer
 
-export const LikeSchema = type({
+export const LikesSchema = type({
   /**
-   * Unique identifier for the like relationship
-   */
-  id: 'string.uuid',
-  /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: 'string.uuid',
   /**
-   * Foreign key referencing Post.id
+   * Foreign key referencing posts.id
    */
   postId: 'string.uuid',
   /**
@@ -122,9 +114,9 @@ export const LikeSchema = type({
   createdAt: 'string.date.iso',
 })
 
-export type Like = typeof LikeSchema.infer
+export type Likes = typeof LikesSchema.infer
 
-export const CommentSchema = type({
+export const CommentsSchema = type({
   /**
    * Unique identifier for the comment
    */
@@ -142,18 +134,18 @@ export const CommentSchema = type({
    */
   updatedAt: 'string.date.iso',
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: 'string.uuid',
   /**
-   * Foreign key referencing Post.id
+   * Foreign key referencing posts.id
    */
   postId: 'string.uuid',
 })
 
-export type Comment = typeof CommentSchema.infer
+export type Comments = typeof CommentsSchema.infer
 
-export const NotificationSchema = type({
+export const NotificationsSchema = type({
   /**
    * Unique identifier for the notification
    */
@@ -163,7 +155,7 @@ export const NotificationSchema = type({
    */
   body: '1 <= string <= 65535',
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: 'string.uuid',
   /**
@@ -172,4 +164,49 @@ export const NotificationSchema = type({
   createdAt: 'string.date.iso',
 })
 
-export type Notification = typeof NotificationSchema.infer
+export type Notifications = typeof NotificationsSchema.infer
+
+export const UsersRelationsSchema = type({
+  ...UsersSchema.t,
+  posts: PostsSchema.array(),
+  comments: CommentsSchema.array(),
+  notifications: NotificationsSchema.array(),
+  followers: FollowsSchema.array(),
+  following: FollowsSchema.array(),
+  likes: LikesSchema.array(),
+})
+
+export type UsersRelations = typeof UsersRelationsSchema.infer
+
+export const PostsRelationsSchema = type({
+  ...PostsSchema.t,
+  user: UsersSchema,
+  comments: CommentsSchema.array(),
+  likes: LikesSchema.array(),
+})
+
+export type PostsRelations = typeof PostsRelationsSchema.infer
+
+export const FollowsRelationsSchema = type({
+  ...FollowsSchema.t,
+  follower: UsersSchema,
+  following: UsersSchema,
+})
+
+export type FollowsRelations = typeof FollowsRelationsSchema.infer
+
+export const LikesRelationsSchema = type({ ...LikesSchema.t, user: UsersSchema, post: PostsSchema })
+
+export type LikesRelations = typeof LikesRelationsSchema.infer
+
+export const CommentsRelationsSchema = type({
+  ...CommentsSchema.t,
+  user: UsersSchema,
+  post: PostsSchema,
+})
+
+export type CommentsRelations = typeof CommentsRelationsSchema.infer
+
+export const NotificationsRelationsSchema = type({ ...NotificationsSchema.t, user: UsersSchema })
+
+export type NotificationsRelations = typeof NotificationsRelationsSchema.infer

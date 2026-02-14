@@ -2,12 +2,7 @@ import path from 'node:path'
 import { fmt } from '../../format/index.js'
 import { mkdir, writeFile } from '../../fsp/index.js'
 import { extractRelationSchemas, extractSchemas } from '../../helper/extract-schemas.js'
-import {
-  fieldDefinitions,
-  infer,
-  makeCapitalized,
-  makeZodObject,
-} from '../../utils/index.js'
+import { fieldDefinitions, infer, makeCapitalized, makeZodObject } from '../../utils/index.js'
 
 function zod(
   schema: {

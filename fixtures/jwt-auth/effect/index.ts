@@ -221,3 +221,49 @@ export const PasswordResetSchema = Schema.Struct({
 })
 
 export type PasswordReset = Schema.Schema.Type<typeof PasswordResetSchema>
+
+export const UserRelationsSchema = Schema.Struct({
+  ...UserSchema.fields,
+  oauthAccounts: Schema.Array(OAuthAccountSchema),
+  twoFactorSetting: TwoFactorSettingSchema,
+  refreshTokens: Schema.Array(RefreshTokenSchema),
+  emailVerifications: Schema.Array(EmailVerificationSchema),
+  passwordResets: Schema.Array(PasswordResetSchema),
+})
+
+export type UserRelations = Schema.Schema.Type<typeof UserRelationsSchema>
+
+export const OAuthAccountRelationsSchema = Schema.Struct({
+  ...OAuthAccountSchema.fields,
+  user: UserSchema,
+})
+
+export type OAuthAccountRelations = Schema.Schema.Type<typeof OAuthAccountRelationsSchema>
+
+export const TwoFactorSettingRelationsSchema = Schema.Struct({
+  ...TwoFactorSettingSchema.fields,
+  user: UserSchema,
+})
+
+export type TwoFactorSettingRelations = Schema.Schema.Type<typeof TwoFactorSettingRelationsSchema>
+
+export const RefreshTokenRelationsSchema = Schema.Struct({
+  ...RefreshTokenSchema.fields,
+  user: UserSchema,
+})
+
+export type RefreshTokenRelations = Schema.Schema.Type<typeof RefreshTokenRelationsSchema>
+
+export const EmailVerificationRelationsSchema = Schema.Struct({
+  ...EmailVerificationSchema.fields,
+  user: UserSchema,
+})
+
+export type EmailVerificationRelations = Schema.Schema.Type<typeof EmailVerificationRelationsSchema>
+
+export const PasswordResetRelationsSchema = Schema.Struct({
+  ...PasswordResetSchema.fields,
+  user: UserSchema,
+})
+
+export type PasswordResetRelations = Schema.Schema.Type<typeof PasswordResetRelationsSchema>

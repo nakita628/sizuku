@@ -1,21 +1,21 @@
-import { config } from '../config/index.js'
+import { readConfig } from '../config/index.js'
+import { readFileSync } from '../fsp/index.js'
 import { sizukuArktype } from '../generator/arktype/index.js'
 import { sizukuDbml } from '../generator/dbml/index.js'
 import { sizukuEffect } from '../generator/effect/index.js'
 import { sizukuMermaidER } from '../generator/mermaid-er/index.js'
 import { sizukuValibot } from '../generator/valibot/index.js'
 import { sizukuZod } from '../generator/zod/index.js'
-import { readFileSync } from '../fsp/index.js'
 
 export async function sizuku(): Promise<
   { readonly ok: true; readonly value: string } | { readonly ok: false; readonly error: string }
 > {
-  const configResult = await config()
+  const configResult = await readConfig()
   if (!configResult.ok) return { ok: false, error: `❌ ${configResult.error}` }
 
-  const c = configResult.value
+  const config = configResult.value
 
-  const contentResult = readFileSync(c.input)
+  const contentResult = readFileSync(config.input)
   if (!contentResult.ok) return { ok: false, error: `❌ ${contentResult.error}` }
 
   const content = contentResult.value
@@ -27,49 +27,47 @@ export async function sizuku(): Promise<
 
   const [zodResult, valibotResult, arktypeResult, effectResult, mermaidResult, dbmlResult] =
     await Promise.all([
-      c.zod?.output
+      config.zod?.output
         ? sizukuZod(
             code,
-            c.zod.output,
-            c.zod.comment,
-            c.zod.type,
-            c.zod.zod,
-            c.zod.relation,
+            config.zod.output,
+            config.zod.comment,
+            config.zod.type,
+            config.zod.zod,
+            config.zod.relation,
           )
         : Promise.resolve(undefined),
-      c.valibot?.output
+      config.valibot?.output
         ? sizukuValibot(
             code,
-            c.valibot.output,
-            c.valibot.comment,
-            c.valibot.type,
-            c.valibot.relation,
+            config.valibot.output,
+            config.valibot.comment,
+            config.valibot.type,
+            config.valibot.relation,
           )
         : Promise.resolve(undefined),
-      c.arktype?.output
+      config.arktype?.output
         ? sizukuArktype(
             code,
-            c.arktype.output,
-            c.arktype.comment,
-            c.arktype.type,
-            c.arktype.relation,
+            config.arktype.output,
+            config.arktype.comment,
+            config.arktype.type,
+            config.arktype.relation,
           )
         : Promise.resolve(undefined),
-      c.effect?.output
+      config.effect?.output
         ? sizukuEffect(
             code,
-            c.effect.output,
-            c.effect.comment,
-            c.effect.type,
-            c.effect.relation,
+            config.effect.output,
+            config.effect.comment,
+            config.effect.type,
+            config.effect.relation,
           )
         : Promise.resolve(undefined),
-      c.mermaid?.output
-        ? sizukuMermaidER(code, c.mermaid.output)
+      config.mermaid?.output
+        ? sizukuMermaidER(code, config.mermaid.output)
         : Promise.resolve(undefined),
-      c.dbml?.output
-        ? sizukuDbml(code, c.dbml.output)
-        : Promise.resolve(undefined),
+      config.dbml?.output ? sizukuDbml(code, config.dbml.output) : Promise.resolve(undefined),
     ])
 
   if (zodResult && !zodResult.ok) return { ok: false, error: `❌ ${zodResult.error}` }
@@ -80,12 +78,12 @@ export async function sizuku(): Promise<
   if (dbmlResult && !dbmlResult.ok) return { ok: false, error: dbmlResult.error }
 
   const results = [
-    zodResult?.ok ? `💧 Generated Zod schema at: ${c.zod?.output}` : undefined,
-    valibotResult?.ok ? `💧 Generated Valibot schema at: ${c.valibot?.output}` : undefined,
-    arktypeResult?.ok ? `💧 Generated ArkType schema at: ${c.arktype?.output}` : undefined,
-    effectResult?.ok ? `💧 Generated Effect schema at: ${c.effect?.output}` : undefined,
-    mermaidResult?.ok ? `💧 Generated Mermaid ER at: ${c.mermaid?.output}` : undefined,
-    dbmlResult?.ok ? `💧 Generated DBML at: ${c.dbml?.output}` : undefined,
+    zodResult?.ok ? `💧 Generated Zod schema at: ${config.zod?.output}` : undefined,
+    valibotResult?.ok ? `💧 Generated Valibot schema at: ${config.valibot?.output}` : undefined,
+    arktypeResult?.ok ? `💧 Generated ArkType schema at: ${config.arktype?.output}` : undefined,
+    effectResult?.ok ? `💧 Generated Effect schema at: ${config.effect?.output}` : undefined,
+    mermaidResult?.ok ? `💧 Generated Mermaid ER at: ${config.mermaid?.output}` : undefined,
+    dbmlResult?.ok ? `💧 Generated DBML at: ${config.dbml?.output}` : undefined,
   ].filter((v) => v !== undefined)
 
   return { ok: true, value: results.join('\n') }

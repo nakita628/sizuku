@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { config } from '.'
+import { readConfig } from '.'
 
 // Test run
 // pnpm vitest run ./src/config/index.test.ts
@@ -50,7 +50,7 @@ export default defineConfig({
 })`
     fs.writeFileSync(testFilePath, testConfig, 'utf-8')
 
-    await expect(config()).resolves.toStrictEqual({
+    await expect(readConfig()).resolves.toStrictEqual({
       ok: true,
       value: {
         input: 'db/schema.ts',
@@ -63,7 +63,7 @@ export default defineConfig({
   })
 
   it('should return an error if the config file does not exist', async () => {
-    const result = await config()
+    const result = await readConfig()
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.error).toContain('Config not found:')

@@ -55,17 +55,20 @@ export default defineConfig({
     output: 'arktype/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
 
   // Effect Schema Generator
   // Options:
-  //   output  - Output file path (must end with .ts)
-  //   comment - Include schema documentation (default: false)
-  //   type    - Generate TypeScript types (default: false)
+  //   output   - Output file path (must end with .ts)
+  //   comment  - Include schema documentation (default: false)
+  //   type     - Generate TypeScript types (default: false)
+  //   relation - Generate relation schemas (default: false)
   effect: {
     output: 'effect/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
 
   // Mermaid ER Diagram Generator

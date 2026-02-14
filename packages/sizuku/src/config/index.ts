@@ -9,7 +9,6 @@ import { z } from 'zod'
 // ============================================================================
 
 const tsFileSchema = z.string().endsWith('.ts') as z.ZodType<`${string}.ts`>
-const directorySchema = z.string()
 
 const zodConfigSchema = z
   .object({
@@ -56,10 +55,9 @@ const mermaidConfigSchema = z
 
 const dbmlConfigSchema = z
   .object({
-    output: z.string().refine(
-      (s) => s.endsWith('.dbml') || s.endsWith('.png'),
-      { message: 'output must end with .dbml or .png' },
-    ),
+    output: z.string().refine((s) => s.endsWith('.dbml') || s.endsWith('.png'), {
+      message: 'output must end with .dbml or .png',
+    }),
   })
   .optional()
 
@@ -83,7 +81,7 @@ export type Config = z.infer<typeof configSchema>
 // Config Loading
 // ============================================================================
 
-export async function config(): Promise<
+export async function readConfig(): Promise<
   { readonly ok: true; readonly value: Config } | { readonly ok: false; readonly error: string }
 > {
   const abs = resolve(process.cwd(), 'sizuku.config.ts')

@@ -1,407 +1,359 @@
-import { relations, sql } from 'drizzle-orm'
-import { foreignKey, int, numeric, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { relations } from 'drizzle-orm'
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
-export const User = sqliteTable('User', {
+export const users = sqliteTable('users', {
   /// Unique identifier for the user
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
   /// @a."string.uuid"
   /// @e.Schema.UUID
-  id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
+  id: text()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   /// User's display name
   /// @z.string()
   /// @v.string()
   /// @a.string
   /// @e.Schema.String
-  name: text('name').notNull(),
+  name: text().notNull(),
+  /// User's unique username
+  /// @z.string().min(1).max(50)
+  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))
+  /// @a."1 <= string <= 50"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50))
+  username: text().notNull().unique(),
   /// User's biography or profile description
   /// @z.string().optional().default("")
   /// @v.optional(v.string(),"")
   /// @a."string | undefined"
   /// @e.Schema.optional(Schema.String)
-  username: text('username').notNull().unique(),
-  /// User's biography or profile description
-  /// @z.string().optional().default("")
-  /// @v.optional(v.string(),"")
-  /// @a."string | undefined"
-  /// @e.Schema.optional(Schema.String)
-  bio: text('bio'),
+  bio: text(),
   /// User's unique email address
   /// @z.email()
   /// @v.pipe(v.string(),v.email())
   /// @a."string.email"
   /// @e.Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
-  email: text('email').notNull().unique(),
+  email: text().notNull().unique(),
   /// Timestamp of email verification
   /// @z.date().nullable()
   /// @v.nullable(v.date())
   /// @a."Date | null"
   /// @e.Schema.NullOr(Schema.Date)
-  emailVerified: numeric('emailVerified'),
+  emailVerified: integer({ mode: 'timestamp' }),
   /// URL of user's image
   /// @z.url().nullable()
   /// @v.nullable(v.string())
   /// @a."string.url | null"
   /// @e.Schema.NullOr(Schema.String.pipe(Schema.pattern(/^https?:\/\//)))
-  image: text('image'),
+  image: text(),
   /// URL of user's cover image
   /// @z.url().nullable()
   /// @v.nullable(v.string())
   /// @a."string.url | null"
   /// @e.Schema.NullOr(Schema.String.pipe(Schema.pattern(/^https?:\/\//)))
-  coverImage: text('coverImage'),
+  coverImage: text(),
   /// URL of user's profile image
   /// @z.url().nullable()
   /// @v.nullable(v.string())
   /// @a."string.url | null"
   /// @e.Schema.NullOr(Schema.String.pipe(Schema.pattern(/^https?:\/\//)))
-  profileImage: text('profileImage'),
+  profileImage: text(),
   /// Hashed password for security
   /// @z.string()
   /// @v.string()
   /// @a.string
   /// @e.Schema.String
-  hashedPassword: text('hashedPassword'),
+  hashedPassword: text(),
   /// Timestamp when the user was created
   /// @z.iso.datetime()
   /// @v.pipe(v.string(),v.isoDate())
   /// @a."string.date.iso"
   /// @e.Schema.DateTimeUtc
-  createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
+  createdAt: integer({ mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
   /// Timestamp when the user was last updated
   /// @z.iso.datetime()
   /// @v.pipe(v.string(),v.isoDate())
   /// @a."string.date.iso"
   /// @e.Schema.DateTimeUtc
-  updatedAt: numeric('updatedAt').notNull(),
+  updatedAt: integer({ mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdateFn(() => new Date()),
   /// Flag indicating if user has unread notifications
   /// @z.boolean().default(false)
   /// @v.optional(v.boolean(),false)
   /// @a."boolean = false"
   /// @e.Schema.optionalWith(Schema.Boolean, { default: () => false })
-  hasNotification: int('hasNotification', { mode: 'boolean' }),
+  hasNotification: integer({ mode: 'boolean' }),
 })
 
-export const Post = sqliteTable(
-  'Post',
-  {
-    /// Unique identifier for the post
-    /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    /// @a."string.uuid"
-    /// @e.Schema.UUID
-    id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
-    /// Body content of the post
-    /// @z.string().min(1).max(65535)
-    /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
-    /// @a."1 <= string <= 65535"
-    /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
-    body: text('body').notNull(),
-    /// Timestamp when the post was created
-    /// @z.iso.datetime()
-    /// @v.pipe(v.string(),v.isoDate())
-    /// @a."string.date.iso"
-    /// @e.Schema.DateTimeUtc
-    createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
-    /// Timestamp when the post was last updated
-    /// @z.iso.datetime()
-    /// @v.pipe(v.string(),v.isoDate())
-    /// @a."string.date.iso"
-    /// @e.Schema.DateTimeUtc
-    updatedAt: numeric('updatedAt').notNull(),
-    /// Foreign key referencing User.id
-    /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    /// @a."string.uuid"
-    /// @e.Schema.UUID
-    userId: text('userId').notNull(),
-  },
-  (Post) => ({
-    Post_user_fkey: foreignKey({
-      name: 'Post_user_fkey',
-      columns: [Post.userId],
-      foreignColumns: [User.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-  }),
-)
+export const posts = sqliteTable('posts', {
+  /// Unique identifier for the post
+  /// @z.uuid()
+  /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
+  id: text()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  /// Body content of the post
+  /// @z.string().min(1).max(65535)
+  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
+  /// @a."1 <= string <= 65535"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
+  body: text().notNull(),
+  /// Timestamp when the post was created
+  /// @z.iso.datetime()
+  /// @v.pipe(v.string(),v.isoDate())
+  /// @a."string.date.iso"
+  /// @e.Schema.DateTimeUtc
+  createdAt: integer({ mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  /// Timestamp when the post was last updated
+  /// @z.iso.datetime()
+  /// @v.pipe(v.string(),v.isoDate())
+  /// @a."string.date.iso"
+  /// @e.Schema.DateTimeUtc
+  updatedAt: integer({ mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdateFn(() => new Date()),
+  /// Foreign key referencing users.id
+  /// @z.uuid()
+  /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
+  userId: text()
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+})
 
-export const Follow = sqliteTable(
-  'Follow',
+export const follows = sqliteTable(
+  'follows',
   {
-    /// Unique identifier for the follow relationship
+    /// Foreign key referencing users.id
     /// @z.uuid()
     /// @v.pipe(v.string(), v.uuid())
     /// @a."string.uuid"
     /// @e.Schema.UUID
-    id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
-    /// Foreign key referencing User.id
+    followerId: text()
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    /// Foreign key referencing users.id
     /// @z.uuid()
     /// @v.pipe(v.string(), v.uuid())
     /// @a."string.uuid"
     /// @e.Schema.UUID
-    followerId: text('followerId').notNull(),
-    /// Foreign key referencing User.id
-    /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    /// @a."string.uuid"
-    /// @e.Schema.UUID
-    followingId: text('followingId').notNull(),
+    followingId: text()
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
     /// Timestamp when the follow relationship was created
     /// @z.iso.datetime()
     /// @v.pipe(v.string(),v.isoDate())
     /// @a."string.date.iso"
     /// @e.Schema.DateTimeUtc
-    createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
+    createdAt: integer({ mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
-  (Follow) => ({
-    Follow_follower_fkey: foreignKey({
-      name: 'Follow_follower_fkey',
-      columns: [Follow.followerId],
-      foreignColumns: [User.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-    Follow_following_fkey: foreignKey({
-      name: 'Follow_following_fkey',
-      columns: [Follow.followingId],
-      foreignColumns: [User.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-    Follow_followerId_followingId_unique_idx: uniqueIndex('Follow_followerId_followingId_key').on(
-      Follow.followerId,
-      Follow.followingId,
-    ),
-  }),
+  (t) => [primaryKey({ columns: [t.followerId, t.followingId] })],
 )
 
-export const Like = sqliteTable(
-  'Like',
+export const likes = sqliteTable(
+  'likes',
   {
-    /// Unique identifier for the like relationship
+    /// Foreign key referencing users.id
     /// @z.uuid()
     /// @v.pipe(v.string(), v.uuid())
     /// @a."string.uuid"
     /// @e.Schema.UUID
-    id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
-    /// Foreign key referencing User.id
+    userId: text()
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    /// Foreign key referencing posts.id
     /// @z.uuid()
     /// @v.pipe(v.string(), v.uuid())
     /// @a."string.uuid"
     /// @e.Schema.UUID
-    userId: text('userId').notNull(),
-    /// Foreign key referencing Post.id
-    /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    /// @a."string.uuid"
-    /// @e.Schema.UUID
-    postId: text('postId').notNull(),
+    postId: text()
+      .notNull()
+      .references(() => posts.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
     /// Timestamp when the like relationship was created
     /// @z.iso.datetime()
     /// @v.pipe(v.string(),v.isoDate())
     /// @a."string.date.iso"
     /// @e.Schema.DateTimeUtc
-    createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
+    createdAt: integer({ mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
-  (Like) => ({
-    Like_user_fkey: foreignKey({
-      name: 'Like_user_fkey',
-      columns: [Like.userId],
-      foreignColumns: [User.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-    Like_post_fkey: foreignKey({
-      name: 'Like_post_fkey',
-      columns: [Like.postId],
-      foreignColumns: [Post.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-    Like_userId_postId_unique_idx: uniqueIndex('Like_userId_postId_key').on(
-      Like.userId,
-      Like.postId,
-    ),
-  }),
+  (t) => [primaryKey({ columns: [t.userId, t.postId] })],
 )
 
-export const Comment = sqliteTable(
-  'Comment',
-  {
-    /// Unique identifier for the comment
-    /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    /// @a."string.uuid"
-    /// @e.Schema.UUID
-    id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
-    /// Body content of the comment
-    /// @z.string().min(1).max(65535)
-    /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
-    /// @a."1 <= string <= 65535"
-    /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
-    body: text('body').notNull(),
-    /// Timestamp when the comment was created
-    /// @z.iso.datetime()
-    /// @v.pipe(v.string(),v.isoDate())
-    /// @a."string.date.iso"
-    /// @e.Schema.DateTimeUtc
-    createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
-    /// Timestamp when the comment was last updated
-    /// @z.iso.datetime()
-    /// @v.pipe(v.string(),v.isoDate())
-    /// @a."string.date.iso"
-    /// @e.Schema.DateTimeUtc
-    updatedAt: numeric('updatedAt').notNull(),
-    /// Foreign key referencing User.id
-    /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    /// @a."string.uuid"
-    /// @e.Schema.UUID
-    userId: text('userId').notNull(),
-    /// Foreign key referencing Post.id
-    /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    /// @a."string.uuid"
-    /// @e.Schema.UUID
-    postId: text('postId').notNull(),
-  },
-  (Comment) => ({
-    Comment_user_fkey: foreignKey({
-      name: 'Comment_user_fkey',
-      columns: [Comment.userId],
-      foreignColumns: [User.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-    Comment_post_fkey: foreignKey({
-      name: 'Comment_post_fkey',
-      columns: [Comment.postId],
-      foreignColumns: [Post.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-  }),
-)
+export const comments = sqliteTable('comments', {
+  /// Unique identifier for the comment
+  /// @z.uuid()
+  /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
+  id: text()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  /// Body content of the comment
+  /// @z.string().min(1).max(65535)
+  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
+  /// @a."1 <= string <= 65535"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
+  body: text().notNull(),
+  /// Timestamp when the comment was created
+  /// @z.iso.datetime()
+  /// @v.pipe(v.string(),v.isoDate())
+  /// @a."string.date.iso"
+  /// @e.Schema.DateTimeUtc
+  createdAt: integer({ mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  /// Timestamp when the comment was last updated
+  /// @z.iso.datetime()
+  /// @v.pipe(v.string(),v.isoDate())
+  /// @a."string.date.iso"
+  /// @e.Schema.DateTimeUtc
+  updatedAt: integer({ mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdateFn(() => new Date()),
+  /// Foreign key referencing users.id
+  /// @z.uuid()
+  /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
+  userId: text()
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  /// Foreign key referencing posts.id
+  /// @z.uuid()
+  /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
+  postId: text()
+    .notNull()
+    .references(() => posts.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+})
 
-export const Notification = sqliteTable(
-  'Notification',
-  {
-    /// Unique identifier for the notification
-    /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    /// @a."string.uuid"
-    /// @e.Schema.UUID
-    id: text('id').notNull().primaryKey().default(sql`uuid(4)`),
-    /// Body content of the notification
-    /// @z.string().min(1).max(65535)
-    /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
-    /// @a."1 <= string <= 65535"
-    /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
-    body: text('body').notNull(),
-    /// Foreign key referencing User.id
-    /// @z.uuid()
-    /// @v.pipe(v.string(), v.uuid())
-    /// @a."string.uuid"
-    /// @e.Schema.UUID
-    userId: text('userId').notNull(),
-    /// Timestamp when the notification was created
-    /// @z.iso.datetime()
-    /// @v.pipe(v.string(),v.isoDate())
-    /// @a."string.date.iso"
-    /// @e.Schema.DateTimeUtc
-    createdAt: numeric('createdAt').notNull().default(sql`DATE('now')`),
-  },
-  (Notification) => ({
-    Notification_user_fkey: foreignKey({
-      name: 'Notification_user_fkey',
-      columns: [Notification.userId],
-      foreignColumns: [User.id],
-    })
-      .onDelete('cascade')
-      .onUpdate('cascade'),
-  }),
-)
+export const notifications = sqliteTable('notifications', {
+  /// Unique identifier for the notification
+  /// @z.uuid()
+  /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
+  id: text()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  /// Body content of the notification
+  /// @z.string().min(1).max(65535)
+  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
+  /// @a."1 <= string <= 65535"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
+  body: text().notNull(),
+  /// Foreign key referencing users.id
+  /// @z.uuid()
+  /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
+  userId: text()
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  /// Timestamp when the notification was created
+  /// @z.iso.datetime()
+  /// @v.pipe(v.string(),v.isoDate())
+  /// @a."string.date.iso"
+  /// @e.Schema.DateTimeUtc
+  createdAt: integer({ mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+})
 
-export const UserRelations = relations(User, ({ many }) => ({
-  posts: many(Post, {
+export const usersRelations = relations(users, ({ many }) => ({
+  posts: many(posts, {
     relationName: 'PostToUser',
   }),
-  comments: many(Comment, {
+  comments: many(comments, {
     relationName: 'CommentToUser',
   }),
-  notifications: many(Notification, {
+  notifications: many(notifications, {
     relationName: 'NotificationToUser',
   }),
-  followers: many(Follow, {
+  followers: many(follows, {
     relationName: 'Follower',
   }),
-  following: many(Follow, {
+  following: many(follows, {
     relationName: 'Following',
   }),
-  likes: many(Like, {
+  likes: many(likes, {
     relationName: 'LikeToUser',
   }),
 }))
 
-export const PostRelations = relations(Post, ({ one, many }) => ({
-  user: one(User, {
+export const postsRelations = relations(posts, ({ one, many }) => ({
+  user: one(users, {
     relationName: 'PostToUser',
-    fields: [Post.userId],
-    references: [User.id],
+    fields: [posts.userId],
+    references: [users.id],
   }),
-  comments: many(Comment, {
+  comments: many(comments, {
     relationName: 'CommentToPost',
   }),
-  likes: many(Like, {
+  likes: many(likes, {
     relationName: 'LikeToPost',
   }),
 }))
 
-export const FollowRelations = relations(Follow, ({ one }) => ({
-  follower: one(User, {
+export const followsRelations = relations(follows, ({ one }) => ({
+  follower: one(users, {
     relationName: 'Following',
-    fields: [Follow.followerId],
-    references: [User.id],
+    fields: [follows.followerId],
+    references: [users.id],
   }),
-  following: one(User, {
+  following: one(users, {
     relationName: 'Follower',
-    fields: [Follow.followingId],
-    references: [User.id],
+    fields: [follows.followingId],
+    references: [users.id],
   }),
 }))
 
-export const LikeRelations = relations(Like, ({ one }) => ({
-  user: one(User, {
+export const likesRelations = relations(likes, ({ one }) => ({
+  user: one(users, {
     relationName: 'LikeToUser',
-    fields: [Like.userId],
-    references: [User.id],
+    fields: [likes.userId],
+    references: [users.id],
   }),
-  post: one(Post, {
+  post: one(posts, {
     relationName: 'LikeToPost',
-    fields: [Like.postId],
-    references: [Post.id],
+    fields: [likes.postId],
+    references: [posts.id],
   }),
 }))
 
-export const CommentRelations = relations(Comment, ({ one }) => ({
-  user: one(User, {
+export const commentsRelations = relations(comments, ({ one }) => ({
+  user: one(users, {
     relationName: 'CommentToUser',
-    fields: [Comment.userId],
-    references: [User.id],
+    fields: [comments.userId],
+    references: [users.id],
   }),
-  post: one(Post, {
+  post: one(posts, {
     relationName: 'CommentToPost',
-    fields: [Comment.postId],
-    references: [Post.id],
+    fields: [comments.postId],
+    references: [posts.id],
   }),
 }))
 
-export const NotificationRelations = relations(Notification, ({ one }) => ({
-  user: one(User, {
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
     relationName: 'NotificationToUser',
-    fields: [Notification.userId],
-    references: [User.id],
+    fields: [notifications.userId],
+    references: [users.id],
   }),
 }))

@@ -220,15 +220,15 @@ function extractRelationsFromForeignKeyConstraints(
   if (!Node.isObjectLiteralExpression(objExpr)) return relations
 
   // Find all foreignKey() calls in the object
-  objExpr.getProperties().forEach((prop) => {
-    if (!Node.isPropertyAssignment(prop)) return
+  for (const prop of objExpr.getProperties()) {
+    if (!Node.isPropertyAssignment(prop)) continue
 
     const initExpr = prop.getInitializer()
-    if (!initExpr) return
+    if (!initExpr) continue
 
     // Get the full text and look for foreignKey pattern
     const text = initExpr.getText()
-    if (!text.includes('foreignKey(')) return
+    if (!text.includes('foreignKey(')) continue
 
     // Extract columns: [Table.field] and foreignColumns: [OtherTable.field]
     // Pattern: columns: [TableName.fieldName]
@@ -252,7 +252,7 @@ function extractRelationsFromForeignKeyConstraints(
         isRequired,
       })
     }
-  })
+  }
 
   return relations
 }
@@ -275,124 +275,120 @@ function extractRelationsFromForeignKeyConstraints(
 function extractRelationsFromRelationBlocks(file: SourceFile): RelationInfo[] {
   const relations: RelationInfo[] = []
 
-  file
-    .getVariableStatements()
-    .filter((stmt) => stmt.isExported())
-    .forEach((stmt) => {
-      const decl = stmt.getDeclarations()[0]
-      if (!Node.isVariableDeclaration(decl)) return
+  for (const stmt of file.getVariableStatements().filter((stmt) => stmt.isExported())) {
+    const decl = stmt.getDeclarations()[0]
+    if (!Node.isVariableDeclaration(decl)) continue
 
-      const varName = decl.getName()
-      // Only process relation definitions
-      if (!varName.toLowerCase().includes('relation')) return
+    const varName = decl.getName()
+    // Only process relation definitions
+    if (!varName.toLowerCase().includes('relation')) continue
 
-      const init = decl.getInitializer()
-      if (!(init && Node.isCallExpression(init))) return
+    const init = decl.getInitializer()
+    if (!(init && Node.isCallExpression(init))) continue
 
-      const callee = init.getExpression().getText()
-      if (callee !== 'relations') return
+    const callee = init.getExpression().getText()
+    if (callee !== 'relations') continue
 
-      const args = init.getArguments()
-      if (args.length < 2) return
+    const args = init.getArguments()
+    if (args.length < 2) continue
 
-      // First arg is the table reference
-      const tableRef = args[0]
-      if (!Node.isIdentifier(tableRef)) return
-      const tableName = tableRef.getText()
+    // First arg is the table reference
+    const tableRef = args[0]
+    if (!Node.isIdentifier(tableRef)) continue
+    const tableName = tableRef.getText()
 
-      // Second arg is the arrow function
-      const arrowFn = args[1]
-      if (!Node.isArrowFunction(arrowFn)) return
+    // Second arg is the arrow function
+    const arrowFn = args[1]
+    if (!Node.isArrowFunction(arrowFn)) continue
 
-      const body = arrowFn.getBody()
-      if (!body) return
+    const body = arrowFn.getBody()
+    if (!body) continue
 
-      // Handle parenthesized expression: ({ ... })
-      let objExpr = body
-      if (Node.isParenthesizedExpression(objExpr)) {
-        objExpr = objExpr.getExpression()
-      }
+    // Handle parenthesized expression: ({ ... })
+    let objExpr = body
+    if (Node.isParenthesizedExpression(objExpr)) {
+      objExpr = objExpr.getExpression()
+    }
 
-      if (!Node.isObjectLiteralExpression(objExpr)) return
+    if (!Node.isObjectLiteralExpression(objExpr)) continue
 
-      // Process each relation definition
-      objExpr.getProperties().forEach((prop) => {
-        if (!Node.isPropertyAssignment(prop)) return
+    // Process each relation definition
+    for (const prop of objExpr.getProperties()) {
+      if (!Node.isPropertyAssignment(prop)) continue
 
-        const initExpr = prop.getInitializer()
-        if (!(initExpr && Node.isCallExpression(initExpr))) return
+      const initExpr = prop.getInitializer()
+      if (!(initExpr && Node.isCallExpression(initExpr))) continue
 
-        const fnName = initExpr.getExpression().getText()
-        // Only process 'one' relations (many doesn't have field info)
-        if (fnName !== 'one') return
+      const fnName = initExpr.getExpression().getText()
+      // Only process 'one' relations (many doesn't have field info)
+      if (fnName !== 'one') continue
 
-        const relArgs = initExpr.getArguments()
-        if (relArgs.length < 2) return
+      const relArgs = initExpr.getArguments()
+      if (relArgs.length < 2) continue
 
-        // First arg is the referenced table
-        const refTableArg = relArgs[0]
-        if (!Node.isIdentifier(refTableArg)) return
-        const refTable = refTableArg.getText()
+      // First arg is the referenced table
+      const refTableArg = relArgs[0]
+      if (!Node.isIdentifier(refTableArg)) continue
+      const refTable = refTableArg.getText()
 
-        // Second arg is the config object
-        const configArg = relArgs[1]
-        if (!Node.isObjectLiteralExpression(configArg)) return
+      // Second arg is the config object
+      const configArg = relArgs[1]
+      if (!Node.isObjectLiteralExpression(configArg)) continue
 
-        const configText = configArg.getText()
+      const configText = configArg.getText()
 
-        // Extract fields: [Table.field] and references: [OtherTable.field]
-        const fieldsMatch = configText.match(/fields:\s*\[\s*(\w+)\.(\w+)\s*\]/)
-        const referencesMatch = configText.match(/references:\s*\[\s*(\w+)\.(\w+)\s*\]/)
+      // Extract fields: [Table.field] and references: [OtherTable.field]
+      const fieldsMatch = configText.match(/fields:\s*\[\s*(\w+)\.(\w+)\s*\]/)
+      const referencesMatch = configText.match(/references:\s*\[\s*(\w+)\.(\w+)\s*\]/)
 
-        if (fieldsMatch && referencesMatch) {
-          const currentField = fieldsMatch[2] // Field in current table
-          const refField = referencesMatch[2] // Field in referenced table
+      if (fieldsMatch && referencesMatch) {
+        const currentField = fieldsMatch[2] // Field in current table
+        const refField = referencesMatch[2] // Field in referenced table
 
-          // Determine FK direction based on field naming patterns:
-          // - If current field looks like a FK (ends with Id/ID and isn't just "id"),
-          //   then current table is the child
-          // - If ref field looks like a FK, then ref table is the child
-          const currentFieldLower = currentField.toLowerCase()
-          const refFieldLower = refField.toLowerCase()
-          const isCurrentFieldFk =
-            (currentFieldLower.endsWith('id') && currentFieldLower !== 'id') ||
-            currentFieldLower.endsWith('_id')
-          const isRefFieldFk =
-            (refFieldLower.endsWith('id') && refFieldLower !== 'id') ||
-            refFieldLower.endsWith('_id')
+        // Determine FK direction based on field naming patterns:
+        // - If current field looks like a FK (ends with Id/ID and isn't just "id"),
+        //   then current table is the child
+        // - If ref field looks like a FK, then ref table is the child
+        const currentFieldLower = currentField.toLowerCase()
+        const refFieldLower = refField.toLowerCase()
+        const isCurrentFieldFk =
+          (currentFieldLower.endsWith('id') && currentFieldLower !== 'id') ||
+          currentFieldLower.endsWith('_id')
+        const isRefFieldFk =
+          (refFieldLower.endsWith('id') && refFieldLower !== 'id') || refFieldLower.endsWith('_id')
 
-          if (isCurrentFieldFk && !isRefFieldFk) {
-            // Current table has the FK, ref table is the parent
-            relations.push({
-              fromModel: refTable, // Parent
-              toModel: tableName, // Child
-              fromField: refField, // PK in parent
-              toField: currentField, // FK in child
-              isRequired: true,
-            })
-          } else if (!isCurrentFieldFk && isRefFieldFk) {
-            // Ref table has the FK, current table is the parent
-            // This is when relation is defined from parent's perspective
-            relations.push({
-              fromModel: tableName, // Parent
-              toModel: refTable, // Child
-              fromField: currentField, // PK in parent
-              toField: refField, // FK in child
-              isRequired: true,
-            })
-          } else {
-            // Ambiguous case - use current table as child (default behavior)
-            relations.push({
-              fromModel: refTable,
-              toModel: tableName,
-              fromField: refField,
-              toField: currentField,
-              isRequired: true,
-            })
-          }
+        if (isCurrentFieldFk && !isRefFieldFk) {
+          // Current table has the FK, ref table is the parent
+          relations.push({
+            fromModel: refTable, // Parent
+            toModel: tableName, // Child
+            fromField: refField, // PK in parent
+            toField: currentField, // FK in child
+            isRequired: true,
+          })
+        } else if (!isCurrentFieldFk && isRefFieldFk) {
+          // Ref table has the FK, current table is the parent
+          // This is when relation is defined from parent's perspective
+          relations.push({
+            fromModel: tableName, // Parent
+            toModel: refTable, // Child
+            fromField: currentField, // PK in parent
+            toField: refField, // FK in child
+            isRequired: true,
+          })
+        } else {
+          // Ambiguous case - use current table as child (default behavior)
+          relations.push({
+            fromModel: refTable,
+            toModel: tableName,
+            fromField: refField,
+            toField: currentField,
+            isRequired: true,
+          })
         }
-      })
-    })
+      }
+    }
+  }
 
   return relations
 }
@@ -452,45 +448,39 @@ export function extractRelationsFromSchema(code: readonly string[]): readonly Re
   const relations: RelationInfo[] = []
 
   // 1. Extract from .references() calls and foreignKey() constraints in table definitions
-  file
-    .getVariableStatements()
-    .filter((stmt) => stmt.isExported())
-    .forEach((stmt) => {
-      const decl = stmt.getDeclarations()[0]
-      if (!Node.isVariableDeclaration(decl)) return
+  for (const stmt of file.getVariableStatements().filter((stmt) => stmt.isExported())) {
+    const decl = stmt.getDeclarations()[0]
+    if (!Node.isVariableDeclaration(decl)) continue
 
-      const varName = decl.getName()
-      if (varName.toLowerCase().includes('relation')) return
+    const varName = decl.getName()
+    if (varName.toLowerCase().includes('relation')) continue
 
-      const init = decl.getInitializer()
-      if (!(init && Node.isCallExpression(init))) return
+    const init = decl.getInitializer()
+    if (!(init && Node.isCallExpression(init))) continue
 
-      const callee = init.getExpression().getText()
-      if (!callee.endsWith('Table') || callee === 'relations') return
+    const callee = init.getExpression().getText()
+    if (!callee.endsWith('Table') || callee === 'relations') continue
 
-      const args = init.getArguments()
+    const args = init.getArguments()
 
-      // Second argument: field definitions object
-      const objLit = args[1]
-      if (objLit && Node.isObjectLiteralExpression(objLit)) {
-        objLit
-          .getProperties()
-          .filter(Node.isPropertyAssignment)
-          .forEach((prop) => {
-            const relation = extractRelationFromField(prop, varName)
-            if (relation) {
-              relations.push(relation)
-            }
-          })
+    // Second argument: field definitions object
+    const objLit = args[1]
+    if (objLit && Node.isObjectLiteralExpression(objLit)) {
+      for (const prop of objLit.getProperties().filter(Node.isPropertyAssignment)) {
+        const relation = extractRelationFromField(prop, varName)
+        if (relation) {
+          relations.push(relation)
+        }
       }
+    }
 
-      // Third argument: constraints (foreignKey, indexes, etc.)
-      const constraintArg = args[2]
-      if (constraintArg && Node.isExpression(constraintArg)) {
-        const fkRelations = extractRelationsFromForeignKeyConstraints(varName, constraintArg)
-        relations.push(...fkRelations)
-      }
-    })
+    // Third argument: constraints (foreignKey, indexes, etc.)
+    const constraintArg = args[2]
+    if (constraintArg && Node.isExpression(constraintArg)) {
+      const fkRelations = extractRelationsFromForeignKeyConstraints(varName, constraintArg)
+      relations.push(...fkRelations)
+    }
+  }
 
   // 2. Extract from relations() blocks
   const relationBlockRelations = extractRelationsFromRelationBlocks(file)
