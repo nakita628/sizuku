@@ -1,3 +1,4 @@
+import { dirname } from 'node:path'
 import { Resvg } from '@resvg/resvg-js'
 import { run } from '@softwaretechnik/dbml-renderer'
 import { mkdir, writeFile, writeFileBinary } from '../../fsp/index.js'
@@ -9,24 +10,57 @@ type Result =
   | { readonly ok: false; readonly error: string }
 
 /**
- * Generate DBML file
+ * Generate DBML content string from Drizzle schema code
  */
-const generateDbml = async (outputDir: string, content: string, fileName: string): Promise<Result> => {
-  const outputFile = `${outputDir}/${fileName}`
-  const writeResult = await writeFile(outputFile, content)
+function generateContent(code: string[]): string {
+  const tables = parseTableInfo(code)
+  const relations = extractRelationsFromSchema(code)
+  return dbmlContent(relations, tables)
+}
 
+/**
+ * Generate DBML file from Drizzle schema code
+ *
+ * @param code - The code to generate DBML from
+ * @param output - The output file path (must end with .dbml)
+ */
+export async function sizukuDbmlFile(code: string[], output: string): Promise<Result> {
+  const content = generateContent(code)
+
+  const dir = dirname(output)
+  const mkdirResult = await mkdir(dir)
+  if (!mkdirResult.ok) {
+    return { ok: false, error: `❌ Failed to create directory: ${mkdirResult.error}` }
+  }
+
+  const writeResult = await writeFile(output, content)
   if (!writeResult.ok) {
-    return { ok: false, error: `Failed to write DBML: ${writeResult.error}` }
+    return { ok: false, error: `❌ Failed to write DBML: ${writeResult.error}` }
   }
 
   return { ok: true, value: undefined }
 }
 
 /**
- * Generate PNG from DBML
+ * Generate PNG ER diagram from Drizzle schema code
+ *
+ * @param code - The code to generate PNG from
+ * @param output - The output file path (must end with .png)
  */
-const generatePng = async (outputDir: string, dbml: string, fileName: string): Promise<Result> => {
-  const svg = run(dbml, 'svg')
+/**
+ * Generate ERD output (DBML or PNG) based on file extension
+ */
+export async function sizukuDbml(code: string[], output: string): Promise<Result> {
+  if (output.endsWith('.png')) {
+    return sizukuPng(code, output)
+  }
+  return sizukuDbmlFile(code, output)
+}
+
+export async function sizukuPng(code: string[], output: string): Promise<Result> {
+  const content = generateContent(code)
+
+  const svg = run(content, 'svg')
   const resvg = new Resvg(svg, {
     font: {
       loadSystemFonts: true,
@@ -35,47 +69,15 @@ const generatePng = async (outputDir: string, dbml: string, fileName: string): P
   const pngData = resvg.render()
   const pngBuffer = pngData.asPng()
 
-  const outputFile = `${outputDir}/${fileName}`
-  const writeResult = await writeFileBinary(outputFile, pngBuffer)
-
-  if (!writeResult.ok) {
-    return { ok: false, error: `Failed to write PNG: ${writeResult.error}` }
-  }
-
-  return { ok: true, value: undefined }
-}
-
-/**
- * Generate DBML schema and ER diagram PNG from Drizzle schema code
- *
- * @param code - The code to generate DBML from
- * @param output - The output directory path
- * @param dbmlFile - The DBML file name (default: schema.dbml)
- * @param pngFile - The PNG file name (default: er-diagram.png)
- */
-export async function sizukuDBML(
-  code: string[],
-  output: string,
-  dbmlFile: string = 'schema.dbml',
-  pngFile: string = 'er-diagram.png',
-): Promise<Result> {
-  const tables = parseTableInfo(code)
-  const relations = extractRelationsFromSchema(code)
-  const content = dbmlContent(relations, tables)
-
-  const mkdirResult = await mkdir(output)
+  const dir = dirname(output)
+  const mkdirResult = await mkdir(dir)
   if (!mkdirResult.ok) {
     return { ok: false, error: `❌ Failed to create directory: ${mkdirResult.error}` }
   }
 
-  const dbmlResult = await generateDbml(output, content, dbmlFile)
-  if (!dbmlResult.ok) {
-    return { ok: false, error: `❌ ${dbmlResult.error}` }
-  }
-
-  const pngResult = await generatePng(output, content, pngFile)
-  if (!pngResult.ok) {
-    return { ok: false, error: `❌ ${pngResult.error}` }
+  const writeResult = await writeFileBinary(output, pngBuffer)
+  if (!writeResult.ok) {
+    return { ok: false, error: `❌ Failed to write PNG: ${writeResult.error}` }
   }
 
   return { ok: true, value: undefined }

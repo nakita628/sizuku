@@ -33,3 +33,11 @@ export const PostSchema = type({
 })
 
 export type Post = typeof PostSchema.infer
+
+export const UserRelationsSchema = type({ ...UserSchema.t, posts: PostSchema.array() })
+
+export type UserRelations = typeof UserRelationsSchema.infer
+
+export const PostRelationsSchema = type({ ...PostSchema.t, user: UserSchema })
+
+export type PostRelations = typeof PostRelationsSchema.infer

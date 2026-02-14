@@ -19,16 +19,18 @@ export default defineConfig({
     output: 'arktype/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
   effect: {
     output: 'effect/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
   mermaid: {
     output: 'mermaid-er/ER.md',
   },
   dbml: {
-    output: 'docs',
+    output: 'docs/schema.dbml',
   },
 })

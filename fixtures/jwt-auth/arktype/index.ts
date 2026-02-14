@@ -221,3 +221,40 @@ export const PasswordResetSchema = type({
 })
 
 export type PasswordReset = typeof PasswordResetSchema.infer
+
+export const UserRelationsSchema = type({
+  ...UserSchema.t,
+  oauthAccounts: OAuthAccountSchema.array(),
+  twoFactorSetting: TwoFactorSettingSchema,
+  refreshTokens: RefreshTokenSchema.array(),
+  emailVerifications: EmailVerificationSchema.array(),
+  passwordResets: PasswordResetSchema.array(),
+})
+
+export type UserRelations = typeof UserRelationsSchema.infer
+
+export const OAuthAccountRelationsSchema = type({ ...OAuthAccountSchema.t, user: UserSchema })
+
+export type OAuthAccountRelations = typeof OAuthAccountRelationsSchema.infer
+
+export const TwoFactorSettingRelationsSchema = type({
+  ...TwoFactorSettingSchema.t,
+  user: UserSchema,
+})
+
+export type TwoFactorSettingRelations = typeof TwoFactorSettingRelationsSchema.infer
+
+export const RefreshTokenRelationsSchema = type({ ...RefreshTokenSchema.t, user: UserSchema })
+
+export type RefreshTokenRelations = typeof RefreshTokenRelationsSchema.infer
+
+export const EmailVerificationRelationsSchema = type({
+  ...EmailVerificationSchema.t,
+  user: UserSchema,
+})
+
+export type EmailVerificationRelations = typeof EmailVerificationRelationsSchema.infer
+
+export const PasswordResetRelationsSchema = type({ ...PasswordResetSchema.t, user: UserSchema })
+
+export type PasswordResetRelations = typeof PasswordResetRelationsSchema.infer

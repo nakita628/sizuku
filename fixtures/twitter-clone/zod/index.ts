@@ -1,6 +1,6 @@
 import * as z from 'zod'
 
-export const UserSchema = z.object({
+export const UsersSchema = z.object({
   /**
    * Unique identifier for the user
    */
@@ -10,9 +10,9 @@ export const UserSchema = z.object({
    */
   name: z.string(),
   /**
-   * User's biography or profile description
+   * User's unique username
    */
-  username: z.string().optional().default(''),
+  username: z.string().min(1).max(50),
   /**
    * User's biography or profile description
    */
@@ -55,9 +55,9 @@ export const UserSchema = z.object({
   hasNotification: z.boolean().default(false),
 })
 
-export type User = z.infer<typeof UserSchema>
+export type Users = z.infer<typeof UsersSchema>
 
-export const PostSchema = z.object({
+export const PostsSchema = z.object({
   /**
    * Unique identifier for the post
    */
@@ -75,24 +75,20 @@ export const PostSchema = z.object({
    */
   updatedAt: z.iso.datetime(),
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: z.uuid(),
 })
 
-export type Post = z.infer<typeof PostSchema>
+export type Posts = z.infer<typeof PostsSchema>
 
-export const FollowSchema = z.object({
+export const FollowsSchema = z.object({
   /**
-   * Unique identifier for the follow relationship
-   */
-  id: z.uuid(),
-  /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   followerId: z.uuid(),
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   followingId: z.uuid(),
   /**
@@ -101,19 +97,15 @@ export const FollowSchema = z.object({
   createdAt: z.iso.datetime(),
 })
 
-export type Follow = z.infer<typeof FollowSchema>
+export type Follows = z.infer<typeof FollowsSchema>
 
-export const LikeSchema = z.object({
+export const LikesSchema = z.object({
   /**
-   * Unique identifier for the like relationship
-   */
-  id: z.uuid(),
-  /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: z.uuid(),
   /**
-   * Foreign key referencing Post.id
+   * Foreign key referencing posts.id
    */
   postId: z.uuid(),
   /**
@@ -122,9 +114,9 @@ export const LikeSchema = z.object({
   createdAt: z.iso.datetime(),
 })
 
-export type Like = z.infer<typeof LikeSchema>
+export type Likes = z.infer<typeof LikesSchema>
 
-export const CommentSchema = z.object({
+export const CommentsSchema = z.object({
   /**
    * Unique identifier for the comment
    */
@@ -142,18 +134,18 @@ export const CommentSchema = z.object({
    */
   updatedAt: z.iso.datetime(),
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: z.uuid(),
   /**
-   * Foreign key referencing Post.id
+   * Foreign key referencing posts.id
    */
   postId: z.uuid(),
 })
 
-export type Comment = z.infer<typeof CommentSchema>
+export type Comments = z.infer<typeof CommentsSchema>
 
-export const NotificationSchema = z.object({
+export const NotificationsSchema = z.object({
   /**
    * Unique identifier for the notification
    */
@@ -163,7 +155,7 @@ export const NotificationSchema = z.object({
    */
   body: z.string().min(1).max(65535),
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: z.uuid(),
   /**
@@ -172,56 +164,56 @@ export const NotificationSchema = z.object({
   createdAt: z.iso.datetime(),
 })
 
-export type Notification = z.infer<typeof NotificationSchema>
+export type Notifications = z.infer<typeof NotificationsSchema>
 
-export const UserRelationsSchema = z.object({
-  ...UserSchema.shape,
-  posts: z.array(PostSchema),
-  comments: z.array(CommentSchema),
-  notifications: z.array(NotificationSchema),
-  followers: z.array(FollowSchema),
-  following: z.array(FollowSchema),
-  likes: z.array(LikeSchema),
+export const UsersRelationsSchema = z.object({
+  ...UsersSchema.shape,
+  posts: z.array(PostsSchema),
+  comments: z.array(CommentsSchema),
+  notifications: z.array(NotificationsSchema),
+  followers: z.array(FollowsSchema),
+  following: z.array(FollowsSchema),
+  likes: z.array(LikesSchema),
 })
 
-export type UserRelations = z.infer<typeof UserRelationsSchema>
+export type UsersRelations = z.infer<typeof UsersRelationsSchema>
 
-export const PostRelationsSchema = z.object({
-  ...PostSchema.shape,
-  user: UserSchema,
-  comments: z.array(CommentSchema),
-  likes: z.array(LikeSchema),
+export const PostsRelationsSchema = z.object({
+  ...PostsSchema.shape,
+  user: UsersSchema,
+  comments: z.array(CommentsSchema),
+  likes: z.array(LikesSchema),
 })
 
-export type PostRelations = z.infer<typeof PostRelationsSchema>
+export type PostsRelations = z.infer<typeof PostsRelationsSchema>
 
-export const FollowRelationsSchema = z.object({
-  ...FollowSchema.shape,
-  follower: UserSchema,
-  following: UserSchema,
+export const FollowsRelationsSchema = z.object({
+  ...FollowsSchema.shape,
+  follower: UsersSchema,
+  following: UsersSchema,
 })
 
-export type FollowRelations = z.infer<typeof FollowRelationsSchema>
+export type FollowsRelations = z.infer<typeof FollowsRelationsSchema>
 
-export const LikeRelationsSchema = z.object({
-  ...LikeSchema.shape,
-  user: UserSchema,
-  post: PostSchema,
+export const LikesRelationsSchema = z.object({
+  ...LikesSchema.shape,
+  user: UsersSchema,
+  post: PostsSchema,
 })
 
-export type LikeRelations = z.infer<typeof LikeRelationsSchema>
+export type LikesRelations = z.infer<typeof LikesRelationsSchema>
 
-export const CommentRelationsSchema = z.object({
-  ...CommentSchema.shape,
-  user: UserSchema,
-  post: PostSchema,
+export const CommentsRelationsSchema = z.object({
+  ...CommentsSchema.shape,
+  user: UsersSchema,
+  post: PostsSchema,
 })
 
-export type CommentRelations = z.infer<typeof CommentRelationsSchema>
+export type CommentsRelations = z.infer<typeof CommentsRelationsSchema>
 
-export const NotificationRelationsSchema = z.object({
-  ...NotificationSchema.shape,
-  user: UserSchema,
+export const NotificationsRelationsSchema = z.object({
+  ...NotificationsSchema.shape,
+  user: UsersSchema,
 })
 
-export type NotificationRelations = z.infer<typeof NotificationRelationsSchema>
+export type NotificationsRelations = z.infer<typeof NotificationsRelationsSchema>

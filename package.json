@@ -12,7 +12,7 @@
     "release": "pnpm -F sizuku release"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.7"
+    "@biomejs/biome": "^2.3.15"
   },
   "dependencies": {
     "sizuku": "link:packages/sizuku"

@@ -1,6 +1,6 @@
 import { Schema } from 'effect'
 
-export const UserSchema = Schema.Struct({
+export const UsersSchema = Schema.Struct({
   /**
    * Unique identifier for the user
    */
@@ -10,9 +10,9 @@ export const UserSchema = Schema.Struct({
    */
   name: Schema.String,
   /**
-   * User's biography or profile description
+   * User's unique username
    */
-  username: Schema.optional(Schema.String),
+  username: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
   /**
    * User's biography or profile description
    */
@@ -55,9 +55,9 @@ export const UserSchema = Schema.Struct({
   hasNotification: Schema.optionalWith(Schema.Boolean, { default: () => false }),
 })
 
-export type User = Schema.Schema.Type<typeof UserSchema>
+export type Users = Schema.Schema.Type<typeof UsersSchema>
 
-export const PostSchema = Schema.Struct({
+export const PostsSchema = Schema.Struct({
   /**
    * Unique identifier for the post
    */
@@ -75,24 +75,20 @@ export const PostSchema = Schema.Struct({
    */
   updatedAt: Schema.DateTimeUtc,
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: Schema.UUID,
 })
 
-export type Post = Schema.Schema.Type<typeof PostSchema>
+export type Posts = Schema.Schema.Type<typeof PostsSchema>
 
-export const FollowSchema = Schema.Struct({
+export const FollowsSchema = Schema.Struct({
   /**
-   * Unique identifier for the follow relationship
-   */
-  id: Schema.UUID,
-  /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   followerId: Schema.UUID,
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   followingId: Schema.UUID,
   /**
@@ -101,19 +97,15 @@ export const FollowSchema = Schema.Struct({
   createdAt: Schema.DateTimeUtc,
 })
 
-export type Follow = Schema.Schema.Type<typeof FollowSchema>
+export type Follows = Schema.Schema.Type<typeof FollowsSchema>
 
-export const LikeSchema = Schema.Struct({
+export const LikesSchema = Schema.Struct({
   /**
-   * Unique identifier for the like relationship
-   */
-  id: Schema.UUID,
-  /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: Schema.UUID,
   /**
-   * Foreign key referencing Post.id
+   * Foreign key referencing posts.id
    */
   postId: Schema.UUID,
   /**
@@ -122,9 +114,9 @@ export const LikeSchema = Schema.Struct({
   createdAt: Schema.DateTimeUtc,
 })
 
-export type Like = Schema.Schema.Type<typeof LikeSchema>
+export type Likes = Schema.Schema.Type<typeof LikesSchema>
 
-export const CommentSchema = Schema.Struct({
+export const CommentsSchema = Schema.Struct({
   /**
    * Unique identifier for the comment
    */
@@ -142,18 +134,18 @@ export const CommentSchema = Schema.Struct({
    */
   updatedAt: Schema.DateTimeUtc,
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: Schema.UUID,
   /**
-   * Foreign key referencing Post.id
+   * Foreign key referencing posts.id
    */
   postId: Schema.UUID,
 })
 
-export type Comment = Schema.Schema.Type<typeof CommentSchema>
+export type Comments = Schema.Schema.Type<typeof CommentsSchema>
 
-export const NotificationSchema = Schema.Struct({
+export const NotificationsSchema = Schema.Struct({
   /**
    * Unique identifier for the notification
    */
@@ -163,7 +155,7 @@ export const NotificationSchema = Schema.Struct({
    */
   body: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535)),
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: Schema.UUID,
   /**
@@ -172,4 +164,56 @@ export const NotificationSchema = Schema.Struct({
   createdAt: Schema.DateTimeUtc,
 })
 
-export type Notification = Schema.Schema.Type<typeof NotificationSchema>
+export type Notifications = Schema.Schema.Type<typeof NotificationsSchema>
+
+export const UsersRelationsSchema = Schema.Struct({
+  ...UsersSchema.fields,
+  posts: Schema.Array(PostsSchema),
+  comments: Schema.Array(CommentsSchema),
+  notifications: Schema.Array(NotificationsSchema),
+  followers: Schema.Array(FollowsSchema),
+  following: Schema.Array(FollowsSchema),
+  likes: Schema.Array(LikesSchema),
+})
+
+export type UsersRelations = Schema.Schema.Type<typeof UsersRelationsSchema>
+
+export const PostsRelationsSchema = Schema.Struct({
+  ...PostsSchema.fields,
+  user: UsersSchema,
+  comments: Schema.Array(CommentsSchema),
+  likes: Schema.Array(LikesSchema),
+})
+
+export type PostsRelations = Schema.Schema.Type<typeof PostsRelationsSchema>
+
+export const FollowsRelationsSchema = Schema.Struct({
+  ...FollowsSchema.fields,
+  follower: UsersSchema,
+  following: UsersSchema,
+})
+
+export type FollowsRelations = Schema.Schema.Type<typeof FollowsRelationsSchema>
+
+export const LikesRelationsSchema = Schema.Struct({
+  ...LikesSchema.fields,
+  user: UsersSchema,
+  post: PostsSchema,
+})
+
+export type LikesRelations = Schema.Schema.Type<typeof LikesRelationsSchema>
+
+export const CommentsRelationsSchema = Schema.Struct({
+  ...CommentsSchema.fields,
+  user: UsersSchema,
+  post: PostsSchema,
+})
+
+export type CommentsRelations = Schema.Schema.Type<typeof CommentsRelationsSchema>
+
+export const NotificationsRelationsSchema = Schema.Struct({
+  ...NotificationsSchema.fields,
+  user: UsersSchema,
+})
+
+export type NotificationsRelations = Schema.Schema.Type<typeof NotificationsRelationsSchema>

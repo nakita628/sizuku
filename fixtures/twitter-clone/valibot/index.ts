@@ -1,6 +1,6 @@
 import * as v from 'valibot'
 
-export const UserSchema = v.object({
+export const UsersSchema = v.object({
   /**
    * Unique identifier for the user
    */
@@ -10,9 +10,9 @@ export const UserSchema = v.object({
    */
   name: v.string(),
   /**
-   * User's biography or profile description
+   * User's unique username
    */
-  username: v.optional(v.string(), ''),
+  username: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
   /**
    * User's biography or profile description
    */
@@ -55,9 +55,9 @@ export const UserSchema = v.object({
   hasNotification: v.optional(v.boolean(), false),
 })
 
-export type User = v.InferInput<typeof UserSchema>
+export type Users = v.InferInput<typeof UsersSchema>
 
-export const PostSchema = v.object({
+export const PostsSchema = v.object({
   /**
    * Unique identifier for the post
    */
@@ -75,24 +75,20 @@ export const PostSchema = v.object({
    */
   updatedAt: v.pipe(v.string(), v.isoDate()),
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: v.pipe(v.string(), v.uuid()),
 })
 
-export type Post = v.InferInput<typeof PostSchema>
+export type Posts = v.InferInput<typeof PostsSchema>
 
-export const FollowSchema = v.object({
+export const FollowsSchema = v.object({
   /**
-   * Unique identifier for the follow relationship
-   */
-  id: v.pipe(v.string(), v.uuid()),
-  /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   followerId: v.pipe(v.string(), v.uuid()),
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   followingId: v.pipe(v.string(), v.uuid()),
   /**
@@ -101,19 +97,15 @@ export const FollowSchema = v.object({
   createdAt: v.pipe(v.string(), v.isoDate()),
 })
 
-export type Follow = v.InferInput<typeof FollowSchema>
+export type Follows = v.InferInput<typeof FollowsSchema>
 
-export const LikeSchema = v.object({
+export const LikesSchema = v.object({
   /**
-   * Unique identifier for the like relationship
-   */
-  id: v.pipe(v.string(), v.uuid()),
-  /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: v.pipe(v.string(), v.uuid()),
   /**
-   * Foreign key referencing Post.id
+   * Foreign key referencing posts.id
    */
   postId: v.pipe(v.string(), v.uuid()),
   /**
@@ -122,9 +114,9 @@ export const LikeSchema = v.object({
   createdAt: v.pipe(v.string(), v.isoDate()),
 })
 
-export type Like = v.InferInput<typeof LikeSchema>
+export type Likes = v.InferInput<typeof LikesSchema>
 
-export const CommentSchema = v.object({
+export const CommentsSchema = v.object({
   /**
    * Unique identifier for the comment
    */
@@ -142,18 +134,18 @@ export const CommentSchema = v.object({
    */
   updatedAt: v.pipe(v.string(), v.isoDate()),
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: v.pipe(v.string(), v.uuid()),
   /**
-   * Foreign key referencing Post.id
+   * Foreign key referencing posts.id
    */
   postId: v.pipe(v.string(), v.uuid()),
 })
 
-export type Comment = v.InferInput<typeof CommentSchema>
+export type Comments = v.InferInput<typeof CommentsSchema>
 
-export const NotificationSchema = v.object({
+export const NotificationsSchema = v.object({
   /**
    * Unique identifier for the notification
    */
@@ -163,7 +155,7 @@ export const NotificationSchema = v.object({
    */
   body: v.pipe(v.string(), v.minLength(1), v.maxLength(65535)),
   /**
-   * Foreign key referencing User.id
+   * Foreign key referencing users.id
    */
   userId: v.pipe(v.string(), v.uuid()),
   /**
@@ -172,56 +164,56 @@ export const NotificationSchema = v.object({
   createdAt: v.pipe(v.string(), v.isoDate()),
 })
 
-export type Notification = v.InferInput<typeof NotificationSchema>
+export type Notifications = v.InferInput<typeof NotificationsSchema>
 
-export const UserRelationsSchema = v.object({
-  ...UserSchema.entries,
-  posts: v.array(PostSchema),
-  comments: v.array(CommentSchema),
-  notifications: v.array(NotificationSchema),
-  followers: v.array(FollowSchema),
-  following: v.array(FollowSchema),
-  likes: v.array(LikeSchema),
+export const UsersRelationsSchema = v.object({
+  ...UsersSchema.entries,
+  posts: v.array(PostsSchema),
+  comments: v.array(CommentsSchema),
+  notifications: v.array(NotificationsSchema),
+  followers: v.array(FollowsSchema),
+  following: v.array(FollowsSchema),
+  likes: v.array(LikesSchema),
 })
 
-export type UserRelations = v.InferInput<typeof UserRelationsSchema>
+export type UsersRelations = v.InferInput<typeof UsersRelationsSchema>
 
-export const PostRelationsSchema = v.object({
-  ...PostSchema.entries,
-  user: UserSchema,
-  comments: v.array(CommentSchema),
-  likes: v.array(LikeSchema),
+export const PostsRelationsSchema = v.object({
+  ...PostsSchema.entries,
+  user: UsersSchema,
+  comments: v.array(CommentsSchema),
+  likes: v.array(LikesSchema),
 })
 
-export type PostRelations = v.InferInput<typeof PostRelationsSchema>
+export type PostsRelations = v.InferInput<typeof PostsRelationsSchema>
 
-export const FollowRelationsSchema = v.object({
-  ...FollowSchema.entries,
-  follower: UserSchema,
-  following: UserSchema,
+export const FollowsRelationsSchema = v.object({
+  ...FollowsSchema.entries,
+  follower: UsersSchema,
+  following: UsersSchema,
 })
 
-export type FollowRelations = v.InferInput<typeof FollowRelationsSchema>
+export type FollowsRelations = v.InferInput<typeof FollowsRelationsSchema>
 
-export const LikeRelationsSchema = v.object({
-  ...LikeSchema.entries,
-  user: UserSchema,
-  post: PostSchema,
+export const LikesRelationsSchema = v.object({
+  ...LikesSchema.entries,
+  user: UsersSchema,
+  post: PostsSchema,
 })
 
-export type LikeRelations = v.InferInput<typeof LikeRelationsSchema>
+export type LikesRelations = v.InferInput<typeof LikesRelationsSchema>
 
-export const CommentRelationsSchema = v.object({
-  ...CommentSchema.entries,
-  user: UserSchema,
-  post: PostSchema,
+export const CommentsRelationsSchema = v.object({
+  ...CommentsSchema.entries,
+  user: UsersSchema,
+  post: PostsSchema,
 })
 
-export type CommentRelations = v.InferInput<typeof CommentRelationsSchema>
+export type CommentsRelations = v.InferInput<typeof CommentsRelationsSchema>
 
-export const NotificationRelationsSchema = v.object({
-  ...NotificationSchema.entries,
-  user: UserSchema,
+export const NotificationsRelationsSchema = v.object({
+  ...NotificationsSchema.entries,
+  user: UsersSchema,
 })
 
-export type NotificationRelations = v.InferInput<typeof NotificationRelationsSchema>
+export type NotificationsRelations = v.InferInput<typeof NotificationsRelationsSchema>

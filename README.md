@@ -2,7 +2,7 @@
 
 # Sizuku
 
-**[Sizuku](https://www.npmjs.com/package/sizuku)** is a tool that generates validation schemas for Zod and Valibot, as well as ER diagrams, from [Drizzle](https://orm.drizzle.team/) schemas annotated with comments.
+**[Sizuku](https://www.npmjs.com/package/sizuku)** is a tool that generates validation schemas for Zod, Valibot, ArkType, and Effect Schema, as well as ER diagrams, from [Drizzle](https://orm.drizzle.team/) schemas.
 
 ## Features
 
@@ -11,7 +11,8 @@
 - 🏹 Automatically generates [ArkType](https://arktype.io/) schemas from your Drizzle schema
 - ⚡ Automatically generates [Effect Schema](https://effect.website/docs/schema/introduction/) from your Drizzle schema
 - 📊 Creates [Mermaid](https://mermaid.js.org/) ER diagrams
-- 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files with ER diagram PNG
+- 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files
+- 🖼️ Outputs ER diagrams as **PNG** images using [dbml-renderer](https://github.com/softwaretechnik-berlin/dbml-renderer)
 
 ## Getting Started
 
@@ -35,10 +36,14 @@ export const user = mysqlTable('user', {
   /// Primary key
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
   id: varchar('id', { length: 36 }).primaryKey(),
   /// Display name
   /// @z.string().min(1).max(50)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))
+  /// @a."1 <= string <= 50"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50))
   name: varchar('name', { length: 50 }).notNull(),
 })
 
@@ -47,18 +52,26 @@ export const post = mysqlTable('post', {
   /// Primary key
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
   id: varchar('id', { length: 36 }).primaryKey(),
   /// Article title
   /// @z.string().min(1).max(100)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))
+  /// @a."1 <= string <= 100"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))
   title: varchar('title', { length: 100 }).notNull(),
   /// Body content (no length limit)
   /// @z.string().min(1).max(65535)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
+  /// @a."1 <= string <= 65535"
+  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
   content: varchar('content', { length: 65535 }).notNull(),
   /// Foreign key referencing User.id
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
   userId: varchar('user_id', { length: 36 }).notNull(),
 })
 
@@ -74,7 +87,7 @@ export const postRelations = relations(post, ({ one }) => ({
 }))
 ```
 
-Prepare sizuku.config.ts (see [fixtures/example/sizuku.config.ts](./fixtures/example/sizuku.config.ts) for full configuration options):
+Prepare sizuku.config.ts:
 
 ```ts
 import { defineConfig } from 'sizuku/config'
@@ -98,17 +111,19 @@ export default defineConfig({
     output: 'arktype/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
   effect: {
     output: 'effect/index.ts',
     comment: true,
     type: true,
+    relation: true,
   },
   mermaid: {
     output: 'mermaid-er/ER.md',
   },
   dbml: {
-    output: 'docs',
+    output: 'docs/schema.dbml',
   },
 })
 ```
@@ -126,7 +141,7 @@ Output:
 💧 Generated ArkType schema at: arktype/index.ts
 💧 Generated Effect schema at: effect/index.ts
 💧 Generated Mermaid ER at: mermaid-er/ER.md
-💧 Generated DBML and ER diagram at: docs/
+💧 Generated DBML at: docs/schema.dbml
 ```
 
 ### Zod
@@ -225,6 +240,62 @@ export const PostRelationsSchema = v.object({ ...PostSchema.entries, user: UserS
 export type PostRelations = v.InferInput<typeof PostRelationsSchema>
 ```
 
+### ArkType
+
+```ts
+import { type } from 'arktype'
+
+export const UserSchema = type({
+  /** Primary key */
+  id: 'string.uuid',
+  /** Display name */
+  name: '1 <= string <= 50',
+})
+
+export type User = typeof UserSchema.infer
+
+export const PostSchema = type({
+  /** Primary key */
+  id: 'string.uuid',
+  /** Article title */
+  title: '1 <= string <= 100',
+  /** Body content (no length limit) */
+  content: '1 <= string <= 65535',
+  /** Foreign key referencing User.id */
+  userId: 'string.uuid',
+})
+
+export type Post = typeof PostSchema.infer
+```
+
+### Effect Schema
+
+```ts
+import { Schema } from 'effect'
+
+export const UserSchema = Schema.Struct({
+  /** Primary key */
+  id: Schema.UUID,
+  /** Display name */
+  name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
+})
+
+export type User = Schema.Schema.Type<typeof UserSchema>
+
+export const PostSchema = Schema.Struct({
+  /** Primary key */
+  id: Schema.UUID,
+  /** Article title */
+  title: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
+  /** Body content (no length limit) */
+  content: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535)),
+  /** Foreign key referencing User.id */
+  userId: Schema.UUID,
+})
+
+export type Post = Schema.Schema.Type<typeof PostSchema>
+```
+
 ### Mermaid ER
 
 ```mermaid
@@ -242,12 +313,12 @@ erDiagram
     }
 ```
 
-### DBML + ER Diagram
+### DBML
 
-The `dbml` generator outputs both DBML schema and ER diagram PNG to the specified directory:
+The `dbml` generator outputs a DBML schema file or ER diagram PNG depending on the file extension:
 
-- `schema.dbml` - DBML schema file
-- `er-diagram.png` - ER diagram image
+- `.dbml` extension: outputs a DBML schema file
+- `.png` extension: outputs an ER diagram PNG image
 
 ```dbml
 Table user {
@@ -265,10 +336,65 @@ Table post {
 Ref post_userId_user_id_fk: post.userId > user.id
 ```
 
+## Configuration
+
+```typescript
+import { defineConfig } from 'sizuku/config'
+
+export default defineConfig({
+  // Input: Path to Drizzle schema file (must end with .ts)
+  input: 'db/schema.ts',
+
+  // Zod Schema Generator
+  zod: {
+    output: 'zod/index.ts',       // Output file path (must end with .ts)
+    comment: true,                 // Include schema documentation (default: false)
+    type: true,                    // Generate TypeScript types (default: false)
+    zod: 'v4',                     // Zod import: 'v4' | 'mini' | '@hono/zod-openapi' (default: 'v4')
+    relation: true,                // Generate relation schemas (default: false)
+  },
+
+  // Valibot Schema Generator
+  valibot: {
+    output: 'valibot/index.ts',
+    comment: true,
+    type: true,
+    relation: true,
+  },
+
+  // ArkType Schema Generator
+  arktype: {
+    output: 'arktype/index.ts',
+    comment: true,
+    type: true,
+    relation: true,                // Generate relation schemas (default: false)
+  },
+
+  // Effect Schema Generator
+  effect: {
+    output: 'effect/index.ts',
+    comment: true,
+    type: true,
+    relation: true,                // Generate relation schemas (default: false)
+  },
+
+  // Mermaid ER Diagram Generator
+  mermaid: {
+    output: 'mermaid-er/ER.md',    // Output file path
+  },
+
+  // DBML / ER Diagram PNG Generator
+  // Use .dbml extension for DBML text, .png extension for ER diagram image
+  dbml: {
+    output: 'docs/schema.dbml',    // Output file path (must end with .dbml or .png)
+  },
+})
+```
+
 ### ⚠️ WARNING: Potential Breaking Changes Without Notice
 
 This package is in active development and may introduce breaking changes without prior notice.
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](https://github.com/nakita628/hono-takibi?tab=MIT-1-ov-file) for more information.
+Distributed under the MIT License. See [LICENSE](https://github.com/nakita628/sizuku?tab=MIT-1-ov-file) for more information.

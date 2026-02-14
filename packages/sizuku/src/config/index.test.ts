@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { config } from '.'
+import { readConfig } from '.'
 
 // Test run
 // pnpm vitest run ./src/config/index.test.ts
@@ -44,22 +44,26 @@ export default defineConfig({
   mermaid: {
     output: 'mermaid-er/ER.md',
   },
+  dbml: {
+    output: 'docs/schema.dbml',
+  },
 })`
     fs.writeFileSync(testFilePath, testConfig, 'utf-8')
 
-    await expect(config()).resolves.toStrictEqual({
+    await expect(readConfig()).resolves.toStrictEqual({
       ok: true,
       value: {
         input: 'db/schema.ts',
         zod: { output: 'zod/index.ts', comment: true, type: true, zod: 'v4', relation: true },
         valibot: { output: 'valibot/index.ts', comment: true, type: true, relation: true },
         mermaid: { output: 'mermaid-er/ER.md' },
+        dbml: { output: 'docs/schema.dbml' },
       },
     })
   })
 
   it('should return an error if the config file does not exist', async () => {
-    const result = await config()
+    const result = await readConfig()
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.error).toContain('Config not found:')
