@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { main } from './index.js'
+import { sizuku as main } from './cli/index.js'
 
 // Test run
 // pnpm vitest run ./src/index.test.ts

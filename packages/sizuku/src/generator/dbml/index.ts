@@ -50,7 +50,7 @@ export async function sizukuDbmlFile(code: string[], output: string): Promise<Re
 /**
  * Generate ERD output (DBML or PNG) based on file extension
  */
-export async function sizukuErd(code: string[], output: string): Promise<Result> {
+export async function sizukuDbml(code: string[], output: string): Promise<Result> {
   if (output.endsWith('.png')) {
     return sizukuPng(code, output)
   }
