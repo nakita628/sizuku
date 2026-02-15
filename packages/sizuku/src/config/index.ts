@@ -4,82 +4,56 @@ import { pathToFileURL } from 'node:url'
 import { register } from 'tsx/esm/api'
 import { z } from 'zod'
 
-// ============================================================================
-// Schema Definitions
-// ============================================================================
-
-const tsFileSchema = z.string().endsWith('.ts') as z.ZodType<`${string}.ts`>
-
-const zodConfigSchema = z
-  .object({
-    output: tsFileSchema,
-    comment: z.boolean().optional(),
-    type: z.boolean().optional(),
-    zod: z.enum(['v4', 'mini', '@hono/zod-openapi']).optional(),
-    relation: z.boolean().optional(),
-  })
-  .optional()
-
-const valibotConfigSchema = z
-  .object({
-    output: tsFileSchema,
-    comment: z.boolean().optional(),
-    type: z.boolean().optional(),
-    relation: z.boolean().optional(),
-  })
-  .optional()
-
-const arktypeConfigSchema = z
-  .object({
-    output: tsFileSchema,
-    comment: z.boolean().optional(),
-    type: z.boolean().optional(),
-    relation: z.boolean().optional(),
-  })
-  .optional()
-
-const effectConfigSchema = z
-  .object({
-    output: tsFileSchema,
-    comment: z.boolean().optional(),
-    type: z.boolean().optional(),
-    relation: z.boolean().optional(),
-  })
-  .optional()
-
-const mermaidConfigSchema = z
-  .object({
-    output: z.string(),
-  })
-  .optional()
-
-const dbmlConfigSchema = z
-  .object({
-    output: z.string().refine((s) => s.endsWith('.dbml') || s.endsWith('.png'), {
-      message: 'output must end with .dbml or .png',
-    }),
-  })
-  .optional()
-
-const configSchema = z.object({
-  input: tsFileSchema,
-  zod: zodConfigSchema,
-  valibot: valibotConfigSchema,
-  arktype: arktypeConfigSchema,
-  effect: effectConfigSchema,
-  mermaid: mermaidConfigSchema,
-  dbml: dbmlConfigSchema,
+const ConfigSchema = z.object({
+  input: z.custom<`${string}.ts`>((v) => typeof v === 'string' && v.endsWith('.ts')),
+  zod: z
+    .object({
+      output: z.custom<`${string}.ts`>((v) => typeof v === 'string' && v.endsWith('.ts')),
+      comment: z.boolean().optional(),
+      type: z.boolean().optional(),
+      zod: z.enum(['v4', 'mini', '@hono/zod-openapi']).optional(),
+      relation: z.boolean().optional(),
+    })
+    .exactOptional(),
+  valibot: z
+    .object({
+      output: z.custom<`${string}.ts`>((v) => typeof v === 'string' && v.endsWith('.ts')),
+      comment: z.boolean().exactOptional(),
+      type: z.boolean().exactOptional(),
+      relation: z.boolean().exactOptional(),
+    })
+    .exactOptional(),
+  arktype: z
+    .object({
+      output: z.custom<`${string}.ts`>((v) => typeof v === 'string' && v.endsWith('.ts')),
+      comment: z.boolean().optional(),
+      type: z.boolean().exactOptional(),
+      relation: z.boolean().exactOptional(),
+    })
+    .exactOptional(),
+  effect: z
+    .object({
+      output: z.custom<`${string}.ts`>((v) => typeof v === 'string' && v.endsWith('.ts')),
+      comment: z.boolean().optional(),
+      type: z.boolean().exactOptional(),
+      relation: z.boolean().exactOptional(),
+    })
+    .exactOptional(),
+  mermaid: z
+    .object({
+      output: z.string(),
+    })
+    .exactOptional(),
+  dbml: z
+    .object({
+      output: z.custom<`${string}.dbml` | `${string}.png`>(
+        (v) => typeof v === 'string' && (v.endsWith('.dbml') || v.endsWith('.png')),
+      ),
+    })
+    .exactOptional(),
 })
 
-// ============================================================================
-// Type Exports
-// ============================================================================
-
-export type Config = z.infer<typeof configSchema>
-
-// ============================================================================
-// Config Loading
-// ============================================================================
+export type Config = z.infer<typeof ConfigSchema>
 
 export async function readConfig(): Promise<
   { readonly ok: true; readonly value: Config } | { readonly ok: false; readonly error: string }
@@ -99,7 +73,7 @@ export async function readConfig(): Promise<
       return { ok: false, error: 'Config default is undefined' }
     }
 
-    const result = configSchema.safeParse(mod.default)
+    const result = ConfigSchema.safeParse(mod.default)
     if (!result.success) {
       const errors = result.error.issues
         .map((e) => `${e.path.map(String).join('.')}: ${e.message}`)
