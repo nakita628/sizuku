@@ -135,7 +135,7 @@ id:v.pipe(v.string(), v.uuid()),
 */
 name:v.pipe(v.string(), v.minLength(1), v.maxLength(50))})
 
-export type User = v.InferInput<typeof UserSchema>
+export type User = v.InferOutput<typeof UserSchema>
 `;
 
     expect(result).toBe(expected);
@@ -188,7 +188,7 @@ describe("relationValibotCode", () => {
     const expected = `
 export const UserRelationsSchema = v.strictObject({...UserSchema.entries,posts:z.array(PostSchema)})
 
-export type UserRelations = v.InferInput<typeof UserRelationsSchema>
+export type UserRelations = v.InferOutput<typeof UserRelationsSchema>
 `;
     expect(result).toBe(expected);
   });
@@ -211,7 +211,7 @@ export type UserRelations = v.InferInput<typeof UserRelationsSchema>
     const expected = `
 export const UserRelationsSchema = v.looseObject({...UserSchema.entries,posts:z.array(PostSchema)})
 
-export type UserRelations = v.InferInput<typeof UserRelationsSchema>
+export type UserRelations = v.InferOutput<typeof UserRelationsSchema>
 `;
     expect(result).toBe(expected);
   });
@@ -295,7 +295,7 @@ export const UserSchema = v.object({
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
 })
 
-export type User = v.InferInput<typeof UserSchema>
+export type User = v.InferOutput<typeof UserSchema>
 
 export const PostSchema = v.object({
   id: v.pipe(v.string(), v.uuid()),
@@ -304,7 +304,7 @@ export const PostSchema = v.object({
   userId: v.pipe(v.string(), v.uuid()),
 })
 
-export type Post = v.InferInput<typeof PostSchema>
+export type Post = v.InferOutput<typeof PostSchema>
 `;
     expect(result).toBe(expected);
   });

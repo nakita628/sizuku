@@ -69,14 +69,15 @@ export const user = mysqlTable('user', {
     expect(process.cwd()).toBe(tmpdir);
 
     const result = await main();
-    if (!result.ok) {
-      console.error("Main failed:", result.error);
-    }
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value).toContain("Generated Zod schema at:");
-      expect(result.value).toContain("Generated Valibot schema at:");
-      expect(result.value).toContain("Generated Mermaid ER at:");
+      expect(result.value).toBe(
+        [
+          "💧 Generated Zod schema at: zod/index.ts",
+          "💧 Generated Valibot schema at: valibot/index.ts",
+          "💧 Generated Mermaid ER at: mermaid-er/ER.md",
+        ].join("\n"),
+      );
     }
   });
 
@@ -85,7 +86,7 @@ export const user = mysqlTable('user', {
     const result = await main();
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("Config not found:");
+      expect(result.error).toBe(`❌ Config not found: ${path.join(tmpdir, "sizuku.config.ts")}`);
     }
   });
 });

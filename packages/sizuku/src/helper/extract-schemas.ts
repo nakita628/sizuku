@@ -237,6 +237,7 @@ function createExtractRelationFieldFromProperty(
     const fnName = expr.getText();
     const args = init.getArguments();
 
+    // args[0] is the referenced table identifier (e.g. `user` in `one(user, {...})`)
     if (!(args.length && Node.isIdentifier(args[0]))) {
       return { name, definition: "", description: undefined };
     }
@@ -353,6 +354,7 @@ function buildSchemaExtractor(
     const declarations = variableStatement.getDeclarations();
     if (declarations.length === 0) return null;
 
+    // Take the first declaration (e.g. `export const user = mysqlTable(...)`)
     const declaration = declarations[0];
     const name = declaration.getName();
     if (!name) return null;
@@ -371,7 +373,7 @@ function buildSchemaExtractor(
         lineNumber = i;
         break;
       }
-      charCount += originalSourceLines[i].length + 1; // +1 for newline
+      charCount += originalSourceLines[i].length + 1; // +1 for the "\n" newline character
     }
 
     // Collect comments immediately before the statement
@@ -636,6 +638,7 @@ export function extractRelationSchemas(
     if (!Node.isCallExpression(initializer)) return null;
     if (!isRelationFunctionCall(initializer)) return null;
     const relArgs = initializer.getArguments();
+    // relArgs[0] is the base table identifier (e.g. `user` in `relations(user, ...)`)
     const baseIdentifier = relArgs.length && Node.isIdentifier(relArgs[0]) ? relArgs[0] : undefined;
     if (!baseIdentifier) return null;
     const baseName = baseIdentifier.getText();
@@ -698,14 +701,17 @@ export function parseRelationLine(line: string): {
   type: string;
 } | null {
   const trimmedLine = trimString(line);
+  // Remove "///" prefix (3 chars) if present
   const cleanLine = startsWith(trimmedLine, "///") ? trimmedLine.substring(3) : trimmedLine;
   const finalLine = trimString(cleanLine);
 
   if (!startsWith(finalLine, "@relation")) return null;
 
   const parts = splitByWhitespace(finalLine);
+  // Format: "@relation <from.field> <to.field> <type>" → 4 parts minimum
   if (parts.length < 4) return null;
 
+  // parts[1] = "User.id", parts[2] = "Post.userId" → split by "." into [model, field]
   const fromParts = splitByDot(parts[1]);
   const toParts = splitByDot(parts[2]);
 
@@ -716,7 +722,7 @@ export function parseRelationLine(line: string): {
     fromField: fromParts[1],
     toModel: toParts[0],
     toField: toParts[1],
-    type: parts[3],
+    type: parts[3], // e.g. "one-to-many"
   };
 }
 

@@ -64,7 +64,9 @@ describe("config", () => {
     const result = await readConfig();
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("Config not found:");
+      expect(result.error).toBe(
+        `Config not found: ${path.join(process.cwd(), "sizuku.config.ts")}`,
+      );
     }
   });
 });

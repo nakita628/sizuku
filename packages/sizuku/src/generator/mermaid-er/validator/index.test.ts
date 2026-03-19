@@ -128,14 +128,15 @@ describe("extractRelationsFromSchema", () => {
     ];
 
     const relations = extractRelationsFromSchema(code);
-    expect(relations.length).toBeGreaterThan(0);
-    expect(relations).toContainEqual({
-      fromModel: "User",
-      toModel: "Post",
-      fromField: "id",
-      toField: "userId",
-      isRequired: true,
-    });
+    expect(relations).toStrictEqual([
+      {
+        fromModel: "User",
+        toModel: "Post",
+        fromField: "id",
+        toField: "userId",
+        isRequired: true,
+      },
+    ]);
   });
 
   it.concurrent("extracts relations from relations() blocks", () => {
@@ -158,14 +159,15 @@ describe("extractRelationsFromSchema", () => {
     ];
 
     const relations = extractRelationsFromSchema(code);
-    expect(relations.length).toBeGreaterThan(0);
-    expect(relations).toContainEqual({
-      fromModel: "User",
-      toModel: "Post",
-      fromField: "id",
-      toField: "userId",
-      isRequired: true,
-    });
+    expect(relations).toStrictEqual([
+      {
+        fromModel: "User",
+        toModel: "Post",
+        fromField: "id",
+        toField: "userId",
+        isRequired: true,
+      },
+    ]);
   });
 
   it.concurrent("extracts relations from .references() calls", () => {
@@ -181,13 +183,14 @@ describe("extractRelationsFromSchema", () => {
     ];
 
     const relations = extractRelationsFromSchema(code);
-    expect(relations.length).toBeGreaterThan(0);
-    expect(relations).toContainEqual({
-      fromModel: "user",
-      toModel: "post",
-      fromField: "id",
-      toField: "userId",
-      isRequired: true,
-    });
+    expect(relations).toStrictEqual([
+      {
+        fromModel: "user",
+        toModel: "post",
+        fromField: "id",
+        toField: "userId",
+        isRequired: true,
+      },
+    ]);
   });
 });

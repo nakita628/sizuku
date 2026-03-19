@@ -66,6 +66,7 @@ export function makeValibotObject(
  * @returns String with triple slash prefix removed.
  */
 export function removeTripleSlash(str: string): string {
+  // Remove "///" prefix (3 chars)
   return str.startsWith("///") ? str.substring(3) : str;
 }
 
@@ -156,9 +157,11 @@ export function parseRelationLine(line: string): {
 } | null {
   if (!line.startsWith("@relation")) return null;
 
+  // Format: "@relation <from.field> <to.field> <type>" → 4 parts minimum
   const parts = line.trim().split(/\s+/);
-  if (parts.length < 5) return null;
+  if (parts.length < 4) return null;
 
+  // parts[1] = "User.id", parts[2] = "Post.userId" → split by "." into [model, field]
   const fromParts = parts[1].split(".");
   const toParts = parts[2].split(".");
 
@@ -169,7 +172,7 @@ export function parseRelationLine(line: string): {
     fromField: fromParts[1],
     toModel: toParts[0],
     toField: toParts[1],
-    type: parts[3],
+    type: parts[3], // e.g. "one-to-many"
   };
 }
 
@@ -182,6 +185,7 @@ export function parseRelationLine(line: string): {
 export function splitByTo(str: string): [string, string] | null {
   const index = str.indexOf("-to-");
   if (index === -1) return null;
+  // Skip past "-to-" (4 chars) to get the right-hand side
   return [str.substring(0, index), str.substring(index + 4)];
 }
 
@@ -244,6 +248,7 @@ function extractObjectType(
   cleaned: readonly string[],
   tag: ValidationTag,
 ): "strict" | "loose" | undefined {
+  // Remove leading "@" → e.g. "@z." becomes "z."
   const tagWithoutAt = tag.slice(1);
   const objectTypeLine = cleaned.find(
     (line) =>
@@ -268,13 +273,13 @@ function extractDefinition(cleaned: readonly string[], tag: ValidationTag): stri
       line.startsWith(tag) && !line.includes("strictObject") && !line.includes("looseObject"),
   );
   if (!definitionLine) return "";
-  // Remove the @ sign
+  // Remove the leading "@" sign → e.g. "@z.uuid()" becomes "z.uuid()"
   const withoutAt = definitionLine.startsWith("@") ? definitionLine.substring(1) : definitionLine;
   // For arktype (@a.) and effect (@e.), remove the library prefix to get the raw definition
   // For zod (@z.) and valibot (@v.), keep the library prefix
   if (tag === "@a." || tag === "@e.") {
-    // Remove the 'a.' or 'e.' prefix
-    const prefix = tag.substring(1); // 'a.' or 'e.'
+    // Remove the library prefix → e.g. "a.'string.uuid'" becomes "'string.uuid'"
+    const prefix = tag.substring(1); // "@a." → "a.", "@e." → "e."
     return withoutAt.startsWith(prefix) ? withoutAt.substring(prefix.length) : withoutAt;
   }
   return withoutAt;
@@ -394,16 +399,16 @@ export function infer(name: string): `export type ${string} = z.infer<typeof ${s
  * ========================================================================== */
 
 /**
- * Creates `v.InferInput` type for the specified model.
+ * Creates `v.InferOutput` type for the specified model.
  *
  * @param name - The model name
  * @returns The generated TypeScript type definition line using Valibot.
  */
 export function inferInput(
   name: string,
-): `export type ${string} = v.InferInput<typeof ${string}Schema>` {
+): `export type ${string} = v.InferOutput<typeof ${string}Schema>` {
   const modelName = makeCapitalized(name);
-  return `export type ${modelName} = v.InferInput<typeof ${modelName}Schema>`;
+  return `export type ${modelName} = v.InferOutput<typeof ${modelName}Schema>`;
 }
 
 /* ========================================================================== *
@@ -460,7 +465,7 @@ export function inferArktype(name: string): `export type ${string} = typeof ${st
  */
 export function inferEffect(
   name: string,
-): `export type ${string} = Schema.Schema.Type<typeof ${string}Schema>` {
+): `export type ${string}Encoded = typeof ${string}Schema.Encoded` {
   const capitalized = makeCapitalized(name);
-  return `export type ${capitalized} = Schema.Schema.Type<typeof ${capitalized}Schema>` as const;
+  return `export type ${capitalized}Encoded = typeof ${capitalized}Schema.Encoded` as const;
 }

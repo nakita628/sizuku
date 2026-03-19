@@ -1,12 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { buildRelationLine, extractRelations } from "../helper/extract-schemas.js";
 import {
+  cleanCommentLines,
+  containsSubstring,
   extractFieldComments,
   fieldDefinitions,
   infer,
+  inferArktype,
+  inferEffect,
   inferInput,
+  isNonEmpty,
+  joinWithSpace,
   makeCapitalized,
+  makeValibotObject,
+  makeZodObject,
   parseFieldComments,
+  parseRelationLine,
+  removeAtSign,
+  removeOptionalSuffix,
+  removeTripleSlash,
+  splitByDot,
+  splitByNewline,
+  splitByTo,
+  splitByWhitespace,
+  startsWith,
+  trimString,
 } from "./index";
 
 // Test run
@@ -196,15 +214,199 @@ export const postRelations = relations(post, ({ one }) => ({
     });
   });
 
+  describe("makeZodObject", () => {
+    it.concurrent("default object", () => {
+      expect(makeZodObject("id:z.uuid()")).toBe("z.object({id:z.uuid()})");
+    });
+    it.concurrent("strictObject", () => {
+      expect(makeZodObject("id:z.uuid()", "strictObject")).toBe("z.strictObject({id:z.uuid()})");
+    });
+    it.concurrent("looseObject", () => {
+      expect(makeZodObject("id:z.uuid()", "looseObject")).toBe("z.looseObject({id:z.uuid()})");
+    });
+  });
+
+  describe("makeValibotObject", () => {
+    it.concurrent("default object", () => {
+      expect(makeValibotObject("id:v.string()")).toBe("v.object({id:v.string()})");
+    });
+    it.concurrent("strictObject", () => {
+      expect(makeValibotObject("id:v.string()", "strictObject")).toBe(
+        "v.strictObject({id:v.string()})",
+      );
+    });
+    it.concurrent("looseObject", () => {
+      expect(makeValibotObject("id:v.string()", "looseObject")).toBe(
+        "v.looseObject({id:v.string()})",
+      );
+    });
+  });
+
+  describe("removeTripleSlash", () => {
+    it.concurrent("removes /// prefix", () => {
+      expect(removeTripleSlash("/// comment")).toBe(" comment");
+    });
+    it.concurrent("returns unchanged if no prefix", () => {
+      expect(removeTripleSlash("comment")).toBe("comment");
+    });
+  });
+
+  describe("isNonEmpty", () => {
+    it.concurrent("true for non-empty", () => {
+      expect(isNonEmpty("hello")).toBe(true);
+    });
+    it.concurrent("false for empty", () => {
+      expect(isNonEmpty("")).toBe(false);
+    });
+  });
+
+  describe("containsSubstring", () => {
+    it.concurrent("true when found", () => {
+      expect(containsSubstring("hello world", "world")).toBe(true);
+    });
+    it.concurrent("false when not found", () => {
+      expect(containsSubstring("hello", "world")).toBe(false);
+    });
+  });
+
+  describe("startsWith", () => {
+    it.concurrent("true when starts with prefix", () => {
+      expect(startsWith("@z.uuid()", "@z.")).toBe(true);
+    });
+    it.concurrent("false when not", () => {
+      expect(startsWith("hello", "@z.")).toBe(false);
+    });
+  });
+
+  describe("removeAtSign", () => {
+    it.concurrent("removes @ prefix", () => {
+      expect(removeAtSign("@z.uuid()")).toBe("z.uuid()");
+    });
+    it.concurrent("returns unchanged if no @", () => {
+      expect(removeAtSign("z.uuid()")).toBe("z.uuid()");
+    });
+  });
+
+  describe("joinWithSpace", () => {
+    it.concurrent("joins with space", () => {
+      expect(joinWithSpace(["a", "b", "c"])).toBe("a b c");
+    });
+    it.concurrent("empty array", () => {
+      expect(joinWithSpace([])).toBe("");
+    });
+  });
+
+  describe("splitByNewline", () => {
+    it.concurrent("splits by newline", () => {
+      expect(splitByNewline("a\nb\nc")).toStrictEqual(["a", "b", "c"]);
+    });
+  });
+
+  describe("trimString", () => {
+    it.concurrent("trims whitespace", () => {
+      expect(trimString("  hello  ")).toBe("hello");
+    });
+  });
+
+  describe("parseRelationLine", () => {
+    it.concurrent("parses valid relation", () => {
+      expect(parseRelationLine("@relation user.id post.userId one-to-many")).toStrictEqual({
+        fromModel: "user",
+        fromField: "id",
+        toModel: "post",
+        toField: "userId",
+        type: "one-to-many",
+      });
+    });
+    it.concurrent("returns null for non-relation", () => {
+      expect(parseRelationLine("/// comment")).toBeNull();
+    });
+    it.concurrent("returns null for malformed relation", () => {
+      expect(parseRelationLine("@relation incomplete")).toBeNull();
+    });
+    it.concurrent("returns null for invalid field format", () => {
+      expect(parseRelationLine("@relation user post.userId one-to-many")).toBeNull();
+    });
+  });
+
+  describe("splitByTo", () => {
+    it.concurrent("splits by -to-", () => {
+      expect(splitByTo("one-to-many")).toStrictEqual(["one", "many"]);
+    });
+    it.concurrent("returns null when no -to-", () => {
+      expect(splitByTo("invalid")).toBeNull();
+    });
+  });
+
+  describe("removeOptionalSuffix", () => {
+    it.concurrent("removes -optional suffix", () => {
+      expect(removeOptionalSuffix("one-optional")).toBe("one");
+    });
+    it.concurrent("returns unchanged if no suffix", () => {
+      expect(removeOptionalSuffix("one")).toBe("one");
+    });
+  });
+
+  describe("splitByWhitespace", () => {
+    it.concurrent("splits by whitespace", () => {
+      expect(splitByWhitespace("  a  b  c  ")).toStrictEqual(["a", "b", "c"]);
+    });
+    it.concurrent("empty string", () => {
+      expect(splitByWhitespace("")).toStrictEqual([]);
+    });
+  });
+
+  describe("splitByDot", () => {
+    it.concurrent("splits by dot", () => {
+      expect(splitByDot("user.id")).toStrictEqual(["user", "id"]);
+    });
+  });
+
+  describe("cleanCommentLines", () => {
+    it.concurrent("cleans triple slash prefix", () => {
+      expect(cleanCommentLines(["/// Primary key", "/// @z.uuid()"])).toStrictEqual([
+        "Primary key",
+        "@z.uuid()",
+      ]);
+    });
+    it.concurrent("filters empty lines", () => {
+      expect(cleanCommentLines(["///", "/// hello"])).toStrictEqual(["hello"]);
+    });
+    it.concurrent("empty array", () => {
+      expect(cleanCommentLines([])).toStrictEqual([]);
+    });
+  });
+
   describe("infer", () => {
     it.concurrent("infer", () => {
       expect(infer("User")).toBe("export type User = z.infer<typeof UserSchema>");
+    });
+    it.concurrent("capitalizes first letter", () => {
+      expect(infer("user")).toBe("export type User = z.infer<typeof UserSchema>");
     });
   });
 
   describe("inferInput", () => {
     it.concurrent("inferInput", () => {
-      expect(inferInput("User")).toBe("export type User = v.InferInput<typeof UserSchema>");
+      expect(inferInput("User")).toBe("export type User = v.InferOutput<typeof UserSchema>");
+    });
+  });
+
+  describe("inferArktype", () => {
+    it.concurrent("generates arktype infer", () => {
+      expect(inferArktype("User")).toBe("export type User = typeof UserSchema.infer");
+    });
+    it.concurrent("capitalizes", () => {
+      expect(inferArktype("post")).toBe("export type Post = typeof PostSchema.infer");
+    });
+  });
+
+  describe("inferEffect", () => {
+    it.concurrent("generates effect infer", () => {
+      expect(inferEffect("User")).toBe("export type UserEncoded = typeof UserSchema.Encoded");
+    });
+    it.concurrent("capitalizes", () => {
+      expect(inferEffect("post")).toBe("export type PostEncoded = typeof PostSchema.Encoded");
     });
   });
 

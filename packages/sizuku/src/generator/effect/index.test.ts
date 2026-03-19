@@ -85,7 +85,7 @@ export const UserSchema = Schema.Struct({
   name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
 })
 
-export type User = Schema.Schema.Type<typeof UserSchema>
+export type UserEncoded = typeof UserSchema.Encoded
 
 export const PostSchema = Schema.Struct({
   id: Schema.UUID,
@@ -94,7 +94,7 @@ export const PostSchema = Schema.Struct({
   userId: Schema.UUID,
 })
 
-export type Post = Schema.Schema.Type<typeof PostSchema>
+export type PostEncoded = typeof PostSchema.Encoded
 `;
     expect(result).toBe(expected);
   });
