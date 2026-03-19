@@ -43,9 +43,7 @@ export const user = mysqlTable('user', {
   it("main success", async () => {
     // Create config file
     const configFile = path.join(tmpdir, "sizuku.config.ts");
-    const configContent = `import { defineConfig } from './src/config/index.js'
-
-export default defineConfig({
+    const configContent = `export default {
   input: 'db/schema.ts',
   zod: {
     output: 'zod/index.ts',
@@ -62,7 +60,7 @@ export default defineConfig({
   mermaid: {
     output: 'mermaid-er/ER.md',
   },
-})`;
+}`;
     fs.writeFileSync(configFile, configContent, "utf-8");
 
     // Verify files exist

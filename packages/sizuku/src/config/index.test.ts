@@ -24,9 +24,7 @@ describe("config", () => {
 
   it("should return the default config", async () => {
     const testFilePath = path.join(process.cwd(), "sizuku.config.ts");
-    const testConfig = `import { defineConfig } from './src/config/index.js'
-
-export default defineConfig({
+    const testConfig = `export default {
   input: 'db/schema.ts',
   zod: {
     output: 'zod/index.ts',
@@ -47,7 +45,7 @@ export default defineConfig({
   dbml: {
     output: 'docs/schema.dbml',
   },
-})`;
+}`;
     fs.writeFileSync(testFilePath, testConfig, "utf-8");
 
     await expect(readConfig()).resolves.toStrictEqual({
