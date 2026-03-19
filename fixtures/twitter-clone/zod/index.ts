@@ -1,4 +1,4 @@
-import * as z from 'zod'
+import * as z from "zod";
 
 export const UsersSchema = z.object({
   /**
@@ -16,7 +16,7 @@ export const UsersSchema = z.object({
   /**
    * User's biography or profile description
    */
-  bio: z.string().optional().default(''),
+  bio: z.string().optional().default(""),
   /**
    * User's unique email address
    */
@@ -53,9 +53,9 @@ export const UsersSchema = z.object({
    * Flag indicating if user has unread notifications
    */
   hasNotification: z.boolean().default(false),
-})
+});
 
-export type Users = z.infer<typeof UsersSchema>
+export type Users = z.infer<typeof UsersSchema>;
 
 export const PostsSchema = z.object({
   /**
@@ -78,9 +78,9 @@ export const PostsSchema = z.object({
    * Foreign key referencing users.id
    */
   userId: z.uuid(),
-})
+});
 
-export type Posts = z.infer<typeof PostsSchema>
+export type Posts = z.infer<typeof PostsSchema>;
 
 export const FollowsSchema = z.object({
   /**
@@ -95,9 +95,9 @@ export const FollowsSchema = z.object({
    * Timestamp when the follow relationship was created
    */
   createdAt: z.iso.datetime(),
-})
+});
 
-export type Follows = z.infer<typeof FollowsSchema>
+export type Follows = z.infer<typeof FollowsSchema>;
 
 export const LikesSchema = z.object({
   /**
@@ -112,9 +112,9 @@ export const LikesSchema = z.object({
    * Timestamp when the like relationship was created
    */
   createdAt: z.iso.datetime(),
-})
+});
 
-export type Likes = z.infer<typeof LikesSchema>
+export type Likes = z.infer<typeof LikesSchema>;
 
 export const CommentsSchema = z.object({
   /**
@@ -141,9 +141,9 @@ export const CommentsSchema = z.object({
    * Foreign key referencing posts.id
    */
   postId: z.uuid(),
-})
+});
 
-export type Comments = z.infer<typeof CommentsSchema>
+export type Comments = z.infer<typeof CommentsSchema>;
 
 export const NotificationsSchema = z.object({
   /**
@@ -162,9 +162,9 @@ export const NotificationsSchema = z.object({
    * Timestamp when the notification was created
    */
   createdAt: z.iso.datetime(),
-})
+});
 
-export type Notifications = z.infer<typeof NotificationsSchema>
+export type Notifications = z.infer<typeof NotificationsSchema>;
 
 export const UsersRelationsSchema = z.object({
   ...UsersSchema.shape,
@@ -174,46 +174,46 @@ export const UsersRelationsSchema = z.object({
   followers: z.array(FollowsSchema),
   following: z.array(FollowsSchema),
   likes: z.array(LikesSchema),
-})
+});
 
-export type UsersRelations = z.infer<typeof UsersRelationsSchema>
+export type UsersRelations = z.infer<typeof UsersRelationsSchema>;
 
 export const PostsRelationsSchema = z.object({
   ...PostsSchema.shape,
   user: UsersSchema,
   comments: z.array(CommentsSchema),
   likes: z.array(LikesSchema),
-})
+});
 
-export type PostsRelations = z.infer<typeof PostsRelationsSchema>
+export type PostsRelations = z.infer<typeof PostsRelationsSchema>;
 
 export const FollowsRelationsSchema = z.object({
   ...FollowsSchema.shape,
   follower: UsersSchema,
   following: UsersSchema,
-})
+});
 
-export type FollowsRelations = z.infer<typeof FollowsRelationsSchema>
+export type FollowsRelations = z.infer<typeof FollowsRelationsSchema>;
 
 export const LikesRelationsSchema = z.object({
   ...LikesSchema.shape,
   user: UsersSchema,
   post: PostsSchema,
-})
+});
 
-export type LikesRelations = z.infer<typeof LikesRelationsSchema>
+export type LikesRelations = z.infer<typeof LikesRelationsSchema>;
 
 export const CommentsRelationsSchema = z.object({
   ...CommentsSchema.shape,
   user: UsersSchema,
   post: PostsSchema,
-})
+});
 
-export type CommentsRelations = z.infer<typeof CommentsRelationsSchema>
+export type CommentsRelations = z.infer<typeof CommentsRelationsSchema>;
 
 export const NotificationsRelationsSchema = z.object({
   ...NotificationsSchema.shape,
   user: UsersSchema,
-})
+});
 
-export type NotificationsRelations = z.infer<typeof NotificationsRelationsSchema>
+export type NotificationsRelations = z.infer<typeof NotificationsRelationsSchema>;

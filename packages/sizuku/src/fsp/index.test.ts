@@ -1,98 +1,98 @@
-import fs from 'node:fs'
-import fsp from 'node:fs/promises'
-import path from 'node:path'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { mkdir, readFileSync, writeFile } from '.'
+import fs from "node:fs";
+import fsp from "node:fs/promises";
+import path from "node:path";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { mkdir, readFileSync, writeFile } from ".";
 
 // Test run
 // pnpm vitest run ./src/fsp/index.test.ts
 
-const TEST_DIR = path.join(process.cwd(), 'test-tmp-dir')
+const TEST_DIR = path.join(process.cwd(), "test-tmp-dir");
 
-describe('fsp', () => {
+describe("fsp", () => {
   afterEach(async () => {
     if (fs.existsSync(TEST_DIR)) {
-      await fsp.rmdir(TEST_DIR, { recursive: true })
+      await fsp.rmdir(TEST_DIR, { recursive: true });
     }
-  })
-  describe('mkdir', () => {
-    it('returns ok when directory is created', async () => {
-      const result = await mkdir(TEST_DIR)
-      expect(result).toEqual({ ok: true, value: undefined })
-      expect(fs.existsSync(TEST_DIR)).toBe(true)
-    })
+  });
+  describe("mkdir", () => {
+    it("returns ok when directory is created", async () => {
+      const result = await mkdir(TEST_DIR);
+      expect(result).toEqual({ ok: true, value: undefined });
+      expect(fs.existsSync(TEST_DIR)).toBe(true);
+    });
 
-    it('returns ok when directory already exists (recursive:true)', async () => {
-      await fsp.mkdir(TEST_DIR, { recursive: true })
-      const result = await mkdir(TEST_DIR)
-      expect(result).toEqual({ ok: true, value: undefined })
-    })
+    it("returns ok when directory already exists (recursive:true)", async () => {
+      await fsp.mkdir(TEST_DIR, { recursive: true });
+      const result = await mkdir(TEST_DIR);
+      expect(result).toEqual({ ok: true, value: undefined });
+    });
 
-    it('returns err for invalid path', async () => {
-      const filePath = path.join(TEST_DIR, 'foo.txt')
-      await fsp.mkdir(TEST_DIR, { recursive: true })
-      await fsp.writeFile(filePath, 'dummy')
-      const badPath = path.join(filePath, 'bar')
-      const result = await mkdir(badPath)
-      expect(result.ok).toBe(false)
+    it("returns err for invalid path", async () => {
+      const filePath = path.join(TEST_DIR, "foo.txt");
+      await fsp.mkdir(TEST_DIR, { recursive: true });
+      await fsp.writeFile(filePath, "dummy");
+      const badPath = path.join(filePath, "bar");
+      const result = await mkdir(badPath);
+      expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(typeof result.error).toBe('string')
-        expect(result.error.length).toBeGreaterThan(0)
+        expect(typeof result.error).toBe("string");
+        expect(result.error.length).toBeGreaterThan(0);
       }
-    })
-  })
+    });
+  });
 
-  describe('writeFile', () => {
+  describe("writeFile", () => {
     beforeEach(async () => {
-      await fsp.mkdir(TEST_DIR, { recursive: true })
-    })
-    it('writes file successfully', async () => {
-      const filePath = path.join(TEST_DIR, 'ok.txt')
-      const result = await writeFile(filePath, 'hello')
-      expect(result.ok).toBe(true)
-      const text = await fsp.readFile(filePath, 'utf-8')
-      expect(text).toBe('hello')
-    })
+      await fsp.mkdir(TEST_DIR, { recursive: true });
+    });
+    it("writes file successfully", async () => {
+      const filePath = path.join(TEST_DIR, "ok.txt");
+      const result = await writeFile(filePath, "hello");
+      expect(result.ok).toBe(true);
+      const text = await fsp.readFile(filePath, "utf-8");
+      expect(text).toBe("hello");
+    });
 
-    it('returns err for invalid path', async () => {
-      const filePath = path.join(TEST_DIR, 'foo.txt')
-      await fsp.writeFile(filePath, 'dummy')
-      const badPath = path.join(filePath, 'bar.txt')
-      const result = await writeFile(badPath, 'fail')
-      expect(result.ok).toBe(false)
+    it("returns err for invalid path", async () => {
+      const filePath = path.join(TEST_DIR, "foo.txt");
+      await fsp.writeFile(filePath, "dummy");
+      const badPath = path.join(filePath, "bar.txt");
+      const result = await writeFile(badPath, "fail");
+      expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(typeof result.error).toBe('string')
-        expect(result.error.length).toBeGreaterThan(0)
+        expect(typeof result.error).toBe("string");
+        expect(result.error.length).toBeGreaterThan(0);
       }
-    })
-  })
-})
+    });
+  });
+});
 
-describe('readFileSync (integration)', () => {
-  const testFilePath = path.join(TEST_DIR, 'test-file.txt')
-  const nonExistentPath = path.join(TEST_DIR, 'no-such-file.txt')
+describe("readFileSync (integration)", () => {
+  const testFilePath = path.join(TEST_DIR, "test-file.txt");
+  const nonExistentPath = path.join(TEST_DIR, "no-such-file.txt");
 
   beforeAll(async () => {
-    await fsp.mkdir(TEST_DIR, { recursive: true })
-    fs.writeFileSync(testFilePath, 'hello world', 'utf-8')
-  })
+    await fsp.mkdir(TEST_DIR, { recursive: true });
+    fs.writeFileSync(testFilePath, "hello world", "utf-8");
+  });
 
   afterAll(async () => {
     if (fs.existsSync(TEST_DIR)) {
-      await fsp.rm(TEST_DIR, { recursive: true })
+      await fsp.rm(TEST_DIR, { recursive: true });
     }
-  })
+  });
 
-  it('should return Ok when reading an existing file', () => {
-    const result = readFileSync(testFilePath)
-    expect(result.ok).toBe(true)
+  it("should return Ok when reading an existing file", () => {
+    const result = readFileSync(testFilePath);
+    expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value).toBe('hello world')
+      expect(result.value).toBe("hello world");
     }
-  })
+  });
 
-  it('should return Err when reading a non-existent file', () => {
-    const result = readFileSync(nonExistentPath)
-    expect(result.ok).toBe(false)
-  })
-})
+  it("should return Err when reading a non-existent file", () => {
+    const result = readFileSync(nonExistentPath);
+    expect(result.ok).toBe(false);
+  });
+});

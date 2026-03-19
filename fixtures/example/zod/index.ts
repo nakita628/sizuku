@@ -1,4 +1,4 @@
-import * as z from 'zod'
+import * as z from "zod";
 
 export const UserSchema = z.object({
   /**
@@ -9,9 +9,9 @@ export const UserSchema = z.object({
    * Display name
    */
   name: z.string().min(1).max(50),
-})
+});
 
-export type User = z.infer<typeof UserSchema>
+export type User = z.infer<typeof UserSchema>;
 
 export const PostSchema = z.object({
   /**
@@ -30,14 +30,14 @@ export const PostSchema = z.object({
    * Foreign key referencing User.id
    */
   userId: z.uuid(),
-})
+});
 
-export type Post = z.infer<typeof PostSchema>
+export type Post = z.infer<typeof PostSchema>;
 
-export const UserRelationsSchema = z.object({ ...UserSchema.shape, posts: z.array(PostSchema) })
+export const UserRelationsSchema = z.object({ ...UserSchema.shape, posts: z.array(PostSchema) });
 
-export type UserRelations = z.infer<typeof UserRelationsSchema>
+export type UserRelations = z.infer<typeof UserRelationsSchema>;
 
-export const PostRelationsSchema = z.object({ ...PostSchema.shape, user: UserSchema })
+export const PostRelationsSchema = z.object({ ...PostSchema.shape, user: UserSchema });
 
-export type PostRelations = z.infer<typeof PostRelationsSchema>
+export type PostRelations = z.infer<typeof PostRelationsSchema>;

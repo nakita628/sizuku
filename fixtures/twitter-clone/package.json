@@ -1,7 +1,7 @@
 {
   "name": "@fixtures/twitter-clone",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "sizuku": "sizuku"
   },

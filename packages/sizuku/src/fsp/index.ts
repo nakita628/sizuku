@@ -1,26 +1,26 @@
-import fs from 'node:fs'
-import fsp from 'node:fs/promises'
+import fs from "node:fs";
+import fsp from "node:fs/promises";
 
 export function readFileSync(path: string):
   | {
-      readonly ok: true
-      readonly value: string
+      readonly ok: true;
+      readonly value: string;
     }
   | {
-      readonly ok: false
-      readonly error: string
+      readonly ok: false;
+      readonly error: string;
     } {
   try {
-    const result = fs.readFileSync(path, 'utf-8')
+    const result = fs.readFileSync(path, "utf-8");
     return {
       ok: true,
       value: result,
-    }
+    };
   } catch (e) {
     return {
       ok: false,
       error: e instanceof Error ? e.message : String(e),
-    }
+    };
   }
 }
 
@@ -32,25 +32,25 @@ export function readFileSync(path: string):
  */
 export async function mkdir(dir: string): Promise<
   | {
-      readonly ok: false
-      readonly error: string
+      readonly ok: false;
+      readonly error: string;
     }
   | {
-      readonly ok: true
-      readonly value: undefined
+      readonly ok: true;
+      readonly value: undefined;
     }
 > {
   try {
-    await fsp.mkdir(dir, { recursive: true })
+    await fsp.mkdir(dir, { recursive: true });
     return {
       ok: true,
       value: undefined,
-    }
+    };
   } catch (e) {
     return {
       ok: false,
       error: e instanceof Error ? e.message : String(e),
-    }
+    };
   }
 }
 
@@ -66,19 +66,19 @@ export async function writeFile(
   data: string,
 ): Promise<
   | {
-      ok: true
-      value: undefined
+      ok: true;
+      value: undefined;
     }
   | {
-      ok: false
-      error: string
+      ok: false;
+      error: string;
     }
 > {
   try {
-    await fsp.writeFile(path, data, 'utf-8')
-    return { ok: true, value: undefined }
+    await fsp.writeFile(path, data, "utf-8");
+    return { ok: true, value: undefined };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -94,18 +94,18 @@ export async function writeFileBinary(
   data: Buffer,
 ): Promise<
   | {
-      ok: true
-      value: undefined
+      ok: true;
+      value: undefined;
     }
   | {
-      ok: false
-      error: string
+      ok: false;
+      error: string;
     }
 > {
   try {
-    await fsp.writeFile(path, data)
-    return { ok: true, value: undefined }
+    await fsp.writeFile(path, data);
+    return { ok: true, value: undefined };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }

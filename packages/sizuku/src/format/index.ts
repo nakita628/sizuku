@@ -1,33 +1,13 @@
-import { format } from 'prettier'
+import { format } from "oxfmt";
 
-/**
- * Formats TypeScript source with Prettier.
- *
- * @param code - Source code to format.
- * @returns A `Result` containing the formatted code or an error message.
- */
-export async function fmt(code: string): Promise<
-  | {
-      readonly ok: true
-      readonly value: string
-    }
-  | {
-      readonly ok: false
-      readonly error: string
-    }
-> {
-  try {
-    const result = await format(code, {
-      parser: 'typescript',
-      printWidth: 100,
-      singleQuote: true,
-      semi: false,
-    })
-    return { ok: true, value: result }
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : String(e),
-    }
+export async function fmt(input: string): Promise<string> {
+  const { code, errors } = await format("<stdin>.ts", input, {
+    printWidth: 100,
+    singleQuote: true,
+    semi: false,
+  });
+  if (errors.length > 0) {
+    throw new Error(errors.map((e) => e.message).join("\n"));
   }
+  return code;
 }

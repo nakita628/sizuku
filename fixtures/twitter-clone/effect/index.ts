@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Schema } from "effect";
 
 export const UsersSchema = Schema.Struct({
   /**
@@ -53,9 +53,9 @@ export const UsersSchema = Schema.Struct({
    * Flag indicating if user has unread notifications
    */
   hasNotification: Schema.optionalWith(Schema.Boolean, { default: () => false }),
-})
+});
 
-export type Users = Schema.Schema.Type<typeof UsersSchema>
+export type Users = Schema.Schema.Type<typeof UsersSchema>;
 
 export const PostsSchema = Schema.Struct({
   /**
@@ -78,9 +78,9 @@ export const PostsSchema = Schema.Struct({
    * Foreign key referencing users.id
    */
   userId: Schema.UUID,
-})
+});
 
-export type Posts = Schema.Schema.Type<typeof PostsSchema>
+export type Posts = Schema.Schema.Type<typeof PostsSchema>;
 
 export const FollowsSchema = Schema.Struct({
   /**
@@ -95,9 +95,9 @@ export const FollowsSchema = Schema.Struct({
    * Timestamp when the follow relationship was created
    */
   createdAt: Schema.DateTimeUtc,
-})
+});
 
-export type Follows = Schema.Schema.Type<typeof FollowsSchema>
+export type Follows = Schema.Schema.Type<typeof FollowsSchema>;
 
 export const LikesSchema = Schema.Struct({
   /**
@@ -112,9 +112,9 @@ export const LikesSchema = Schema.Struct({
    * Timestamp when the like relationship was created
    */
   createdAt: Schema.DateTimeUtc,
-})
+});
 
-export type Likes = Schema.Schema.Type<typeof LikesSchema>
+export type Likes = Schema.Schema.Type<typeof LikesSchema>;
 
 export const CommentsSchema = Schema.Struct({
   /**
@@ -141,9 +141,9 @@ export const CommentsSchema = Schema.Struct({
    * Foreign key referencing posts.id
    */
   postId: Schema.UUID,
-})
+});
 
-export type Comments = Schema.Schema.Type<typeof CommentsSchema>
+export type Comments = Schema.Schema.Type<typeof CommentsSchema>;
 
 export const NotificationsSchema = Schema.Struct({
   /**
@@ -162,9 +162,9 @@ export const NotificationsSchema = Schema.Struct({
    * Timestamp when the notification was created
    */
   createdAt: Schema.DateTimeUtc,
-})
+});
 
-export type Notifications = Schema.Schema.Type<typeof NotificationsSchema>
+export type Notifications = Schema.Schema.Type<typeof NotificationsSchema>;
 
 export const UsersRelationsSchema = Schema.Struct({
   ...UsersSchema.fields,
@@ -174,46 +174,46 @@ export const UsersRelationsSchema = Schema.Struct({
   followers: Schema.Array(FollowsSchema),
   following: Schema.Array(FollowsSchema),
   likes: Schema.Array(LikesSchema),
-})
+});
 
-export type UsersRelations = Schema.Schema.Type<typeof UsersRelationsSchema>
+export type UsersRelations = Schema.Schema.Type<typeof UsersRelationsSchema>;
 
 export const PostsRelationsSchema = Schema.Struct({
   ...PostsSchema.fields,
   user: UsersSchema,
   comments: Schema.Array(CommentsSchema),
   likes: Schema.Array(LikesSchema),
-})
+});
 
-export type PostsRelations = Schema.Schema.Type<typeof PostsRelationsSchema>
+export type PostsRelations = Schema.Schema.Type<typeof PostsRelationsSchema>;
 
 export const FollowsRelationsSchema = Schema.Struct({
   ...FollowsSchema.fields,
   follower: UsersSchema,
   following: UsersSchema,
-})
+});
 
-export type FollowsRelations = Schema.Schema.Type<typeof FollowsRelationsSchema>
+export type FollowsRelations = Schema.Schema.Type<typeof FollowsRelationsSchema>;
 
 export const LikesRelationsSchema = Schema.Struct({
   ...LikesSchema.fields,
   user: UsersSchema,
   post: PostsSchema,
-})
+});
 
-export type LikesRelations = Schema.Schema.Type<typeof LikesRelationsSchema>
+export type LikesRelations = Schema.Schema.Type<typeof LikesRelationsSchema>;
 
 export const CommentsRelationsSchema = Schema.Struct({
   ...CommentsSchema.fields,
   user: UsersSchema,
   post: PostsSchema,
-})
+});
 
-export type CommentsRelations = Schema.Schema.Type<typeof CommentsRelationsSchema>
+export type CommentsRelations = Schema.Schema.Type<typeof CommentsRelationsSchema>;
 
 export const NotificationsRelationsSchema = Schema.Struct({
   ...NotificationsSchema.fields,
   user: UsersSchema,
-})
+});
 
-export type NotificationsRelations = Schema.Schema.Type<typeof NotificationsRelationsSchema>
+export type NotificationsRelations = Schema.Schema.Type<typeof NotificationsRelationsSchema>;

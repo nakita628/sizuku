@@ -1,20 +1,17 @@
-import { describe, expect, it } from 'vitest'
-import { fmt } from '.'
+import { describe, expect, it } from "vitest";
+import { fmt } from ".";
 
 // Test run
 // pnpm vitest run ./src/format/index.test.ts
 
-describe('fmt', () => {
-  it.concurrent('returns formatted code as ok result', async () => {
-    const code = "const takibi = 'hono-takibi';"
-    const result = await fmt(code)
-    const expected = `const takibi = 'hono-takibi'
-`
-    expect(result).toStrictEqual({ ok: true, value: expected })
-  })
+describe("fmt", () => {
+  it.concurrent("returns formatted code", async () => {
+    const code = "const takibi = 'hono-takibi';";
+    const result = await fmt(code);
+    expect(result).toBe(`const takibi = 'hono-takibi'\n`);
+  });
 
-  it.concurrent('returns error result for invalid code', async () => {
-    const result = await fmt('const = ;')
-    expect(result).toMatchObject({ ok: false })
-  })
-})
+  it.concurrent("throws error for invalid code", async () => {
+    await expect(fmt("const = ;")).rejects.toThrow();
+  });
+});

@@ -1,1 +1,1 @@
-export { dbmlContent } from './dbml-content.js'
+export { dbmlContent } from "./dbml-content.js";

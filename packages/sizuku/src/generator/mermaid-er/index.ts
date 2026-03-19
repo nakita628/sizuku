@@ -1,8 +1,8 @@
-import path from 'node:path'
-import { mkdir, writeFile } from '../../fsp/index.js'
-import type { MergedSchema } from '../../helper/runtime/types.js'
-import { erContent, erContentFromMergedSchema } from './generator/index.js'
-import { extractRelationsFromSchema, parseTableInfo } from './validator/index.js'
+import path from "node:path";
+import { mkdir, writeFile } from "../../fsp/index.js";
+import type { MergedSchema } from "../../helper/runtime/types.js";
+import { erContent, erContentFromMergedSchema } from "./generator/index.js";
+import { extractRelationsFromSchema, parseTableInfo } from "./validator/index.js";
 
 /**
  * Generate Mermaid ER diagram
@@ -14,36 +14,36 @@ export async function sizukuMermaidER(
   output: string,
 ): Promise<
   | {
-      ok: true
-      value: undefined
+      ok: true;
+      value: undefined;
     }
   | {
-      ok: false
-      error: string
+      ok: false;
+      error: string;
     }
 > {
-  const tables = parseTableInfo(code)
-  const relations = extractRelationsFromSchema(code)
-  const ERContent = erContent(relations, tables)
+  const tables = parseTableInfo(code);
+  const relations = extractRelationsFromSchema(code);
+  const ERContent = erContent(relations, tables);
 
-  const mkdirResult = await mkdir(path.dirname(output))
+  const mkdirResult = await mkdir(path.dirname(output));
   if (!mkdirResult.ok) {
     return {
       ok: false,
       error: mkdirResult.error,
-    }
+    };
   }
-  const writeFileResult = await writeFile(output, ERContent)
+  const writeFileResult = await writeFile(output, ERContent);
   if (!writeFileResult.ok) {
     return {
       ok: false,
       error: writeFileResult.error,
-    }
+    };
   }
   return {
     ok: true,
     value: undefined,
-  }
+  };
 }
 
 /**
@@ -61,32 +61,32 @@ export async function sizukuMermaidERFromMerged(
   output: string,
 ): Promise<
   | {
-      ok: true
-      value: undefined
+      ok: true;
+      value: undefined;
     }
   | {
-      ok: false
-      error: string
+      ok: false;
+      error: string;
     }
 > {
-  const ERContent = erContentFromMergedSchema(schema)
+  const ERContent = erContentFromMergedSchema(schema);
 
-  const mkdirResult = await mkdir(path.dirname(output))
+  const mkdirResult = await mkdir(path.dirname(output));
   if (!mkdirResult.ok) {
     return {
       ok: false,
       error: mkdirResult.error,
-    }
+    };
   }
-  const writeFileResult = await writeFile(output, ERContent)
+  const writeFileResult = await writeFile(output, ERContent);
   if (!writeFileResult.ok) {
     return {
       ok: false,
       error: writeFileResult.error,
-    }
+    };
   }
   return {
     ok: true,
     value: undefined,
-  }
+  };
 }

@@ -1,4 +1,4 @@
-import * as z from 'zod'
+import * as z from "zod";
 
 export const UserSchema = z.object({
   /**
@@ -28,14 +28,14 @@ export const UserSchema = z.object({
   /**
    * Role of the user (ADMIN or USER)
    */
-  role: z.enum(['ADMIN', 'USER']),
+  role: z.enum(["ADMIN", "USER"]),
   /**
    * Whether 2FA is enabled
    */
   isTwoFactorEnabled: z.boolean(),
-})
+});
 
-export type User = z.infer<typeof UserSchema>
+export type User = z.infer<typeof UserSchema>;
 
 export const AccountSchema = z.object({
   /**
@@ -86,9 +86,9 @@ export const AccountSchema = z.object({
    * Session state
    */
   session_state: z.string().nullable(),
-})
+});
 
-export type Account = z.infer<typeof AccountSchema>
+export type Account = z.infer<typeof AccountSchema>;
 
 export const VerificationTokenSchema = z.object({
   /**
@@ -107,9 +107,9 @@ export const VerificationTokenSchema = z.object({
    * Expiry time
    */
   expires: z.iso.datetime(),
-})
+});
 
-export type VerificationToken = z.infer<typeof VerificationTokenSchema>
+export type VerificationToken = z.infer<typeof VerificationTokenSchema>;
 
 export const PasswordResetTokenSchema = z.object({
   /**
@@ -128,9 +128,9 @@ export const PasswordResetTokenSchema = z.object({
    * Expiry time
    */
   expires: z.iso.datetime(),
-})
+});
 
-export type PasswordResetToken = z.infer<typeof PasswordResetTokenSchema>
+export type PasswordResetToken = z.infer<typeof PasswordResetTokenSchema>;
 
 export const TwoFactorTokenSchema = z.object({
   /**
@@ -149,9 +149,9 @@ export const TwoFactorTokenSchema = z.object({
    * Expiry time
    */
   expires: z.iso.datetime(),
-})
+});
 
-export type TwoFactorToken = z.infer<typeof TwoFactorTokenSchema>
+export type TwoFactorToken = z.infer<typeof TwoFactorTokenSchema>;
 
 export const TwoFactorConfirmationSchema = z.object({
   /**
@@ -162,25 +162,25 @@ export const TwoFactorConfirmationSchema = z.object({
    * Reference to user
    */
   userId: z.string(),
-})
+});
 
-export type TwoFactorConfirmation = z.infer<typeof TwoFactorConfirmationSchema>
+export type TwoFactorConfirmation = z.infer<typeof TwoFactorConfirmationSchema>;
 
 export const UserRelationsSchema = z.object({
   ...UserSchema.shape,
   accounts: z.array(AccountSchema),
   twoFactorConfirmation: TwoFactorConfirmationSchema,
-})
+});
 
-export type UserRelations = z.infer<typeof UserRelationsSchema>
+export type UserRelations = z.infer<typeof UserRelationsSchema>;
 
-export const AccountRelationsSchema = z.object({ ...AccountSchema.shape, user: UserSchema })
+export const AccountRelationsSchema = z.object({ ...AccountSchema.shape, user: UserSchema });
 
-export type AccountRelations = z.infer<typeof AccountRelationsSchema>
+export type AccountRelations = z.infer<typeof AccountRelationsSchema>;
 
 export const TwoFactorConfirmationRelationsSchema = z.object({
   ...TwoFactorConfirmationSchema.shape,
   user: UserSchema,
-})
+});
 
-export type TwoFactorConfirmationRelations = z.infer<typeof TwoFactorConfirmationRelationsSchema>
+export type TwoFactorConfirmationRelations = z.infer<typeof TwoFactorConfirmationRelationsSchema>;

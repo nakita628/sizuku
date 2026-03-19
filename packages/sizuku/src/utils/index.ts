@@ -1,7 +1,7 @@
 /**
  * Tag type for validation library prefixes.
  */
-export type ValidationTag = '@z.' | '@v.' | '@a.' | '@e.'
+export type ValidationTag = "@z." | "@v." | "@a." | "@e.";
 
 /**
  * Capitalize the first character of a string.
@@ -10,7 +10,7 @@ export type ValidationTag = '@z.' | '@v.' | '@a.' | '@e.'
  * @returns String with first character capitalized.
  */
 export function makeCapitalized(str: string): string {
-  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`
+  return `${str.charAt(0).toUpperCase()}${str.slice(1)}`;
 }
 
 /**
@@ -22,15 +22,15 @@ export function makeCapitalized(str: string): string {
  */
 export function makeZodObject(
   inner: string,
-  wrapperType: 'object' | 'strictObject' | 'looseObject' = 'object',
+  wrapperType: "object" | "strictObject" | "looseObject" = "object",
 ): string {
   switch (wrapperType) {
-    case 'strictObject':
-      return `z.strictObject({${inner}})`
-    case 'looseObject':
-      return `z.looseObject({${inner}})`
+    case "strictObject":
+      return `z.strictObject({${inner}})`;
+    case "looseObject":
+      return `z.looseObject({${inner}})`;
     default:
-      return `z.object({${inner}})`
+      return `z.object({${inner}})`;
   }
 }
 
@@ -43,15 +43,15 @@ export function makeZodObject(
  */
 export function makeValibotObject(
   inner: string,
-  wrapperType: 'object' | 'strictObject' | 'looseObject' = 'object',
+  wrapperType: "object" | "strictObject" | "looseObject" = "object",
 ): string {
   switch (wrapperType) {
-    case 'strictObject':
-      return `v.strictObject({${inner}})`
-    case 'looseObject':
-      return `v.looseObject({${inner}})`
+    case "strictObject":
+      return `v.strictObject({${inner}})`;
+    case "looseObject":
+      return `v.looseObject({${inner}})`;
     default:
-      return `v.object({${inner}})`
+      return `v.object({${inner}})`;
   }
 }
 
@@ -66,7 +66,7 @@ export function makeValibotObject(
  * @returns String with triple slash prefix removed.
  */
 export function removeTripleSlash(str: string): string {
-  return str.startsWith('///') ? str.substring(3) : str
+  return str.startsWith("///") ? str.substring(3) : str;
 }
 
 /**
@@ -76,7 +76,7 @@ export function removeTripleSlash(str: string): string {
  * @returns True if string is non-empty.
  */
 export function isNonEmpty(str: string): boolean {
-  return str.length > 0
+  return str.length > 0;
 }
 
 /**
@@ -87,7 +87,7 @@ export function isNonEmpty(str: string): boolean {
  * @returns True if string contains substring.
  */
 export function containsSubstring(str: string, substr: string): boolean {
-  return str.indexOf(substr) !== -1
+  return str.indexOf(substr) !== -1;
 }
 
 /**
@@ -98,7 +98,7 @@ export function containsSubstring(str: string, substr: string): boolean {
  * @returns True if string starts with prefix.
  */
 export function startsWith(str: string, prefix: string): boolean {
-  return str.indexOf(prefix) === 0
+  return str.indexOf(prefix) === 0;
 }
 
 /**
@@ -108,7 +108,7 @@ export function startsWith(str: string, prefix: string): boolean {
  * @returns String with @ sign removed.
  */
 export function removeAtSign(str: string): string {
-  return str.startsWith('@') ? str.substring(1) : str
+  return str.startsWith("@") ? str.substring(1) : str;
 }
 
 /**
@@ -118,7 +118,7 @@ export function removeAtSign(str: string): string {
  * @returns Joined string with spaces.
  */
 export function joinWithSpace(arr: readonly string[]): string {
-  return arr.join(' ')
+  return arr.join(" ");
 }
 
 /**
@@ -128,7 +128,7 @@ export function joinWithSpace(arr: readonly string[]): string {
  * @returns Array of strings split by newline.
  */
 export function splitByNewline(str: string): readonly string[] {
-  return str.split('\n')
+  return str.split("\n");
 }
 
 /**
@@ -138,7 +138,7 @@ export function splitByNewline(str: string): readonly string[] {
  * @returns Trimmed string.
  */
 export function trimString(str: string): string {
-  return str.trim()
+  return str.trim();
 }
 
 /**
@@ -148,21 +148,21 @@ export function trimString(str: string): string {
  * @returns Parsed relation or null if not a relation line.
  */
 export function parseRelationLine(line: string): {
-  fromModel: string
-  toModel: string
-  fromField: string
-  toField: string
-  type: string
+  fromModel: string;
+  toModel: string;
+  fromField: string;
+  toField: string;
+  type: string;
 } | null {
-  if (!line.startsWith('@relation')) return null
+  if (!line.startsWith("@relation")) return null;
 
-  const parts = line.trim().split(/\s+/)
-  if (parts.length < 5) return null
+  const parts = line.trim().split(/\s+/);
+  if (parts.length < 5) return null;
 
-  const fromParts = parts[1].split('.')
-  const toParts = parts[2].split('.')
+  const fromParts = parts[1].split(".");
+  const toParts = parts[2].split(".");
 
-  if (fromParts.length !== 2 || toParts.length !== 2) return null
+  if (fromParts.length !== 2 || toParts.length !== 2) return null;
 
   return {
     fromModel: fromParts[0],
@@ -170,7 +170,7 @@ export function parseRelationLine(line: string): {
     toModel: toParts[0],
     toField: toParts[1],
     type: parts[3],
-  }
+  };
 }
 
 /**
@@ -180,9 +180,9 @@ export function parseRelationLine(line: string): {
  * @returns Array with two parts or null if not found.
  */
 export function splitByTo(str: string): [string, string] | null {
-  const index = str.indexOf('-to-')
-  if (index === -1) return null
-  return [str.substring(0, index), str.substring(index + 4)]
+  const index = str.indexOf("-to-");
+  if (index === -1) return null;
+  return [str.substring(0, index), str.substring(index + 4)];
 }
 
 /**
@@ -192,8 +192,8 @@ export function splitByTo(str: string): [string, string] | null {
  * @returns String with optional suffix removed.
  */
 export function removeOptionalSuffix(str: string): string {
-  const index = str.indexOf('-optional')
-  return index !== -1 ? str.substring(0, index) : str
+  const index = str.indexOf("-optional");
+  return index !== -1 ? str.substring(0, index) : str;
 }
 
 /**
@@ -206,7 +206,7 @@ export function splitByWhitespace(str: string): readonly string[] {
   return str
     .trim()
     .split(/\s+/)
-    .filter((s) => s.length > 0)
+    .filter((s) => s.length > 0);
 }
 
 /**
@@ -216,7 +216,7 @@ export function splitByWhitespace(str: string): readonly string[] {
  * @returns Array of strings split by dot.
  */
 export function splitByDot(str: string): readonly string[] {
-  return str.split('.')
+  return str.split(".");
 }
 
 /* ========================================================================== *
@@ -230,7 +230,7 @@ export function splitByDot(str: string): readonly string[] {
  * @returns Cleaned comment lines
  */
 export function cleanCommentLines(commentLines: readonly string[]): readonly string[] {
-  return commentLines.map((line) => line.replace(/^\/\/\/\s*/, '').trim()).filter(Boolean)
+  return commentLines.map((line) => line.replace(/^\/\/\/\s*/, "").trim()).filter(Boolean);
 }
 
 /**
@@ -243,16 +243,16 @@ export function cleanCommentLines(commentLines: readonly string[]): readonly str
 function extractObjectType(
   cleaned: readonly string[],
   tag: ValidationTag,
-): 'strict' | 'loose' | undefined {
-  const tagWithoutAt = tag.slice(1)
+): "strict" | "loose" | undefined {
+  const tagWithoutAt = tag.slice(1);
   const objectTypeLine = cleaned.find(
     (line) =>
       line.includes(`${tagWithoutAt}strictObject`) || line.includes(`${tagWithoutAt}looseObject`),
-  )
-  if (!objectTypeLine) return undefined
-  if (objectTypeLine.includes('strictObject')) return 'strict'
-  if (objectTypeLine.includes('looseObject')) return 'loose'
-  return undefined
+  );
+  if (!objectTypeLine) return undefined;
+  if (objectTypeLine.includes("strictObject")) return "strict";
+  if (objectTypeLine.includes("looseObject")) return "loose";
+  return undefined;
 }
 
 /**
@@ -265,19 +265,19 @@ function extractObjectType(
 function extractDefinition(cleaned: readonly string[], tag: ValidationTag): string {
   const definitionLine = cleaned.find(
     (line) =>
-      line.startsWith(tag) && !line.includes('strictObject') && !line.includes('looseObject'),
-  )
-  if (!definitionLine) return ''
+      line.startsWith(tag) && !line.includes("strictObject") && !line.includes("looseObject"),
+  );
+  if (!definitionLine) return "";
   // Remove the @ sign
-  const withoutAt = definitionLine.startsWith('@') ? definitionLine.substring(1) : definitionLine
+  const withoutAt = definitionLine.startsWith("@") ? definitionLine.substring(1) : definitionLine;
   // For arktype (@a.) and effect (@e.), remove the library prefix to get the raw definition
   // For zod (@z.) and valibot (@v.), keep the library prefix
-  if (tag === '@a.' || tag === '@e.') {
+  if (tag === "@a." || tag === "@e.") {
     // Remove the 'a.' or 'e.' prefix
-    const prefix = tag.substring(1) // 'a.' or 'e.'
-    return withoutAt.startsWith(prefix) ? withoutAt.substring(prefix.length) : withoutAt
+    const prefix = tag.substring(1); // 'a.' or 'e.'
+    return withoutAt.startsWith(prefix) ? withoutAt.substring(prefix.length) : withoutAt;
   }
-  return withoutAt
+  return withoutAt;
 }
 
 /**
@@ -290,14 +290,14 @@ function extractDescription(cleaned: readonly string[]): string | undefined {
   const descriptionLines = cleaned.filter(
     (line) =>
       !(
-        line.includes('@z.') ||
-        line.includes('@v.') ||
-        line.includes('@a.') ||
-        line.includes('@e.') ||
-        line.includes('@relation.')
+        line.includes("@z.") ||
+        line.includes("@v.") ||
+        line.includes("@a.") ||
+        line.includes("@e.") ||
+        line.includes("@relation.")
       ),
-  )
-  return descriptionLines.length > 0 ? descriptionLines.join(' ') : undefined
+  );
+  return descriptionLines.length > 0 ? descriptionLines.join(" ") : undefined;
 }
 
 /**
@@ -311,16 +311,16 @@ export function parseFieldComments(
   commentLines: readonly string[],
   tag: ValidationTag,
 ): {
-  readonly definition: string
-  readonly description?: string
-  readonly objectType?: 'strict' | 'loose'
+  readonly definition: string;
+  readonly description?: string;
+  readonly objectType?: "strict" | "loose";
 } {
-  const cleaned = cleanCommentLines(commentLines)
-  const objectType = extractObjectType(cleaned, tag)
-  const definition = extractDefinition(cleaned, tag)
-  const description = extractDescription(cleaned)
+  const cleaned = cleanCommentLines(commentLines);
+  const objectType = extractObjectType(cleaned, tag);
+  const definition = extractDefinition(cleaned, tag);
+  const description = extractDescription(cleaned);
 
-  return { definition, description, objectType }
+  return { definition, description, objectType };
 }
 
 /* ========================================================================== *
@@ -338,20 +338,20 @@ function processCommentLine(
   acc: { readonly commentLines: readonly string[]; readonly shouldStop: boolean },
   line: string,
 ): { readonly commentLines: readonly string[]; readonly shouldStop: boolean } {
-  if (acc.shouldStop) return acc
+  if (acc.shouldStop) return acc;
 
-  if (line.startsWith('///')) {
+  if (line.startsWith("///")) {
     return {
       commentLines: [line, ...acc.commentLines],
       shouldStop: false,
-    }
+    };
   }
 
-  if (line === '') {
-    return acc
+  if (line === "") {
+    return acc;
   }
 
-  return { commentLines: acc.commentLines, shouldStop: true }
+  return { commentLines: acc.commentLines, shouldStop: true };
 }
 
 /**
@@ -362,16 +362,16 @@ function processCommentLine(
  * @returns An array of comment lines.
  */
 export function extractFieldComments(sourceText: string, fieldStartPos: number): readonly string[] {
-  const beforeField = sourceText.substring(0, fieldStartPos)
-  const lines = beforeField.split('\n')
+  const beforeField = sourceText.substring(0, fieldStartPos);
+  const lines = beforeField.split("\n");
   const reverseIndex = lines
     .map((line, index) => ({ line: line.trim(), index }))
     .reverse()
     .reduce<{ readonly commentLines: readonly string[]; readonly shouldStop: boolean }>(
       (acc, { line }) => processCommentLine(acc, line),
       { commentLines: [], shouldStop: false },
-    )
-  return reverseIndex.commentLines
+    );
+  return reverseIndex.commentLines;
 }
 
 /* ========================================================================== *
@@ -385,8 +385,8 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number):
  * @returns The generated TypeScript type definition line using Zod.
  */
 export function infer(name: string): `export type ${string} = z.infer<typeof ${string}Schema>` {
-  const modelName = makeCapitalized(name)
-  return `export type ${modelName} = z.infer<typeof ${modelName}Schema>`
+  const modelName = makeCapitalized(name);
+  return `export type ${modelName} = z.infer<typeof ${modelName}Schema>`;
 }
 
 /* ========================================================================== *
@@ -402,8 +402,8 @@ export function infer(name: string): `export type ${string} = z.infer<typeof ${s
 export function inferInput(
   name: string,
 ): `export type ${string} = v.InferInput<typeof ${string}Schema>` {
-  const modelName = makeCapitalized(name)
-  return `export type ${modelName} = v.InferInput<typeof ${modelName}Schema>`
+  const modelName = makeCapitalized(name);
+  return `export type ${modelName} = v.InferInput<typeof ${modelName}Schema>`;
 }
 
 /* ========================================================================== *
@@ -416,21 +416,21 @@ export function inferInput(
  */
 export function fieldDefinitions(
   schema: {
-    readonly name: string
+    readonly name: string;
     readonly fields: {
-      readonly name: string
-      readonly definition: string
-      readonly description?: string
-    }[]
+      readonly name: string;
+      readonly definition: string;
+      readonly description?: string;
+    }[];
   },
   comment: boolean,
 ): string {
   return schema.fields
     .map(({ name, definition, description }) => {
-      const commentCode = description && comment ? `/**\n* ${description}\n*/\n` : ''
-      return `${commentCode}${name}:${definition}`
+      const commentCode = description && comment ? `/**\n* ${description}\n*/\n` : "";
+      return `${commentCode}${name}:${definition}`;
     })
-    .join(',\n')
+    .join(",\n");
 }
 
 /* ========================================================================== *
@@ -444,8 +444,8 @@ export function fieldDefinitions(
  * @returns The generated TypeScript type definition line using ArkType.
  */
 export function inferArktype(name: string): `export type ${string} = typeof ${string}Schema.infer` {
-  const capitalized = makeCapitalized(name)
-  return `export type ${capitalized} = typeof ${capitalized}Schema.infer` as const
+  const capitalized = makeCapitalized(name);
+  return `export type ${capitalized} = typeof ${capitalized}Schema.infer` as const;
 }
 
 /* ========================================================================== *
@@ -461,6 +461,6 @@ export function inferArktype(name: string): `export type ${string} = typeof ${st
 export function inferEffect(
   name: string,
 ): `export type ${string} = Schema.Schema.Type<typeof ${string}Schema>` {
-  const capitalized = makeCapitalized(name)
-  return `export type ${capitalized} = Schema.Schema.Type<typeof ${capitalized}Schema>` as const
+  const capitalized = makeCapitalized(name);
+  return `export type ${capitalized} = Schema.Schema.Type<typeof ${capitalized}Schema>` as const;
 }

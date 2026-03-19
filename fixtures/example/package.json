@@ -1,14 +1,14 @@
 {
   "name": "@fixtures/generate",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "sizuku": "sizuku"
   },
   "dependencies": {
     "drizzle-orm": "^0.40.1",
+    "sizuku": "workspace:^",
     "valibot": "1.0.0-rc.3",
-    "zod": "^4.1.5",
-    "sizuku": "workspace:^"
+    "zod": "^4.1.5"
   }
 }

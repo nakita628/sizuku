@@ -1,4 +1,4 @@
-import * as z from 'zod'
+import * as z from "zod";
 
 export const UserSchema = z.object({
   /**
@@ -24,7 +24,7 @@ export const UserSchema = z.object({
   /**
    * User role
    */
-  role: z.enum(['ADMIN', 'USER', 'GUEST']),
+  role: z.enum(["ADMIN", "USER", "GUEST"]),
   /**
    * Email verification status
    */
@@ -45,9 +45,9 @@ export const UserSchema = z.object({
    * Last login timestamp
    */
   lastLoginAt: z.iso.datetime().nullable(),
-})
+});
 
-export type User = z.infer<typeof UserSchema>
+export type User = z.infer<typeof UserSchema>;
 
 export const OAuthAccountSchema = z.object({
   /**
@@ -61,7 +61,7 @@ export const OAuthAccountSchema = z.object({
   /**
    * OAuth provider
    */
-  provider: z.enum(['GOOGLE', 'GITHUB', 'FACEBOOK', 'TWITTER', 'APPLE']),
+  provider: z.enum(["GOOGLE", "GITHUB", "FACEBOOK", "TWITTER", "APPLE"]),
   /**
    * Provider account ID
    */
@@ -82,9 +82,9 @@ export const OAuthAccountSchema = z.object({
    * Account creation timestamp
    */
   createdAt: z.iso.datetime(),
-})
+});
 
-export type OAuthAccount = z.infer<typeof OAuthAccountSchema>
+export type OAuthAccount = z.infer<typeof OAuthAccountSchema>;
 
 export const TwoFactorSettingSchema = z.object({
   /**
@@ -102,7 +102,7 @@ export const TwoFactorSettingSchema = z.object({
   /**
    * 2FA method
    */
-  method: z.enum(['TOTP', 'SMS', 'EMAIL']).nullable(),
+  method: z.enum(["TOTP", "SMS", "EMAIL"]).nullable(),
   /**
    * TOTP secret (encrypted)
    */
@@ -127,9 +127,9 @@ export const TwoFactorSettingSchema = z.object({
    * Last update timestamp
    */
   updatedAt: z.iso.datetime(),
-})
+});
 
-export type TwoFactorSetting = z.infer<typeof TwoFactorSettingSchema>
+export type TwoFactorSetting = z.infer<typeof TwoFactorSettingSchema>;
 
 export const RefreshTokenSchema = z.object({
   /**
@@ -164,9 +164,9 @@ export const RefreshTokenSchema = z.object({
    * Revocation status
    */
   revoked: z.boolean(),
-})
+});
 
-export type RefreshToken = z.infer<typeof RefreshTokenSchema>
+export type RefreshToken = z.infer<typeof RefreshTokenSchema>;
 
 export const EmailVerificationSchema = z.object({
   /**
@@ -189,9 +189,9 @@ export const EmailVerificationSchema = z.object({
    * Creation timestamp
    */
   createdAt: z.iso.datetime(),
-})
+});
 
-export type EmailVerification = z.infer<typeof EmailVerificationSchema>
+export type EmailVerification = z.infer<typeof EmailVerificationSchema>;
 
 export const PasswordResetSchema = z.object({
   /**
@@ -218,9 +218,9 @@ export const PasswordResetSchema = z.object({
    * Creation timestamp
    */
   createdAt: z.iso.datetime(),
-})
+});
 
-export type PasswordReset = z.infer<typeof PasswordResetSchema>
+export type PasswordReset = z.infer<typeof PasswordResetSchema>;
 
 export const UserRelationsSchema = z.object({
   ...UserSchema.shape,
@@ -229,41 +229,41 @@ export const UserRelationsSchema = z.object({
   refreshTokens: z.array(RefreshTokenSchema),
   emailVerifications: z.array(EmailVerificationSchema),
   passwordResets: z.array(PasswordResetSchema),
-})
+});
 
-export type UserRelations = z.infer<typeof UserRelationsSchema>
+export type UserRelations = z.infer<typeof UserRelationsSchema>;
 
 export const OAuthAccountRelationsSchema = z.object({
   ...OAuthAccountSchema.shape,
   user: UserSchema,
-})
+});
 
-export type OAuthAccountRelations = z.infer<typeof OAuthAccountRelationsSchema>
+export type OAuthAccountRelations = z.infer<typeof OAuthAccountRelationsSchema>;
 
 export const TwoFactorSettingRelationsSchema = z.object({
   ...TwoFactorSettingSchema.shape,
   user: UserSchema,
-})
+});
 
-export type TwoFactorSettingRelations = z.infer<typeof TwoFactorSettingRelationsSchema>
+export type TwoFactorSettingRelations = z.infer<typeof TwoFactorSettingRelationsSchema>;
 
 export const RefreshTokenRelationsSchema = z.object({
   ...RefreshTokenSchema.shape,
   user: UserSchema,
-})
+});
 
-export type RefreshTokenRelations = z.infer<typeof RefreshTokenRelationsSchema>
+export type RefreshTokenRelations = z.infer<typeof RefreshTokenRelationsSchema>;
 
 export const EmailVerificationRelationsSchema = z.object({
   ...EmailVerificationSchema.shape,
   user: UserSchema,
-})
+});
 
-export type EmailVerificationRelations = z.infer<typeof EmailVerificationRelationsSchema>
+export type EmailVerificationRelations = z.infer<typeof EmailVerificationRelationsSchema>;
 
 export const PasswordResetRelationsSchema = z.object({
   ...PasswordResetSchema.shape,
   user: UserSchema,
-})
+});
 
-export type PasswordResetRelations = z.infer<typeof PasswordResetRelationsSchema>
+export type PasswordResetRelations = z.infer<typeof PasswordResetRelationsSchema>;
