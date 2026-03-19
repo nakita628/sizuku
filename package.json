@@ -14,6 +14,7 @@
     "sizuku": "link:packages/sizuku"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.14",
     "vite-plus": "^0.1.0"
   },
   "packageManager": "pnpm@10.32.1"
