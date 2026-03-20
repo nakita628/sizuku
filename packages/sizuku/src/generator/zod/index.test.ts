@@ -104,6 +104,102 @@ const TEST_CODE_WITH_OBJECT_TYPES = [
   "",
 ];
 
+// ============================================================================
+// Real-world use case tests - Pure function tests
+// ============================================================================
+
+describe("zodCode E-Commerce pattern", () => {
+  it.concurrent("generates Order schema with comments and type", () => {
+    const result = zodCode(
+      {
+        name: "order",
+        fields: [
+          { name: "id", definition: "z.uuid()", description: "Order ID" },
+          {
+            name: "status",
+            definition: "z.enum(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+            description: "Order status",
+          },
+          {
+            name: "totalAmount",
+            definition: "z.number().int().nonnegative()",
+            description: "Total amount in cents",
+          },
+          {
+            name: "customerId",
+            definition: "z.uuid()",
+            description: "Foreign key referencing Customer.id",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const OrderSchema = z.object({/**
+* Order ID
+*/
+id:z.uuid(),
+/**
+* Order status
+*/
+status:z.enum(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
+/**
+* Total amount in cents
+*/
+totalAmount:z.number().int().nonnegative(),
+/**
+* Foreign key referencing Customer.id
+*/
+customerId:z.uuid()})
+
+export type Order = z.infer<typeof OrderSchema>
+`);
+  });
+
+  it.concurrent("generates Order schema without comments", () => {
+    const result = zodCode(
+      {
+        name: "order",
+        fields: [
+          { name: "id", definition: "z.uuid()" },
+          {
+            name: "status",
+            definition: "z.enum(['PENDING', 'CONFIRMED', 'SHIPPED'])",
+          },
+          { name: "totalAmount", definition: "z.number().int()" },
+        ],
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const OrderSchema = z.object({id:z.uuid(),
+status:z.enum(['PENDING', 'CONFIRMED', 'SHIPPED']),
+totalAmount:z.number().int()})
+`);
+  });
+});
+
+describe("relationZodCode E-Commerce pattern", () => {
+  it.concurrent("generates Order relation with items and customer", () => {
+    const result = relationZodCode(
+      {
+        name: "orderRelations",
+        baseName: "order",
+        fields: [
+          { name: "items", definition: "z.array(OrderItemSchema)", description: undefined },
+          { name: "customer", definition: "CustomerSchema", description: undefined },
+        ],
+      },
+      true,
+    );
+    expect(result).toBe(`
+export const OrderRelationsSchema = z.object({...OrderSchema.shape,items:z.array(OrderItemSchema),customer:CustomerSchema})
+
+export type OrderRelations = z.infer<typeof OrderRelationsSchema>
+`);
+  });
+});
+
 describe("zodCode", () => {
   it.concurrent("zodCode comment true type true", () => {
     const result = zodCode(

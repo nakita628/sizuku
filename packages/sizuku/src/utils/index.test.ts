@@ -459,4 +459,192 @@ name:z.string().min(1).max(50)`;
       expect(result).toBe(expected);
     });
   });
+
+  // ============================================================================
+  // Real-world use case tests
+  // ============================================================================
+
+  describe("E-Commerce pattern - infer functions", () => {
+    it.concurrent("infer generates Order type", () => {
+      expect(infer("order")).toBe("export type Order = z.infer<typeof OrderSchema>");
+    });
+    it.concurrent("inferInput generates Order type", () => {
+      expect(inferInput("order")).toBe("export type Order = v.InferOutput<typeof OrderSchema>");
+    });
+    it.concurrent("inferArktype generates Order type", () => {
+      expect(inferArktype("order")).toBe("export type Order = typeof OrderSchema.infer");
+    });
+    it.concurrent("inferEffect generates OrderEncoded type", () => {
+      expect(inferEffect("order")).toBe("export type OrderEncoded = typeof OrderSchema.Encoded");
+    });
+  });
+
+  describe("E-Commerce pattern - fieldDefinitions", () => {
+    it.concurrent("generates Order fields with comments", () => {
+      const result = fieldDefinitions(
+        {
+          name: "order",
+          fields: [
+            { name: "id", definition: "z.uuid()", description: "Order ID" },
+            {
+              name: "totalAmount",
+              definition: "z.number().int().nonnegative()",
+              description: "Total amount in cents",
+            },
+            {
+              name: "note",
+              definition: "z.string().optional()",
+              description: "Customer note",
+            },
+          ],
+        },
+        true,
+      );
+      expect(result).toBe(`/**
+* Order ID
+*/
+id:z.uuid(),
+/**
+* Total amount in cents
+*/
+totalAmount:z.number().int().nonnegative(),
+/**
+* Customer note
+*/
+note:z.string().optional()`);
+    });
+
+    it.concurrent("generates OrderItem fields without comments", () => {
+      const result = fieldDefinitions(
+        {
+          name: "orderItem",
+          fields: [
+            { name: "id", definition: "z.uuid()" },
+            { name: "quantity", definition: "z.number().int().positive()" },
+            { name: "unitPrice", definition: "z.number().int().nonnegative()" },
+            { name: "orderId", definition: "z.uuid()" },
+          ],
+        },
+        false,
+      );
+      expect(result).toBe(
+        "id:z.uuid(),\nquantity:z.number().int().positive(),\nunitPrice:z.number().int().nonnegative(),\norderId:z.uuid()",
+      );
+    });
+  });
+
+  describe("E-Commerce pattern - parseFieldComments", () => {
+    it.concurrent("parses Order status enum annotation", () => {
+      expect(
+        parseFieldComments(
+          [
+            "/// Order status",
+            "/// @z.enum(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+            "/// @v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+          ],
+          "@z.",
+        ),
+      ).toStrictEqual({
+        definition:
+          "z.enum(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+        description: "Order status",
+        objectType: undefined,
+      });
+    });
+
+    it.concurrent("parses Order status for valibot", () => {
+      expect(
+        parseFieldComments(
+          [
+            "/// Order status",
+            "/// @z.enum(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+            "/// @v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+          ],
+          "@v.",
+        ),
+      ).toStrictEqual({
+        definition:
+          "v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+        description: "Order status",
+        objectType: undefined,
+      });
+    });
+  });
+
+  describe("E-Commerce pattern - parseRelationLine", () => {
+    it.concurrent("parses Order → OrderItem relation", () => {
+      expect(
+        parseRelationLine("@relation order.id orderItem.orderId one-to-many"),
+      ).toStrictEqual({
+        fromModel: "order",
+        fromField: "id",
+        toModel: "orderItem",
+        toField: "orderId",
+        type: "one-to-many",
+      });
+    });
+
+    it.concurrent("parses Customer → Order relation", () => {
+      expect(
+        parseRelationLine("@relation customer.id order.customerId one-to-many"),
+      ).toStrictEqual({
+        fromModel: "customer",
+        fromField: "id",
+        toModel: "order",
+        toField: "customerId",
+        type: "one-to-many",
+      });
+    });
+
+    it.concurrent("parses User → Profile one-to-one relation", () => {
+      expect(
+        parseRelationLine("@relation user.id profile.userId one-to-one"),
+      ).toStrictEqual({
+        fromModel: "user",
+        fromField: "id",
+        toModel: "profile",
+        toField: "userId",
+        type: "one-to-one",
+      });
+    });
+  });
+
+  describe("E-Commerce pattern - extractRelations", () => {
+    it.concurrent("extracts multiple EC relations", () => {
+      const result = extractRelations([
+        "/// @relation customer.id order.customerId one-to-many",
+        "export const order = mysqlTable('order', {",
+        "  /// @relation order.id orderItem.orderId one-to-many",
+        "  export const orderItem = mysqlTable('order_item', {",
+      ]);
+      expect(result).toStrictEqual([
+        {
+          fromModel: "customer",
+          fromField: "id",
+          toModel: "order",
+          toField: "customerId",
+          type: "one-to-many",
+        },
+        {
+          fromModel: "order",
+          fromField: "id",
+          toModel: "orderItem",
+          toField: "orderId",
+          type: "one-to-many",
+        },
+      ]);
+    });
+  });
+
+  describe("E-Commerce pattern - buildRelationLine", () => {
+    it.concurrent("one-to-many for Customer → Order", () => {
+      expect(buildRelationLine("one-to-many")).toBe("||--}|");
+    });
+    it.concurrent("one-to-one for User → Profile", () => {
+      expect(buildRelationLine("one-to-one")).toBe("||--||");
+    });
+    it.concurrent("many-to-many for Product → Tag", () => {
+      expect(buildRelationLine("many-to-many")).toBe("}|--}|");
+    });
+  });
 });

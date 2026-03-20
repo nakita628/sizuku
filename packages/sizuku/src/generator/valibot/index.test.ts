@@ -104,6 +104,94 @@ const TEST_CODE_WITH_OBJECT_TYPES = [
   "",
 ];
 
+// ============================================================================
+// Real-world use case tests - Pure function tests
+// ============================================================================
+
+describe("valibotCode E-Commerce pattern", () => {
+  it.concurrent("generates Order schema with comments and type", () => {
+    const result = valibotCode(
+      {
+        name: "order",
+        fields: [
+          {
+            name: "id",
+            definition: "v.pipe(v.string(), v.uuid())",
+            description: "Order ID",
+          },
+          {
+            name: "status",
+            definition: "v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+            description: "Order status",
+          },
+          {
+            name: "totalAmount",
+            definition: "v.pipe(v.number(), v.integer(), v.minValue(0))",
+            description: "Total amount in cents",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const OrderSchema = v.object({/**
+* Order ID
+*/
+id:v.pipe(v.string(), v.uuid()),
+/**
+* Order status
+*/
+status:v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
+/**
+* Total amount in cents
+*/
+totalAmount:v.pipe(v.number(), v.integer(), v.minValue(0))})
+
+export type Order = v.InferOutput<typeof OrderSchema>
+`);
+  });
+
+  it.concurrent("generates Order schema without comments", () => {
+    const result = valibotCode(
+      {
+        name: "order",
+        fields: [
+          { name: "id", definition: "v.pipe(v.string(), v.uuid())" },
+          { name: "status", definition: "v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED'])" },
+          { name: "totalAmount", definition: "v.pipe(v.number(), v.integer())" },
+        ],
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const OrderSchema = v.object({id:v.pipe(v.string(), v.uuid()),
+status:v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED']),
+totalAmount:v.pipe(v.number(), v.integer())})
+`);
+  });
+});
+
+describe("relationValibotCode E-Commerce pattern", () => {
+  it.concurrent("generates Order relation with items and customer", () => {
+    const result = relationValibotCode(
+      {
+        name: "orderRelations",
+        baseName: "order",
+        fields: [
+          { name: "items", definition: "v.array(OrderItemSchema)", description: undefined },
+          { name: "customer", definition: "CustomerSchema", description: undefined },
+        ],
+      },
+      true,
+    );
+    expect(result).toBe(`
+export const OrderRelationsSchema = v.object({...OrderSchema.entries,items:v.array(OrderItemSchema),customer:CustomerSchema})
+
+export type OrderRelations = v.InferOutput<typeof OrderRelationsSchema>
+`);
+  });
+});
+
 describe("valibotCode", () => {
   it.concurrent("valibotCode comment true type true", () => {
     const result = valibotCode(
