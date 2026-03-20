@@ -226,20 +226,27 @@ export function loadSchemaFromModule(schemaModule: Record<string, unknown>): Run
   const relations: RuntimeRelationInfo[] = [];
   const enums: RuntimeEnumInfo[] = [];
   const tableMap = new Map<string, RuntimeTableInfo>();
-  let detectedDialect: DrizzleDialect | null = null;
+
+  const detectedDialect: DrizzleDialect | null = (() => {
+    for (const key in schemaModule) {
+      const value = schemaModule[key];
+      if (isPgEnum(value)) return "pg";
+      const dialect = detectDialect(value);
+      if (dialect) return dialect;
+    }
+    return null;
+  })();
 
   for (const key in schemaModule) {
     const value = schemaModule[key];
 
     if (isPgEnum(value)) {
       enums.push(extractEnumInfo(value));
-      if (!detectedDialect) detectedDialect = "pg";
       continue;
     }
 
     const dialect = detectDialect(value);
     if (dialect) {
-      if (!detectedDialect) detectedDialect = dialect;
       const tableInfo = extractTableInfo(value, key, dialect);
       tables.push(tableInfo);
       tableMap.set(tableInfo.tableName, tableInfo);

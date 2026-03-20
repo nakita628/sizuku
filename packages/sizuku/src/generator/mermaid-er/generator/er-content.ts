@@ -173,15 +173,11 @@ export function erContentFromMergedSchema(schema: MergedSchema): string {
 
     for (const column of table.columns) {
       const type = simplifyType(column.sqlType);
-      let keyPart = "";
-      if (column.isPrimaryKey) {
-        keyPart = " PK";
-      } else {
-        const isFK = table.foreignKeys.some((fk) => fk.sourceColumns.includes(column.name));
-        if (isFK) {
-          keyPart = " FK";
-        }
-      }
+      const keyPart = column.isPrimaryKey
+        ? " PK"
+        : table.foreignKeys.some((fk) => fk.sourceColumns.includes(column.name))
+          ? " FK"
+          : "";
 
       // Get description from annotations
       const descAnnotation = column.annotations.find((a) => a.type === "description");

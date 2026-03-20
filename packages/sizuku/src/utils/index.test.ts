@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRelationLine, extractRelations } from "../helper/extract-schemas.js";
+import { makeRelationLine, extractRelations, toRelationSymbol } from "../helper/extract-schemas.js";
 import {
   cleanCommentLines,
   containsSubstring,
@@ -165,7 +165,22 @@ export const postRelations = relations(post, ({ one }) => ({
     });
   });
 
-  describe("buildRelationLine", () => {
+  describe("toRelationSymbol", () => {
+    it.concurrent("maps valid cardinalities", () => {
+      expect(toRelationSymbol("zero-one")).toBe("|o");
+      expect(toRelationSymbol("one")).toBe("||");
+      expect(toRelationSymbol("zero-many")).toBe("}o");
+      expect(toRelationSymbol("many")).toBe("}|");
+    });
+
+    it.concurrent("returns null for invalid cardinality", () => {
+      expect(toRelationSymbol("invalid")).toBeNull();
+      expect(toRelationSymbol("")).toBeNull();
+      expect(toRelationSymbol("one-to-many")).toBeNull();
+    });
+  });
+
+  describe("makeRelationLine", () => {
     it.concurrent.each([
       ["zero-one-to-zero-one", "|o--|o"],
       ["zero-one-to-one", "|o--||"],
@@ -209,9 +224,32 @@ export const postRelations = relations(post, ({ one }) => ({
       ["many-to-many-optional", "}|..}|"],
       ["zero-one-to-zero-one-optional", "|o..|o"],
       ["zero-one-to-one-optional", "|o..||"],
-    ])("buildRelationLine(%s) -> %s", (input, expected) => {
-      const result = buildRelationLine(input);
-      expect(result).toBe(expected);
+    ])("makeRelationLine(%s) -> ok: %s", (input, expected) => {
+      const result = makeRelationLine(input);
+      expect(result).toStrictEqual({ ok: true, value: expected });
+    });
+
+    it.concurrent("returns error for invalid input format", () => {
+      const result = makeRelationLine("invalid-string");
+      expect(result).toStrictEqual({ ok: false, error: "Invalid input format: invalid-string" });
+    });
+
+    it.concurrent("returns error for empty string", () => {
+      const result = makeRelationLine("");
+      expect(result).toStrictEqual({ ok: false, error: "Invalid input format: " });
+    });
+
+    it.concurrent("returns error for invalid relationship type", () => {
+      const result = makeRelationLine("foo-to-bar");
+      expect(result).toStrictEqual({ ok: false, error: "Invalid relationship string: foo-to-bar" });
+    });
+
+    it.concurrent("returns error for partial valid input", () => {
+      const result = makeRelationLine("one-to-invalid");
+      expect(result).toStrictEqual({
+        ok: false,
+        error: "Invalid relationship string: one-to-invalid",
+      });
     });
   });
 
@@ -641,15 +679,15 @@ note:z.string().optional()`);
     });
   });
 
-  describe("E-Commerce pattern - buildRelationLine", () => {
+  describe("E-Commerce pattern - makeRelationLine", () => {
     it.concurrent("one-to-many for Customer → Order", () => {
-      expect(buildRelationLine("one-to-many")).toBe("||--}|");
+      expect(makeRelationLine("one-to-many")).toStrictEqual({ ok: true, value: "||--}|" });
     });
     it.concurrent("one-to-one for User → Profile", () => {
-      expect(buildRelationLine("one-to-one")).toBe("||--||");
+      expect(makeRelationLine("one-to-one")).toStrictEqual({ ok: true, value: "||--||" });
     });
     it.concurrent("many-to-many for Product → Tag", () => {
-      expect(buildRelationLine("many-to-many")).toBe("}|--}|");
+      expect(makeRelationLine("many-to-many")).toStrictEqual({ ok: true, value: "}|--}|" });
     });
   });
 });

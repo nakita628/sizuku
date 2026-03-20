@@ -331,7 +331,7 @@ function createExtractFieldsFromCallExpression(
  * @param commentPrefix - The comment prefix to use for parsing
  * @returns A function that extracts a schema from a variable declaration node
  */
-function buildSchemaExtractor(
+function makeSchemaExtractor(
   extractFieldsFromCall: (call: CallExpression, sourceText: string) => FieldExtractionResult[],
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
   parseFieldComments: (
@@ -366,15 +366,14 @@ function buildSchemaExtractor(
     const commentLines: string[] = [];
 
     // Find the line number where this statement starts
-    let lineNumber = 0;
-    let charCount = 0;
-    for (let i = 0; i < originalSourceLines.length; i++) {
-      if (charCount >= statementStart) {
-        lineNumber = i;
-        break;
+    const lineNumber = (() => {
+      let acc = 0;
+      for (let i = 0; i < originalSourceLines.length; i++) {
+        if (acc >= statementStart) return i;
+        acc += originalSourceLines[i].length + 1; // +1 for the "\n" newline character
       }
-      charCount += originalSourceLines[i].length + 1; // +1 for the "\n" newline character
-    }
+      return 0;
+    })();
 
     // Collect comments immediately before the statement
     for (let i = lineNumber - 1; i >= 0; i--) {
@@ -482,7 +481,7 @@ export function extractSchemas(
     findObjectLiteralInArgs,
     isRelationFunctionCall,
   );
-  const extractSchema = buildSchemaExtractor(
+  const extractSchema = makeSchemaExtractor(
     extractFieldsFromCall,
     extractField,
     parseFieldComments,
@@ -726,44 +725,48 @@ export function parseRelationLine(line: string): {
   };
 }
 
+/** Valid relationship cardinality values */
+const RELATIONSHIP_SYMBOLS: Readonly<Record<string, string>> = {
+  "zero-one": "|o",
+  one: "||",
+  "zero-many": "}o",
+  many: "}|",
+};
+
+/**
+ * Convert a relationship cardinality string to its Mermaid ER symbol
+ *
+ * @param r - The relationship string (e.g., "one", "many", "zero-one", "zero-many")
+ * @returns The symbol or null if invalid
+ */
+export function toRelationSymbol(r: string): string | null {
+  return RELATIONSHIP_SYMBOLS[r] ?? null;
+}
+
 /**
  * Build a relation line from a string.
  *
- * @param input - The input string.
- * @returns The built relation line.
+ * @param input - The input string (e.g., "one-to-many", "zero-one-to-many-optional")
+ * @returns The built relation line, or null if the input is invalid
  */
-export function buildRelationLine(input: string): string {
-  const toSymbol = (r: string): string =>
-    r === "zero-one"
-      ? "|o"
-      : r === "one"
-        ? "||"
-        : r === "zero-many"
-          ? "}o"
-          : r === "many"
-            ? "}|"
-            : (() => {
-                throw new Error(`Invalid relationship: ${r}`);
-              })();
-
-  const isRelationship = (r: string): boolean =>
-    ["zero-one", "one", "zero-many", "many"].includes(r);
-
+export function makeRelationLine(
+  input: string,
+): { readonly ok: true; readonly value: string } | { readonly ok: false; readonly error: string } {
   const parts = splitByTo(input);
-  if (!parts) throw new Error(`Invalid input format: ${input}`);
+  if (!parts) return { ok: false, error: `Invalid input format: ${input}` };
 
   const [fromRaw, toRawWithOptional] = parts;
   const [toRaw, isOptional] = containsSubstring(toRawWithOptional, "-optional")
     ? [removeOptionalSuffix(toRawWithOptional), true]
     : [toRawWithOptional, false];
 
-  if (!(isRelationship(fromRaw) && isRelationship(toRaw))) {
-    throw new Error(`Invalid relationship string: ${input}`);
+  const fromSymbol = toRelationSymbol(fromRaw);
+  const toSymbolStr = toRelationSymbol(toRaw);
+
+  if (!fromSymbol || !toSymbolStr) {
+    return { ok: false, error: `Invalid relationship string: ${input}` };
   }
 
-  const fromSymbol = toSymbol(fromRaw);
-  const toSymbolStr = toSymbol(toRaw);
   const connector = isOptional ? ".." : "--";
-
-  return `${fromSymbol}${connector}${toSymbolStr}`;
+  return { ok: true, value: `${fromSymbol}${connector}${toSymbolStr}` };
 }

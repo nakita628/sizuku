@@ -212,10 +212,7 @@ function extractRelationsFromForeignKeyConstraints(
   if (!body) return relations;
 
   // Handle parenthesized expression: ({ ... })
-  let objExpr = body;
-  if (Node.isParenthesizedExpression(objExpr)) {
-    objExpr = objExpr.getExpression();
-  }
+  const objExpr = Node.isParenthesizedExpression(body) ? body.getExpression() : body;
 
   if (!Node.isObjectLiteralExpression(objExpr)) return relations;
 
@@ -305,10 +302,7 @@ function extractRelationsFromRelationBlocks(file: SourceFile): RelationInfo[] {
     if (!body) continue;
 
     // Handle parenthesized expression: ({ ... })
-    let objExpr = body;
-    if (Node.isParenthesizedExpression(objExpr)) {
-      objExpr = objExpr.getExpression();
-    }
+    const objExpr = Node.isParenthesizedExpression(body) ? body.getExpression() : body;
 
     if (!Node.isObjectLiteralExpression(objExpr)) continue;
 

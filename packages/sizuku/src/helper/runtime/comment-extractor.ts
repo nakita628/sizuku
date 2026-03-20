@@ -94,30 +94,30 @@ function extractAnnotationsFromComment(comment: string): CommentAnnotation[] {
  * Extract the content between table definition braces
  */
 function extractTableContent(source: string, startIndex: number): string | null {
-  let depth = 0;
-  let start = -1;
-  let end = -1;
-
-  for (let i = startIndex; i < source.length; i++) {
-    const char = source[i];
-    if (char === "{") {
-      if (depth === 0) {
-        start = i + 1;
-      }
-      depth++;
-    } else if (char === "}") {
-      depth--;
-      if (depth === 0) {
-        end = i;
-        break;
+  const bounds = (() => {
+    let depth = 0;
+    for (let i = startIndex; i < source.length; i++) {
+      const char = source[i];
+      if (char === "{") {
+        const start = depth === 0 ? i + 1 : -1;
+        depth++;
+        if (start !== -1) {
+          // Found opening brace at depth 0 — now scan for matching close
+          for (let j = i + 1; j < source.length; j++) {
+            if (source[j] === "{") depth++;
+            else if (source[j] === "}") {
+              depth--;
+              if (depth === 0) return { start, end: j };
+            }
+          }
+          return null;
+        }
       }
     }
-  }
+    return null;
+  })();
 
-  if (start !== -1 && end !== -1) {
-    return source.substring(start, end);
-  }
-  return null;
+  return bounds ? source.substring(bounds.start, bounds.end) : null;
 }
 
 /**

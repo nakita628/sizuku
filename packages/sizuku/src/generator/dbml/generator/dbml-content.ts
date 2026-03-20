@@ -119,7 +119,7 @@ function quote(value: string): string {
   return `'${escapeNote(value)}'`;
 }
 
-function buildColumnConstraints(column: DBMLColumn): readonly string[] {
+function makeColumnConstraints(column: DBMLColumn): readonly string[] {
   const constraints: string[] = [];
 
   if (column.isPrimaryKey) {
@@ -154,7 +154,7 @@ function formatConstraints(constraints: readonly string[]): string {
 }
 
 function generateColumn(column: DBMLColumn): string {
-  const constraints = buildColumnConstraints(column);
+  const constraints = makeColumnConstraints(column);
   return `  ${column.name} ${column.type}${formatConstraints(constraints)}`;
 }
 
