@@ -404,7 +404,7 @@ export function infer(name: string): `export type ${string} = z.infer<typeof ${s
  * @param name - The model name
  * @returns The generated TypeScript type definition line using Valibot.
  */
-export function inferInput(
+export function inferOutput(
   name: string,
 ): `export type ${string} = v.InferOutput<typeof ${string}Schema>` {
   const modelName = makeCapitalized(name);

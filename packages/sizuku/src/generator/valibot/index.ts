@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "../../fsp/index.js";
 import { extractRelationSchemas, extractSchemas } from "../../helper/extract-schemas.js";
 import {
   fieldDefinitions,
-  inferInput,
+  inferOutput,
   makeCapitalized,
   makeValibotObject,
 } from "../../utils/index.js";
@@ -48,7 +48,7 @@ export function valibotCode(
   const valibotSchema = valibot(schema, comment);
 
   if (type) {
-    const valibotInfer = inferInput(schema.name);
+    const valibotInfer = inferOutput(schema.name);
     return `${valibotSchema}\n\n${valibotInfer}\n`;
   }
   return `${valibotSchema}\n`;
@@ -78,7 +78,7 @@ export function relationValibotCode(
         ? "looseObject"
         : "object";
   const obj = `\nexport const ${makeCapitalized(relName)} = v.${objectType}({...${baseSchema}.entries,${fields}})`;
-  if (withType) return `${obj}\n\n${inferInput(schema.name)}\n`;
+  if (withType) return `${obj}\n\n${inferOutput(schema.name)}\n`;
   return `${obj}`;
 }
 

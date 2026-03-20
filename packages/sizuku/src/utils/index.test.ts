@@ -8,7 +8,7 @@ import {
   infer,
   inferArktype,
   inferEffect,
-  inferInput,
+  inferOutput,
   isNonEmpty,
   joinWithSpace,
   makeCapitalized,
@@ -425,9 +425,9 @@ export const postRelations = relations(post, ({ one }) => ({
     });
   });
 
-  describe("inferInput", () => {
-    it.concurrent("inferInput", () => {
-      expect(inferInput("User")).toBe("export type User = v.InferOutput<typeof UserSchema>");
+  describe("inferOutput", () => {
+    it.concurrent("inferOutput", () => {
+      expect(inferOutput("User")).toBe("export type User = v.InferOutput<typeof UserSchema>");
     });
   });
 
@@ -517,8 +517,8 @@ name:z.string().min(1).max(50)`;
     it.concurrent("infer generates Order type", () => {
       expect(infer("order")).toBe("export type Order = z.infer<typeof OrderSchema>");
     });
-    it.concurrent("inferInput generates Order type", () => {
-      expect(inferInput("order")).toBe("export type Order = v.InferOutput<typeof OrderSchema>");
+    it.concurrent("inferOutput generates Order type", () => {
+      expect(inferOutput("order")).toBe("export type Order = v.InferOutput<typeof OrderSchema>");
     });
     it.concurrent("inferArktype generates Order type", () => {
       expect(inferArktype("order")).toBe("export type Order = typeof OrderSchema.infer");
