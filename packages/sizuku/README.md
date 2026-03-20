@@ -29,103 +29,103 @@ npm install -D sizuku
 Prepare schema.ts:
 
 ```ts
-import { relations } from 'drizzle-orm'
-import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
+import { relations } from "drizzle-orm";
+import { mysqlTable, varchar } from "drizzle-orm/mysql-core";
 
-export const user = mysqlTable('user', {
+export const user = mysqlTable("user", {
   /// Primary key
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
   /// @a."string.uuid"
   /// @e.Schema.UUID
-  id: varchar('id', { length: 36 }).primaryKey(),
+  id: varchar("id", { length: 36 }).primaryKey(),
   /// Display name
   /// @z.string().min(1).max(50)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))
   /// @a."1 <= string <= 50"
   /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50))
-  name: varchar('name', { length: 50 }).notNull(),
-})
+  name: varchar("name", { length: 50 }).notNull(),
+});
 
 /// @relation user.id post.userId one-to-many
-export const post = mysqlTable('post', {
+export const post = mysqlTable("post", {
   /// Primary key
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
   /// @a."string.uuid"
   /// @e.Schema.UUID
-  id: varchar('id', { length: 36 }).primaryKey(),
+  id: varchar("id", { length: 36 }).primaryKey(),
   /// Article title
   /// @z.string().min(1).max(100)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))
   /// @a."1 <= string <= 100"
   /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))
-  title: varchar('title', { length: 100 }).notNull(),
+  title: varchar("title", { length: 100 }).notNull(),
   /// Body content (no length limit)
   /// @z.string().min(1).max(65535)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
   /// @a."1 <= string <= 65535"
   /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
-  content: varchar('content', { length: 65535 }).notNull(),
+  content: varchar("content", { length: 65535 }).notNull(),
   /// Foreign key referencing User.id
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
   /// @a."string.uuid"
   /// @e.Schema.UUID
-  userId: varchar('user_id', { length: 36 }).notNull(),
-})
+  userId: varchar("user_id", { length: 36 }).notNull(),
+});
 
 export const userRelations = relations(user, ({ many }) => ({
   posts: many(post),
-}))
+}));
 
 export const postRelations = relations(post, ({ one }) => ({
   user: one(user, {
     fields: [post.userId],
     references: [user.id],
   }),
-}))
+}));
 ```
 
 Prepare sizuku.config.ts:
 
 ```ts
-import { defineConfig } from 'sizuku/config'
+import { defineConfig } from "sizuku/config";
 
 export default defineConfig({
-  input: 'db/schema.ts',
+  input: "db/schema.ts",
   zod: {
-    output: 'zod/index.ts',
+    output: "zod/index.ts",
     comment: true,
     type: true,
-    zod: 'v4',
+    zod: "v4",
     relation: true,
   },
   valibot: {
-    output: 'valibot/index.ts',
+    output: "valibot/index.ts",
     comment: true,
     type: true,
     relation: true,
   },
   arktype: {
-    output: 'arktype/index.ts',
+    output: "arktype/index.ts",
     comment: true,
     type: true,
     relation: true,
   },
   effect: {
-    output: 'effect/index.ts',
+    output: "effect/index.ts",
     comment: true,
     type: true,
     relation: true,
   },
   mermaid: {
-    output: 'mermaid-er/ER.md',
+    output: "mermaid-er/ER.md",
   },
   dbml: {
-    output: 'docs/schema.dbml',
+    output: "docs/schema.dbml",
   },
-})
+});
 ```
 
 Run Sizuku:
@@ -135,6 +135,7 @@ npx sizuku
 ```
 
 Output:
+
 ```
 💧 Generated Zod schema at: zod/index.ts
 💧 Generated Valibot schema at: valibot/index.ts
@@ -147,7 +148,7 @@ Output:
 ### Zod
 
 ```ts
-import * as z from 'zod'
+import * as z from "zod";
 
 export const UserSchema = z.object({
   /**
@@ -158,9 +159,9 @@ export const UserSchema = z.object({
    * Display name
    */
   name: z.string().min(1).max(50),
-})
+});
 
-export type User = z.infer<typeof UserSchema>
+export type User = z.infer<typeof UserSchema>;
 
 export const PostSchema = z.object({
   /**
@@ -179,23 +180,23 @@ export const PostSchema = z.object({
    * Foreign key referencing User.id
    */
   userId: z.uuid(),
-})
+});
 
-export type Post = z.infer<typeof PostSchema>
+export type Post = z.infer<typeof PostSchema>;
 
-export const UserRelationsSchema = z.object({ ...UserSchema.shape, posts: z.array(PostSchema) })
+export const UserRelationsSchema = z.object({ ...UserSchema.shape, posts: z.array(PostSchema) });
 
-export type UserRelations = z.infer<typeof UserRelationsSchema>
+export type UserRelations = z.infer<typeof UserRelationsSchema>;
 
-export const PostRelationsSchema = z.object({ ...PostSchema.shape, user: UserSchema })
+export const PostRelationsSchema = z.object({ ...PostSchema.shape, user: UserSchema });
 
-export type PostRelations = z.infer<typeof PostRelationsSchema>
+export type PostRelations = z.infer<typeof PostRelationsSchema>;
 ```
 
 ### Valibot
 
 ```ts
-import * as v from 'valibot'
+import * as v from "valibot";
 
 export const UserSchema = v.object({
   /**
@@ -206,9 +207,9 @@ export const UserSchema = v.object({
    * Display name
    */
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
-})
+});
 
-export type User = v.InferInput<typeof UserSchema>
+export type User = v.InferOutput<typeof UserSchema>;
 
 export const PostSchema = v.object({
   /**
@@ -227,73 +228,97 @@ export const PostSchema = v.object({
    * Foreign key referencing User.id
    */
   userId: v.pipe(v.string(), v.uuid()),
-})
+});
 
-export type Post = v.InferInput<typeof PostSchema>
+export type Post = v.InferOutput<typeof PostSchema>;
 
-export const UserRelationsSchema = v.object({ ...UserSchema.entries, posts: v.array(PostSchema) })
+export const UserRelationsSchema = v.object({ ...UserSchema.entries, posts: v.array(PostSchema) });
 
-export type UserRelations = v.InferInput<typeof UserRelationsSchema>
+export type UserRelations = v.InferOutput<typeof UserRelationsSchema>;
 
-export const PostRelationsSchema = v.object({ ...PostSchema.entries, user: UserSchema })
+export const PostRelationsSchema = v.object({ ...PostSchema.entries, user: UserSchema });
 
-export type PostRelations = v.InferInput<typeof PostRelationsSchema>
+export type PostRelations = v.InferOutput<typeof PostRelationsSchema>;
 ```
 
 ### ArkType
 
 ```ts
-import { type } from 'arktype'
+import { type } from "arktype";
 
 export const UserSchema = type({
-  /** Primary key */
-  id: 'string.uuid',
-  /** Display name */
-  name: '1 <= string <= 50',
-})
+  /**
+   * Primary key
+   */
+  id: "string.uuid",
+  /**
+   * Display name
+   */
+  name: "1 <= string <= 50",
+});
 
-export type User = typeof UserSchema.infer
+export type User = typeof UserSchema.infer;
 
 export const PostSchema = type({
-  /** Primary key */
-  id: 'string.uuid',
-  /** Article title */
-  title: '1 <= string <= 100',
-  /** Body content (no length limit) */
-  content: '1 <= string <= 65535',
-  /** Foreign key referencing User.id */
-  userId: 'string.uuid',
-})
+  /**
+   * Primary key
+   */
+  id: "string.uuid",
+  /**
+   * Article title
+   */
+  title: "1 <= string <= 100",
+  /**
+   * Body content (no length limit)
+   */
+  content: "1 <= string <= 65535",
+  /**
+   * Foreign key referencing User.id
+   */
+  userId: "string.uuid",
+});
 
-export type Post = typeof PostSchema.infer
+export type Post = typeof PostSchema.infer;
 ```
 
 ### Effect Schema
 
 ```ts
-import { Schema } from 'effect'
+import { Schema } from "effect";
 
 export const UserSchema = Schema.Struct({
-  /** Primary key */
+  /**
+   * Primary key
+   */
   id: Schema.UUID,
-  /** Display name */
+  /**
+   * Display name
+   */
   name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
-})
+});
 
-export type User = Schema.Schema.Type<typeof UserSchema>
+export type User = Schema.Schema.Type<typeof UserSchema>;
 
 export const PostSchema = Schema.Struct({
-  /** Primary key */
+  /**
+   * Primary key
+   */
   id: Schema.UUID,
-  /** Article title */
+  /**
+   * Article title
+   */
   title: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
-  /** Body content (no length limit) */
+  /**
+   * Body content (no length limit)
+   */
   content: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535)),
-  /** Foreign key referencing User.id */
+  /**
+   * Foreign key referencing User.id
+   */
   userId: Schema.UUID,
-})
+});
 
-export type Post = Schema.Schema.Type<typeof PostSchema>
+export type Post = Schema.Schema.Type<typeof PostSchema>;
 ```
 
 ### Mermaid ER
@@ -339,24 +364,24 @@ Ref post_userId_user_id_fk: post.userId > user.id
 ## Configuration
 
 ```typescript
-import { defineConfig } from 'sizuku/config'
+import { defineConfig } from "sizuku/config";
 
 export default defineConfig({
   // Input: Path to Drizzle schema file (must end with .ts)
-  input: 'db/schema.ts',
+  input: "db/schema.ts",
 
   // Zod Schema Generator
   zod: {
-    output: 'zod/index.ts',       // Output file path (must end with .ts)
-    comment: true,                 // Include schema documentation (default: false)
-    type: true,                    // Generate TypeScript types (default: false)
-    zod: 'v4',                     // Zod import: 'v4' | 'mini' | '@hono/zod-openapi' (default: 'v4')
-    relation: true,                // Generate relation schemas (default: false)
+    output: "zod/index.ts", // Output file path (must end with .ts)
+    comment: true, // Include schema documentation (default: false)
+    type: true, // Generate TypeScript types (default: false)
+    zod: "v4", // Zod import: 'v4' | 'mini' | '@hono/zod-openapi' (default: 'v4')
+    relation: true, // Generate relation schemas (default: false)
   },
 
   // Valibot Schema Generator
   valibot: {
-    output: 'valibot/index.ts',
+    output: "valibot/index.ts",
     comment: true,
     type: true,
     relation: true,
@@ -364,31 +389,31 @@ export default defineConfig({
 
   // ArkType Schema Generator
   arktype: {
-    output: 'arktype/index.ts',
+    output: "arktype/index.ts",
     comment: true,
     type: true,
-    relation: true,                // Generate relation schemas (default: false)
+    relation: true, // Generate relation schemas (default: false)
   },
 
   // Effect Schema Generator
   effect: {
-    output: 'effect/index.ts',
+    output: "effect/index.ts",
     comment: true,
     type: true,
-    relation: true,                // Generate relation schemas (default: false)
+    relation: true, // Generate relation schemas (default: false)
   },
 
   // Mermaid ER Diagram Generator
   mermaid: {
-    output: 'mermaid-er/ER.md',    // Output file path
+    output: "mermaid-er/ER.md", // Output file path
   },
 
   // DBML / ER Diagram PNG Generator
   // Use .dbml extension for DBML text, .png extension for ER diagram image
   dbml: {
-    output: 'docs/schema.dbml',    // Output file path (must end with .dbml or .png)
+    output: "docs/schema.dbml", // Output file path (must end with .dbml or .png)
   },
-})
+});
 ```
 
 ### ⚠️ WARNING: Potential Breaking Changes Without Notice

@@ -1,5 +1,5 @@
-import type { CallExpression, ObjectLiteralExpression } from 'ts-morph'
-import { Node, Project } from 'ts-morph'
+import type { CallExpression, ObjectLiteralExpression } from "ts-morph";
+import { Node, Project } from "ts-morph";
 import {
   containsSubstring,
   extractFieldComments,
@@ -12,65 +12,65 @@ import {
   startsWith,
   trimString,
   type ValidationTag,
-} from '../utils/index.js'
+} from "../utils/index.js";
 
 /**
  * Supported validation library types.
  */
-export type ValidationLibrary = 'zod' | 'valibot' | 'arktype' | 'effect'
+export type ValidationLibrary = "zod" | "valibot" | "arktype" | "effect";
 
 /**
  * Schema extraction result type containing table name and field definitions.
  */
 export type SchemaExtractionResult = {
   /** The name of the table/schema */
-  name: string
+  name: string;
   /** Optional base schema/table name (used for relations) */
-  baseName?: string
+  baseName?: string;
   /** Array of field definitions with name, validation definition, and description */
   fields: {
     /** Field name */
-    name: string
+    name: string;
     /** Validation definition (e.g., 'z.uuid()', 'v.pipe(v.string(), v.uuid())') */
-    definition: string
+    definition: string;
     /** Optional field description from comments */
-    description?: string
-  }[]
+    description?: string;
+  }[];
   /** Object type for schema generation ('strict' | 'loose' | undefined) */
-  objectType?: 'strict' | 'loose'
-}
+  objectType?: "strict" | "loose";
+};
 
 /**
  * Relation schema extraction result with required base name.
  */
 export type RelationSchemaExtractionResult = {
-  name: string
-  baseName: string
+  name: string;
+  baseName: string;
   fields: {
-    name: string
-    definition: string
-    description?: string
-  }[]
+    name: string;
+    definition: string;
+    description?: string;
+  }[];
   /** Object type for schema generation ('strict' | 'loose' | undefined) */
-  objectType?: 'strict' | 'loose'
-}
+  objectType?: "strict" | "loose";
+};
 
 /**
  * Field extraction result type containing field metadata.
  */
 type FieldExtractionResult = {
   /** Field name */
-  name: string
+  name: string;
   /** Validation definition string */
-  definition: string
+  definition: string;
   /** Optional field description */
-  description?: string
-}
+  description?: string;
+};
 
 /**
  * Schema prefix type for validation libraries.
  */
-type SchemaPrefix = 'z' | 'v' | 'type' | 'Schema'
+type SchemaPrefix = "z" | "v" | "type" | "Schema";
 
 /**
  * Generates relation definition based on function name and reference table.
@@ -85,20 +85,20 @@ function generateRelationDefinition(
   refTable: string,
   prefix: SchemaPrefix,
 ): string {
-  const schema = `${makeCapitalized(refTable)}Schema`
-  if (fnName === 'many') {
-    if (prefix === 'type') {
-      return `${schema}.array()`
+  const schema = `${makeCapitalized(refTable)}Schema`;
+  if (fnName === "many") {
+    if (prefix === "type") {
+      return `${schema}.array()`;
     }
-    if (prefix === 'Schema') {
-      return `Schema.Array(${schema})`
+    if (prefix === "Schema") {
+      return `Schema.Array(${schema})`;
     }
-    return `${prefix}.array(${schema})`
+    return `${prefix}.array(${schema})`;
   }
-  if (fnName === 'one') {
-    return schema
+  if (fnName === "one") {
+    return schema;
   }
-  return ''
+  return "";
 }
 
 /**
@@ -108,21 +108,21 @@ function generateRelationDefinition(
  * @returns The found object literal expression, or null if not found
  */
 function processArrowFunctionBody(body: Node): ObjectLiteralExpression | null {
-  if (Node.isObjectLiteralExpression(body)) return body
+  if (Node.isObjectLiteralExpression(body)) return body;
 
   if (Node.isParenthesizedExpression(body)) {
-    return findObjectLiteralExpression(body.getExpression())
+    return findObjectLiteralExpression(body.getExpression());
   }
 
   if (Node.isBlock(body)) {
-    const ret = body.getStatements().find(Node.isReturnStatement)
+    const ret = body.getStatements().find(Node.isReturnStatement);
     if (ret && Node.isReturnStatement(ret)) {
-      const re = ret.getExpression()
-      return re && Node.isObjectLiteralExpression(re) ? re : null
+      const re = ret.getExpression();
+      return re && Node.isObjectLiteralExpression(re) ? re : null;
     }
   }
 
-  return null
+  return null;
 }
 
 /**
@@ -132,17 +132,17 @@ function processArrowFunctionBody(body: Node): ObjectLiteralExpression | null {
  * @returns The found `ObjectLiteralExpression`, or `null` if not found
  */
 function findObjectLiteralExpression(expr: Node): ObjectLiteralExpression | null {
-  if (Node.isObjectLiteralExpression(expr)) return expr
+  if (Node.isObjectLiteralExpression(expr)) return expr;
 
   if (Node.isParenthesizedExpression(expr)) {
-    return findObjectLiteralExpression(expr.getExpression())
+    return findObjectLiteralExpression(expr.getExpression());
   }
 
   if (Node.isArrowFunction(expr)) {
-    return processArrowFunctionBody(expr.getBody())
+    return processArrowFunctionBody(expr.getBody());
   }
 
-  return null
+  return null;
 }
 
 /**
@@ -157,10 +157,10 @@ function findObjectLiteralInArgs(
   finder: (expr: Node) => ObjectLiteralExpression | null,
 ): ObjectLiteralExpression | null {
   for (const arg of call.getArguments()) {
-    const obj = finder(arg)
-    if (obj) return obj
+    const obj = finder(arg);
+    if (obj) return obj;
   }
-  return null
+  return null;
 }
 
 /**
@@ -170,11 +170,11 @@ function findObjectLiteralInArgs(
  * @returns `true` if the function is a relation function; otherwise, `false`
  */
 function isRelationFunctionCall(callExpr: CallExpression): boolean {
-  const expression = callExpr.getExpression()
-  if (!Node.isIdentifier(expression)) return false
+  const expression = callExpr.getExpression();
+  if (!Node.isIdentifier(expression)) return false;
 
-  const functionName = expression.getText()
-  return functionName === 'relations' || functionName.includes('relation')
+  const functionName = expression.getText();
+  return functionName === "relations" || functionName.includes("relation");
 }
 
 /**
@@ -185,22 +185,22 @@ function isRelationFunctionCall(callExpr: CallExpression): boolean {
  */
 function createExtractFieldFromProperty(
   parseFieldComments: (commentLines: readonly string[]) => {
-    readonly definition: string
-    readonly description?: string
-    readonly objectType?: 'strict' | 'loose'
+    readonly definition: string;
+    readonly description?: string;
+    readonly objectType?: "strict" | "loose";
   },
 ) {
   return (property: Node, sourceText: string): FieldExtractionResult | null => {
-    if (!Node.isPropertyAssignment(property)) return null
+    if (!Node.isPropertyAssignment(property)) return null;
 
-    const name = property.getName()
-    if (!name) return null
+    const name = property.getName();
+    if (!name) return null;
 
-    const commentLines = extractFieldComments(sourceText, property.getStart())
-    const { definition, description } = parseFieldComments(commentLines)
+    const commentLines = extractFieldComments(sourceText, property.getStart());
+    const { definition, description } = parseFieldComments(commentLines);
 
-    return { name, definition, description }
-  }
+    return { name, definition, description };
+  };
 }
 
 /**
@@ -212,44 +212,45 @@ function createExtractFieldFromProperty(
  */
 function createExtractRelationFieldFromProperty(
   parseFieldComments: (lines: readonly string[]) => {
-    readonly definition: string
-    readonly description?: string
-    readonly objectType?: 'strict' | 'loose'
+    readonly definition: string;
+    readonly description?: string;
+    readonly objectType?: "strict" | "loose";
   },
   prefix: SchemaPrefix,
 ) {
   return (property: Node, sourceText: string): FieldExtractionResult | null => {
-    if (!Node.isPropertyAssignment(property)) return null
+    if (!Node.isPropertyAssignment(property)) return null;
 
-    const name = property.getName()
-    if (!name) return null
+    const name = property.getName();
+    if (!name) return null;
 
-    const init = property.getInitializer()
+    const init = property.getInitializer();
     if (!Node.isCallExpression(init)) {
-      return { name, definition: '', description: undefined }
+      return { name, definition: "", description: undefined };
     }
 
-    const expr = init.getExpression()
+    const expr = init.getExpression();
     if (!Node.isIdentifier(expr)) {
-      return { name, definition: '', description: undefined }
+      return { name, definition: "", description: undefined };
     }
 
-    const fnName = expr.getText()
-    const args = init.getArguments()
+    const fnName = expr.getText();
+    const args = init.getArguments();
 
+    // args[0] is the referenced table identifier (e.g. `user` in `one(user, {...})`)
     if (!(args.length && Node.isIdentifier(args[0]))) {
-      return { name, definition: '', description: undefined }
+      return { name, definition: "", description: undefined };
     }
 
-    const refTable = args[0].getText()
-    const definition = generateRelationDefinition(fnName, refTable, prefix)
+    const refTable = args[0].getText();
+    const definition = generateRelationDefinition(fnName, refTable, prefix);
 
     const { description } = parseFieldComments(
       extractFieldComments(sourceText, property.getStart()),
-    )
+    );
 
-    return { name, definition, description }
-  }
+    return { name, definition, description };
+  };
 }
 
 /**
@@ -278,7 +279,7 @@ function extractFieldsFromProperties(
         ? extractRelationFieldFromProperty(prop, sourceText)
         : extractFieldFromProperty(prop, sourceText),
     )
-    .filter((field): field is FieldExtractionResult => field !== null)
+    .filter((field): field is FieldExtractionResult => field !== null);
 }
 
 /**
@@ -305,11 +306,11 @@ function createExtractFieldsFromCallExpression(
   isRelationFunctionCall: (call: CallExpression) => boolean,
 ) {
   return (callExpr: CallExpression, sourceText: string): FieldExtractionResult[] => {
-    const objectLiteral = findObjectLiteralInArgs(callExpr, findObjectLiteralExpression)
-    if (!objectLiteral) return []
+    const objectLiteral = findObjectLiteralInArgs(callExpr, findObjectLiteralExpression);
+    if (!objectLiteral) return [];
 
-    const isRelation = isRelationFunctionCall(callExpr)
-    const properties = objectLiteral.getProperties()
+    const isRelation = isRelationFunctionCall(callExpr);
+    const properties = objectLiteral.getProperties();
 
     return extractFieldsFromProperties(
       properties,
@@ -317,8 +318,8 @@ function createExtractFieldsFromCallExpression(
       extractFieldFromProperty,
       extractRelationFieldFromProperty,
       sourceText,
-    )
-  }
+    );
+  };
 }
 
 /**
@@ -330,16 +331,16 @@ function createExtractFieldsFromCallExpression(
  * @param commentPrefix - The comment prefix to use for parsing
  * @returns A function that extracts a schema from a variable declaration node
  */
-function buildSchemaExtractor(
+function makeSchemaExtractor(
   extractFieldsFromCall: (call: CallExpression, sourceText: string) => FieldExtractionResult[],
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
   parseFieldComments: (
     commentLines: readonly string[],
     tag: ValidationTag,
   ) => {
-    readonly definition: string
-    readonly description?: string
-    readonly objectType?: 'strict' | 'loose'
+    readonly definition: string;
+    readonly description?: string;
+    readonly objectType?: "strict" | "loose";
   },
   commentPrefix: ValidationTag,
 ) {
@@ -348,69 +349,69 @@ function buildSchemaExtractor(
     sourceText: string,
     originalSourceCode: string,
   ): SchemaExtractionResult | null => {
-    if (!Node.isVariableStatement(variableStatement)) return null
+    if (!Node.isVariableStatement(variableStatement)) return null;
 
-    const declarations = variableStatement.getDeclarations()
-    if (declarations.length === 0) return null
+    const declarations = variableStatement.getDeclarations();
+    if (declarations.length === 0) return null;
 
-    const declaration = declarations[0]
-    const name = declaration.getName()
-    if (!name) return null
+    // Take the first declaration (e.g. `export const user = mysqlTable(...)`)
+    const declaration = declarations[0];
+    const name = declaration.getName();
+    if (!name) return null;
 
     // Extract object type from table-level comments
     // Since ts-morph doesn't capture all comments properly, we'll parse the original source
-    const statementStart = variableStatement.getStart()
-    const originalSourceLines = originalSourceCode.split('\n') // Use original source, not AST sourceText
-    const commentLines: string[] = []
+    const statementStart = variableStatement.getStart();
+    const originalSourceLines = originalSourceCode.split("\n"); // Use original source, not AST sourceText
+    const commentLines: string[] = [];
 
     // Find the line number where this statement starts
-    let lineNumber = 0
-    let charCount = 0
-    for (let i = 0; i < originalSourceLines.length; i++) {
-      if (charCount >= statementStart) {
-        lineNumber = i
-        break
+    const lineNumber = (() => {
+      let acc = 0;
+      for (let i = 0; i < originalSourceLines.length; i++) {
+        if (acc >= statementStart) return i;
+        acc += originalSourceLines[i].length + 1; // +1 for the "\n" newline character
       }
-      charCount += originalSourceLines[i].length + 1 // +1 for newline
-    }
+      return 0;
+    })();
 
     // Collect comments immediately before the statement
     for (let i = lineNumber - 1; i >= 0; i--) {
-      const line = originalSourceLines[i]
-      const trimmedLine = trimString(line)
+      const line = originalSourceLines[i];
+      const trimmedLine = trimString(line);
 
       // Skip empty lines
-      if (trimmedLine === '') continue
+      if (trimmedLine === "") continue;
 
       // If it's a comment line, add it to our collection
-      if (startsWith(trimmedLine, '///')) {
-        commentLines.unshift(line)
+      if (startsWith(trimmedLine, "///")) {
+        commentLines.unshift(line);
       } else {
         // If we hit a non-comment line, stop collecting
-        break
+        break;
       }
     }
 
-    const { objectType } = parseFieldComments(commentLines, commentPrefix)
+    const { objectType } = parseFieldComments(commentLines, commentPrefix);
 
-    const initializer = declaration.getInitializer()
+    const initializer = declaration.getInitializer();
 
     if (Node.isCallExpression(initializer)) {
-      if (isRelationFunctionCall(initializer)) return null
-      const fields = extractFieldsFromCall(initializer, sourceText)
-      return { name, fields, objectType }
+      if (isRelationFunctionCall(initializer)) return null;
+      const fields = extractFieldsFromCall(initializer, sourceText);
+      return { name, fields, objectType };
     }
 
     if (Node.isObjectLiteralExpression(initializer)) {
       const fields = initializer
         .getProperties()
         .map((prop) => extractFieldFromProperty(prop, sourceText))
-        .filter((field): field is NonNullable<typeof field> => field !== null)
-      return { name, fields, objectType }
+        .filter((field): field is NonNullable<typeof field> => field !== null);
+      return { name, fields, objectType };
     }
 
-    return { name, fields: [], objectType }
-  }
+    return { name, fields: [], objectType };
+  };
 }
 
 /**
@@ -436,7 +437,7 @@ export function extractSchemas(
   lines: string[],
   library: ValidationLibrary,
 ): SchemaExtractionResult[] {
-  const sourceCode = lines.join('\n')
+  const sourceCode = lines.join("\n");
 
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -444,54 +445,54 @@ export function extractSchemas(
       allowJs: true,
       skipLibCheck: true,
     },
-  })
+  });
 
-  const sourceFile = project.createSourceFile('temp.ts', sourceCode)
-  const sourceText = sourceFile.getFullText()
+  const sourceFile = project.createSourceFile("temp.ts", sourceCode);
+  const sourceText = sourceFile.getFullText();
 
   const commentPrefix: ValidationTag =
-    library === 'zod'
-      ? '@z.'
-      : library === 'valibot'
-        ? '@v.'
-        : library === 'arktype'
-          ? '@a.'
-          : '@e.'
+    library === "zod"
+      ? "@z."
+      : library === "valibot"
+        ? "@v."
+        : library === "arktype"
+          ? "@a."
+          : "@e.";
   const schemaPrefix: SchemaPrefix =
-    library === 'zod'
-      ? 'z'
-      : library === 'valibot'
-        ? 'v'
-        : library === 'arktype'
-          ? 'type'
-          : 'Schema'
+    library === "zod"
+      ? "z"
+      : library === "valibot"
+        ? "v"
+        : library === "arktype"
+          ? "type"
+          : "Schema";
 
   const extractField = createExtractFieldFromProperty((lines) =>
     parseFieldComments(lines, commentPrefix),
-  )
+  );
   const extractRelationField = createExtractRelationFieldFromProperty(
     (lines) => parseFieldComments(lines, commentPrefix),
     schemaPrefix,
-  )
+  );
   const extractFieldsFromCall = createExtractFieldsFromCallExpression(
     extractField,
     extractRelationField,
     findObjectLiteralExpression,
     findObjectLiteralInArgs,
     isRelationFunctionCall,
-  )
-  const extractSchema = buildSchemaExtractor(
+  );
+  const extractSchema = makeSchemaExtractor(
     extractFieldsFromCall,
     extractField,
     parseFieldComments,
     commentPrefix,
-  )
+  );
 
   return sourceFile
     .getVariableStatements()
     .filter((stmt) => stmt.hasExportKeyword())
     .map((stmt) => extractSchema(stmt, sourceText, sourceCode))
-    .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
+    .filter((schema): schema is NonNullable<typeof schema> => schema !== null);
 }
 
 /**
@@ -510,7 +511,7 @@ export function extractSchemas(
  * ```
  */
 export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
-  return extractSchemas(lines, 'zod')
+  return extractSchemas(lines, "zod");
 }
 
 /**
@@ -529,7 +530,7 @@ export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
  * ```
  */
 export function extractValibotSchemas(lines: string[]): SchemaExtractionResult[] {
-  return extractSchemas(lines, 'valibot')
+  return extractSchemas(lines, "valibot");
 }
 
 /**
@@ -548,7 +549,7 @@ export function extractValibotSchemas(lines: string[]): SchemaExtractionResult[]
  * ```
  */
 export function extractArktypeSchemas(lines: string[]): SchemaExtractionResult[] {
-  return extractSchemas(lines, 'arktype')
+  return extractSchemas(lines, "arktype");
 }
 
 /**
@@ -567,7 +568,7 @@ export function extractArktypeSchemas(lines: string[]): SchemaExtractionResult[]
  * ```
  */
 export function extractEffectSchemas(lines: string[]): SchemaExtractionResult[] {
-  return extractSchemas(lines, 'effect')
+  return extractSchemas(lines, "effect");
 }
 
 /**
@@ -583,68 +584,69 @@ export function extractRelationSchemas(
   lines: string[],
   library: ValidationLibrary,
 ): RelationSchemaExtractionResult[] {
-  const sourceCode = lines.join('\n')
+  const sourceCode = lines.join("\n");
   const project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: { allowJs: true, skipLibCheck: true },
-  })
+  });
 
-  const sourceFile = project.createSourceFile('temp.ts', sourceCode)
-  const sourceText = sourceFile.getFullText()
+  const sourceFile = project.createSourceFile("temp.ts", sourceCode);
+  const sourceText = sourceFile.getFullText();
 
   const commentPrefix: ValidationTag =
-    library === 'zod'
-      ? '@z.'
-      : library === 'valibot'
-        ? '@v.'
-        : library === 'arktype'
-          ? '@a.'
-          : '@e.'
+    library === "zod"
+      ? "@z."
+      : library === "valibot"
+        ? "@v."
+        : library === "arktype"
+          ? "@a."
+          : "@e.";
   const schemaPrefix: SchemaPrefix =
-    library === 'zod'
-      ? 'z'
-      : library === 'valibot'
-        ? 'v'
-        : library === 'arktype'
-          ? 'type'
-          : 'Schema'
+    library === "zod"
+      ? "z"
+      : library === "valibot"
+        ? "v"
+        : library === "arktype"
+          ? "type"
+          : "Schema";
 
   // First, extract base schemas to get their objectType
-  const baseSchemas = extractSchemas(lines, library)
-  const baseSchemaMap = new Map(baseSchemas.map((schema) => [schema.name, schema.objectType]))
+  const baseSchemas = extractSchemas(lines, library);
+  const baseSchemaMap = new Map(baseSchemas.map((schema) => [schema.name, schema.objectType]));
 
   const extractField = createExtractFieldFromProperty((lines) =>
     parseFieldComments(lines, commentPrefix),
-  )
+  );
   const extractRelationField = createExtractRelationFieldFromProperty(
     (lines) => parseFieldComments(lines, commentPrefix),
     schemaPrefix,
-  )
+  );
   const extractFieldsFromCall = createExtractFieldsFromCallExpression(
     extractField,
     extractRelationField,
     findObjectLiteralExpression,
     findObjectLiteralInArgs,
     isRelationFunctionCall,
-  )
+  );
 
   function extract(declaration: Node): RelationSchemaExtractionResult | null {
-    if (!Node.isVariableDeclaration(declaration)) return null
-    const name = declaration.getName()
-    if (!name) return null
-    const initializer = declaration.getInitializer()
-    if (!Node.isCallExpression(initializer)) return null
-    if (!isRelationFunctionCall(initializer)) return null
-    const relArgs = initializer.getArguments()
-    const baseIdentifier = relArgs.length && Node.isIdentifier(relArgs[0]) ? relArgs[0] : undefined
-    if (!baseIdentifier) return null
-    const baseName = baseIdentifier.getText()
-    const fields = extractFieldsFromCall(initializer, sourceText)
+    if (!Node.isVariableDeclaration(declaration)) return null;
+    const name = declaration.getName();
+    if (!name) return null;
+    const initializer = declaration.getInitializer();
+    if (!Node.isCallExpression(initializer)) return null;
+    if (!isRelationFunctionCall(initializer)) return null;
+    const relArgs = initializer.getArguments();
+    // relArgs[0] is the base table identifier (e.g. `user` in `relations(user, ...)`)
+    const baseIdentifier = relArgs.length && Node.isIdentifier(relArgs[0]) ? relArgs[0] : undefined;
+    if (!baseIdentifier) return null;
+    const baseName = baseIdentifier.getText();
+    const fields = extractFieldsFromCall(initializer, sourceText);
 
     // Inherit objectType from the base schema
-    const objectType = baseSchemaMap.get(baseName)
+    const objectType = baseSchemaMap.get(baseName);
 
-    return { name, baseName, fields, objectType }
+    return { name, baseName, fields, objectType };
   }
 
   return sourceFile
@@ -652,7 +654,7 @@ export function extractRelationSchemas(
     .filter((stmt) => stmt.hasExportKeyword())
     .flatMap((stmt) => stmt.getDeclarations())
     .map((decl) => extract(decl))
-    .filter((schema): schema is NonNullable<typeof schema> => schema !== null)
+    .filter((schema): schema is NonNullable<typeof schema> => schema !== null);
 }
 
 /**
@@ -662,26 +664,26 @@ export function extractRelationSchemas(
  * @returns The extracted relations.
  */
 export function extractRelations(code: string[]): {
-  fromModel: string
-  toModel: string
-  fromField: string
-  toField: string
-  type: string
+  fromModel: string;
+  toModel: string;
+  fromField: string;
+  toField: string;
+  type: string;
 }[] {
   const relations: {
-    fromModel: string
-    toModel: string
-    fromField: string
-    toField: string
-    type: string
-  }[] = []
+    fromModel: string;
+    toModel: string;
+    fromField: string;
+    toField: string;
+    type: string;
+  }[] = [];
   for (const line of code) {
-    const relation = parseRelationLine(line)
+    const relation = parseRelationLine(line);
     if (relation) {
-      relations.push(relation)
+      relations.push(relation);
     }
   }
-  return relations
+  return relations;
 }
 
 /**
@@ -691,73 +693,80 @@ export function extractRelations(code: string[]): {
  * @returns Parsed relation or null if not a relation line.
  */
 export function parseRelationLine(line: string): {
-  fromModel: string
-  toModel: string
-  fromField: string
-  toField: string
-  type: string
+  fromModel: string;
+  toModel: string;
+  fromField: string;
+  toField: string;
+  type: string;
 } | null {
-  const trimmedLine = trimString(line)
-  const cleanLine = startsWith(trimmedLine, '///') ? trimmedLine.substring(3) : trimmedLine
-  const finalLine = trimString(cleanLine)
+  const trimmedLine = trimString(line);
+  // Remove "///" prefix (3 chars) if present
+  const cleanLine = startsWith(trimmedLine, "///") ? trimmedLine.substring(3) : trimmedLine;
+  const finalLine = trimString(cleanLine);
 
-  if (!startsWith(finalLine, '@relation')) return null
+  if (!startsWith(finalLine, "@relation")) return null;
 
-  const parts = splitByWhitespace(finalLine)
-  if (parts.length < 4) return null
+  const parts = splitByWhitespace(finalLine);
+  // Format: "@relation <from.field> <to.field> <type>" → 4 parts minimum
+  if (parts.length < 4) return null;
 
-  const fromParts = splitByDot(parts[1])
-  const toParts = splitByDot(parts[2])
+  // parts[1] = "User.id", parts[2] = "Post.userId" → split by "." into [model, field]
+  const fromParts = splitByDot(parts[1]);
+  const toParts = splitByDot(parts[2]);
 
-  if (fromParts.length !== 2 || toParts.length !== 2) return null
+  if (fromParts.length !== 2 || toParts.length !== 2) return null;
 
   return {
     fromModel: fromParts[0],
     fromField: fromParts[1],
     toModel: toParts[0],
     toField: toParts[1],
-    type: parts[3],
-  }
+    type: parts[3], // e.g. "one-to-many"
+  };
+}
+
+/** Valid relationship cardinality values */
+const RELATIONSHIP_SYMBOLS: Readonly<Record<string, string>> = {
+  "zero-one": "|o",
+  one: "||",
+  "zero-many": "}o",
+  many: "}|",
+};
+
+/**
+ * Convert a relationship cardinality string to its Mermaid ER symbol
+ *
+ * @param r - The relationship string (e.g., "one", "many", "zero-one", "zero-many")
+ * @returns The symbol or null if invalid
+ */
+export function toRelationSymbol(r: string): string | null {
+  return RELATIONSHIP_SYMBOLS[r] ?? null;
 }
 
 /**
  * Build a relation line from a string.
  *
- * @param input - The input string.
- * @returns The built relation line.
+ * @param input - The input string (e.g., "one-to-many", "zero-one-to-many-optional")
+ * @returns The built relation line, or null if the input is invalid
  */
-export function buildRelationLine(input: string): string {
-  const toSymbol = (r: string): string =>
-    r === 'zero-one'
-      ? '|o'
-      : r === 'one'
-        ? '||'
-        : r === 'zero-many'
-          ? '}o'
-          : r === 'many'
-            ? '}|'
-            : (() => {
-                throw new Error(`Invalid relationship: ${r}`)
-              })()
+export function makeRelationLine(
+  input: string,
+): { readonly ok: true; readonly value: string } | { readonly ok: false; readonly error: string } {
+  const parts = splitByTo(input);
+  if (!parts) return { ok: false, error: `Invalid input format: ${input}` };
 
-  const isRelationship = (r: string): boolean =>
-    ['zero-one', 'one', 'zero-many', 'many'].includes(r)
-
-  const parts = splitByTo(input)
-  if (!parts) throw new Error(`Invalid input format: ${input}`)
-
-  const [fromRaw, toRawWithOptional] = parts
-  const [toRaw, isOptional] = containsSubstring(toRawWithOptional, '-optional')
+  const [fromRaw, toRawWithOptional] = parts;
+  const [toRaw, isOptional] = containsSubstring(toRawWithOptional, "-optional")
     ? [removeOptionalSuffix(toRawWithOptional), true]
-    : [toRawWithOptional, false]
+    : [toRawWithOptional, false];
 
-  if (!(isRelationship(fromRaw) && isRelationship(toRaw))) {
-    throw new Error(`Invalid relationship string: ${input}`)
+  const fromSymbol = toRelationSymbol(fromRaw);
+  const toSymbolStr = toRelationSymbol(toRaw);
+
+  if (!fromSymbol || !toSymbolStr) {
+    return { ok: false, error: `Invalid relationship string: ${input}` };
   }
 
-  const fromSymbol = toSymbol(fromRaw)
-  const toSymbolStr = toSymbol(toRaw)
-  const connector = isOptional ? '..' : '--'
-
-  return `${fromSymbol}${connector}${toSymbolStr}`
+  const connector = isOptional ? ".." : "--";
+  return { ok: true, value: `${fromSymbol}${connector}${toSymbolStr}` };
 }

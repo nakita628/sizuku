@@ -10,7 +10,7 @@ import type {
   MergedSchema,
   MergedTableInfo,
   RuntimeSchemaInfo,
-} from './types.js'
+} from "./types.js";
 
 /**
  * Merge runtime schema information with extracted comments
@@ -24,31 +24,31 @@ export function mergeSchemaWithComments(
   comments: CommentInfo,
 ): MergedSchema {
   const mergedTables: MergedTableInfo[] = runtimeInfo.tables.map((table) => {
-    const tableAnnotations = comments.tableComments.get(table.tableName) || []
+    const tableAnnotations = comments.tableComments.get(table.tableName) || [];
 
     const mergedColumns: MergedColumnInfo[] = table.columns.map((column) => ({
       ...column,
       annotations: comments.columnComments.get(`${table.tableName}.${column.name}`) || [],
-    }))
+    }));
 
     return {
       ...table,
       columns: mergedColumns,
       annotations: tableAnnotations,
-    }
-  })
+    };
+  });
 
   const mergedRelations: MergedRelationInfo[] = runtimeInfo.relations.map((relation) => ({
     ...relation,
     annotations: [],
-  }))
+  }));
 
   return {
     dialect: runtimeInfo.dialect,
     tables: mergedTables,
     relations: mergedRelations,
     enums: runtimeInfo.enums,
-  }
+  };
 }
 
 /**
@@ -65,26 +65,26 @@ export function createMergedSchemaFromRuntime(runtimeInfo: RuntimeSchemaInfo): M
       annotations: [] as CommentAnnotation[],
     })),
     annotations: [] as CommentAnnotation[],
-  }))
+  }));
 
   const mergedRelations: MergedRelationInfo[] = runtimeInfo.relations.map((relation) => ({
     ...relation,
     annotations: [],
-  }))
+  }));
 
   return {
     dialect: runtimeInfo.dialect,
     tables: mergedTables,
     relations: mergedRelations,
     enums: runtimeInfo.enums,
-  }
+  };
 }
 
 /**
  * Find a table in the merged schema by name
  */
 export function findTable(schema: MergedSchema, tableName: string): MergedTableInfo | undefined {
-  return schema.tables.find((t) => t.tableName === tableName)
+  return schema.tables.find((t) => t.tableName === tableName);
 }
 
 /**
@@ -95,15 +95,15 @@ export function findColumn(
   tableName: string,
   columnName: string,
 ): MergedColumnInfo | undefined {
-  const table = findTable(schema, tableName)
-  return table?.columns.find((c) => c.name === columnName)
+  const table = findTable(schema, tableName);
+  return table?.columns.find((c) => c.name === columnName);
 }
 
 /**
  * Get all relations for a specific table
  */
 export function getTableRelations(schema: MergedSchema, tableName: string): MergedRelationInfo[] {
-  return schema.relations.filter((r) => r.sourceTable === tableName)
+  return schema.relations.filter((r) => r.sourceTable === tableName);
 }
 
 /**
@@ -112,19 +112,19 @@ export function getTableRelations(schema: MergedSchema, tableName: string): Merg
 export function getForeignKeysTo(
   schema: MergedSchema,
   tableName: string,
-): Array<{ sourceTable: string; fk: MergedTableInfo['foreignKeys'][0] }> {
+): Array<{ sourceTable: string; fk: MergedTableInfo["foreignKeys"][0] }> {
   const results: Array<{
-    sourceTable: string
-    fk: MergedTableInfo['foreignKeys'][0]
-  }> = []
+    sourceTable: string;
+    fk: MergedTableInfo["foreignKeys"][0];
+  }> = [];
 
   for (const table of schema.tables) {
     for (const fk of table.foreignKeys) {
       if (fk.foreignTable === tableName) {
-        results.push({ sourceTable: table.tableName, fk })
+        results.push({ sourceTable: table.tableName, fk });
       }
     }
   }
 
-  return results
+  return results;
 }

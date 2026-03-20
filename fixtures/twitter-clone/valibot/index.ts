@@ -1,4 +1,4 @@
-import * as v from 'valibot'
+import * as v from "valibot";
 
 export const UsersSchema = v.object({
   /**
@@ -16,7 +16,7 @@ export const UsersSchema = v.object({
   /**
    * User's biography or profile description
    */
-  bio: v.optional(v.string(), ''),
+  bio: v.optional(v.string(), ""),
   /**
    * User's unique email address
    */
@@ -53,9 +53,9 @@ export const UsersSchema = v.object({
    * Flag indicating if user has unread notifications
    */
   hasNotification: v.optional(v.boolean(), false),
-})
+});
 
-export type Users = v.InferInput<typeof UsersSchema>
+export type Users = v.InferOutput<typeof UsersSchema>;
 
 export const PostsSchema = v.object({
   /**
@@ -78,9 +78,9 @@ export const PostsSchema = v.object({
    * Foreign key referencing users.id
    */
   userId: v.pipe(v.string(), v.uuid()),
-})
+});
 
-export type Posts = v.InferInput<typeof PostsSchema>
+export type Posts = v.InferOutput<typeof PostsSchema>;
 
 export const FollowsSchema = v.object({
   /**
@@ -95,9 +95,9 @@ export const FollowsSchema = v.object({
    * Timestamp when the follow relationship was created
    */
   createdAt: v.pipe(v.string(), v.isoDate()),
-})
+});
 
-export type Follows = v.InferInput<typeof FollowsSchema>
+export type Follows = v.InferOutput<typeof FollowsSchema>;
 
 export const LikesSchema = v.object({
   /**
@@ -112,9 +112,9 @@ export const LikesSchema = v.object({
    * Timestamp when the like relationship was created
    */
   createdAt: v.pipe(v.string(), v.isoDate()),
-})
+});
 
-export type Likes = v.InferInput<typeof LikesSchema>
+export type Likes = v.InferOutput<typeof LikesSchema>;
 
 export const CommentsSchema = v.object({
   /**
@@ -141,9 +141,9 @@ export const CommentsSchema = v.object({
    * Foreign key referencing posts.id
    */
   postId: v.pipe(v.string(), v.uuid()),
-})
+});
 
-export type Comments = v.InferInput<typeof CommentsSchema>
+export type Comments = v.InferOutput<typeof CommentsSchema>;
 
 export const NotificationsSchema = v.object({
   /**
@@ -162,9 +162,9 @@ export const NotificationsSchema = v.object({
    * Timestamp when the notification was created
    */
   createdAt: v.pipe(v.string(), v.isoDate()),
-})
+});
 
-export type Notifications = v.InferInput<typeof NotificationsSchema>
+export type Notifications = v.InferOutput<typeof NotificationsSchema>;
 
 export const UsersRelationsSchema = v.object({
   ...UsersSchema.entries,
@@ -174,46 +174,46 @@ export const UsersRelationsSchema = v.object({
   followers: v.array(FollowsSchema),
   following: v.array(FollowsSchema),
   likes: v.array(LikesSchema),
-})
+});
 
-export type UsersRelations = v.InferInput<typeof UsersRelationsSchema>
+export type UsersRelations = v.InferOutput<typeof UsersRelationsSchema>;
 
 export const PostsRelationsSchema = v.object({
   ...PostsSchema.entries,
   user: UsersSchema,
   comments: v.array(CommentsSchema),
   likes: v.array(LikesSchema),
-})
+});
 
-export type PostsRelations = v.InferInput<typeof PostsRelationsSchema>
+export type PostsRelations = v.InferOutput<typeof PostsRelationsSchema>;
 
 export const FollowsRelationsSchema = v.object({
   ...FollowsSchema.entries,
   follower: UsersSchema,
   following: UsersSchema,
-})
+});
 
-export type FollowsRelations = v.InferInput<typeof FollowsRelationsSchema>
+export type FollowsRelations = v.InferOutput<typeof FollowsRelationsSchema>;
 
 export const LikesRelationsSchema = v.object({
   ...LikesSchema.entries,
   user: UsersSchema,
   post: PostsSchema,
-})
+});
 
-export type LikesRelations = v.InferInput<typeof LikesRelationsSchema>
+export type LikesRelations = v.InferOutput<typeof LikesRelationsSchema>;
 
 export const CommentsRelationsSchema = v.object({
   ...CommentsSchema.entries,
   user: UsersSchema,
   post: PostsSchema,
-})
+});
 
-export type CommentsRelations = v.InferInput<typeof CommentsRelationsSchema>
+export type CommentsRelations = v.InferOutput<typeof CommentsRelationsSchema>;
 
 export const NotificationsRelationsSchema = v.object({
   ...NotificationsSchema.entries,
   user: UsersSchema,
-})
+});
 
-export type NotificationsRelations = v.InferInput<typeof NotificationsRelationsSchema>
+export type NotificationsRelations = v.InferOutput<typeof NotificationsRelationsSchema>;

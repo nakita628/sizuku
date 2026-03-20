@@ -1,66 +1,82 @@
-import path from 'node:path'
-import { fmt } from '../../format/index.js'
-import { mkdir, writeFile } from '../../fsp/index.js'
-import { extractRelationSchemas, extractSchemas } from '../../helper/extract-schemas.js'
-import { fieldDefinitions, inferArktype, makeCapitalized } from '../../utils/index.js'
+import path from "node:path";
+import { fmt } from "../../format/index.js";
+import { mkdir, writeFile } from "../../fsp/index.js";
+import { extractRelationSchemas, extractSchemas } from "../../helper/extract-schemas.js";
+import { fieldDefinitions, inferArktype, makeCapitalized } from "../../utils/index.js";
 
+/**
+ * Generate ArkType type() definition from a schema
+ * @param schema - The schema to generate ArkType definition from
+ * @param comment - Whether to include JSDoc comments in the generated code
+ */
 function arktype(
   schema: {
-    readonly name: string
+    readonly name: string;
     readonly fields: {
-      readonly name: string
-      readonly definition: string
-      readonly description?: string
-    }[]
-    readonly objectType?: 'strict' | 'loose'
+      readonly name: string;
+      readonly definition: string;
+      readonly description?: string;
+    }[];
+    readonly objectType?: "strict" | "loose";
   },
   comment: boolean,
 ): string {
-  const inner = fieldDefinitions(schema, comment)
-  return `export const ${makeCapitalized(schema.name)}Schema = type({${inner}})`
+  const inner = fieldDefinitions(schema, comment);
+  return `export const ${makeCapitalized(schema.name)}Schema = type({${inner}})`;
 }
 
+/**
+ * Generate ArkType schema code with optional type inference
+ * @param schema - The schema to generate code from
+ * @param comment - Whether to include JSDoc comments in the generated code
+ * @param type - Whether to include type inference
+ */
 export function arktypeCode(
   schema: {
-    readonly name: string
+    readonly name: string;
     readonly fields: {
-      readonly name: string
-      readonly definition: string
-      readonly description?: string
-    }[]
-    readonly objectType?: 'strict' | 'loose'
+      readonly name: string;
+      readonly definition: string;
+      readonly description?: string;
+    }[];
+    readonly objectType?: "strict" | "loose";
   },
   comment: boolean,
   type: boolean,
 ): string {
-  const arktypeSchema = arktype(schema, comment)
+  const arktypeSchema = arktype(schema, comment);
   if (type) {
-    const arktypeInfer = inferArktype(schema.name)
-    return `${arktypeSchema}\n\n${arktypeInfer}\n`
+    const arktypeInfer = inferArktype(schema.name);
+    return `${arktypeSchema}\n\n${arktypeInfer}\n`;
   }
-  return `${arktypeSchema}\n`
+  return `${arktypeSchema}\n`;
 }
 
+/**
+ * Generate ArkType relation schema code with spread base schema
+ * @param schema - The relation schema with base model reference
+ * @param withType - Whether to include type inference
+ */
 export function makeRelationArktypeCode(
   schema: {
-    readonly name: string
-    readonly baseName: string
+    readonly name: string;
+    readonly baseName: string;
     readonly fields: {
-      readonly name: string
-      readonly definition: string
-      readonly description?: string
-    }[]
-    readonly objectType?: 'strict' | 'loose'
+      readonly name: string;
+      readonly definition: string;
+      readonly description?: string;
+    }[];
+    readonly objectType?: "strict" | "loose";
   },
   withType: boolean,
 ): string {
-  const base = schema.baseName
-  const relName = `${schema.name}Schema`
-  const baseSchema = `${makeCapitalized(base)}Schema`
-  const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(',')
-  const obj = `\nexport const ${makeCapitalized(relName)} = type({...${baseSchema}.t,${fields}})`
-  if (withType) return `${obj}\n\n${inferArktype(schema.name)}\n`
-  return `${obj}`
+  const base = schema.baseName;
+  const relName = `${schema.name}Schema`;
+  const baseSchema = `${makeCapitalized(base)}Schema`;
+  const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(",");
+  const obj = `\nexport const ${makeCapitalized(relName)} = type({...${baseSchema}.t,${fields}})`;
+  if (withType) return `${obj}\n\n${inferArktype(schema.name)}\n`;
+  return `${obj}`;
 }
 
 /**
@@ -79,51 +95,45 @@ export async function sizukuArktype(
   relation?: boolean,
 ): Promise<
   | {
-      readonly ok: true
-      readonly value: undefined
+      readonly ok: true;
+      readonly value: undefined;
     }
   | {
-      readonly ok: false
-      readonly error: string
+      readonly ok: false;
+      readonly error: string;
     }
 > {
-  const importLine = `import { type } from 'arktype'`
+  const importLine = `import { type } from 'arktype'`;
 
-  const baseSchemas = extractSchemas(code, 'arktype')
-  const relationSchemas = extractRelationSchemas(code, 'arktype')
+  const baseSchemas = extractSchemas(code, "arktype");
+  const relationSchemas = extractRelationSchemas(code, "arktype");
 
   const arktypeGeneratedCode = [
     importLine,
-    '',
+    "",
     ...baseSchemas.map((schema) => arktypeCode(schema, comment ?? false, type ?? false)),
     ...(relation
       ? relationSchemas.map((schema) => makeRelationArktypeCode(schema, type ?? false))
       : []),
-  ].join('\n')
+  ].join("\n");
 
-  const mkdirResult = await mkdir(path.dirname(output))
+  const mkdirResult = await mkdir(path.dirname(output));
   if (!mkdirResult.ok) {
     return {
       ok: false,
       error: mkdirResult.error,
-    }
+    };
   }
-  const fmtResult = await fmt(arktypeGeneratedCode)
-  if (!fmtResult.ok) {
-    return {
-      ok: false,
-      error: fmtResult.error,
-    }
-  }
-  const writeFileResult = await writeFile(output, fmtResult.value)
+  const formatted = await fmt(arktypeGeneratedCode);
+  const writeFileResult = await writeFile(output, formatted);
   if (!writeFileResult.ok) {
     return {
       ok: false,
       error: writeFileResult.error,
-    }
+    };
   }
   return {
     ok: true,
     value: undefined,
-  }
+  };
 }

@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Schema } from "effect";
 
 export const UserSchema = Schema.Struct({
   /**
@@ -24,7 +24,7 @@ export const UserSchema = Schema.Struct({
   /**
    * User role
    */
-  role: Schema.Literal('ADMIN', 'USER', 'GUEST'),
+  role: Schema.Literal("ADMIN", "USER", "GUEST"),
   /**
    * Email verification status
    */
@@ -45,9 +45,9 @@ export const UserSchema = Schema.Struct({
    * Last login timestamp
    */
   lastLoginAt: Schema.NullOr(Schema.DateTimeUtc),
-})
+});
 
-export type User = Schema.Schema.Type<typeof UserSchema>
+export type User = Schema.Schema.Type<typeof UserSchema>;
 
 export const OAuthAccountSchema = Schema.Struct({
   /**
@@ -61,7 +61,7 @@ export const OAuthAccountSchema = Schema.Struct({
   /**
    * OAuth provider
    */
-  provider: Schema.Literal('GOOGLE', 'GITHUB', 'FACEBOOK', 'TWITTER', 'APPLE'),
+  provider: Schema.Literal("GOOGLE", "GITHUB", "FACEBOOK", "TWITTER", "APPLE"),
   /**
    * Provider account ID
    */
@@ -82,9 +82,9 @@ export const OAuthAccountSchema = Schema.Struct({
    * Account creation timestamp
    */
   createdAt: Schema.DateTimeUtc,
-})
+});
 
-export type OAuthAccount = Schema.Schema.Type<typeof OAuthAccountSchema>
+export type OAuthAccount = Schema.Schema.Type<typeof OAuthAccountSchema>;
 
 export const TwoFactorSettingSchema = Schema.Struct({
   /**
@@ -102,7 +102,7 @@ export const TwoFactorSettingSchema = Schema.Struct({
   /**
    * 2FA method
    */
-  method: Schema.NullOr(Schema.Literal('TOTP', 'SMS', 'EMAIL')),
+  method: Schema.NullOr(Schema.Literal("TOTP", "SMS", "EMAIL")),
   /**
    * TOTP secret (encrypted)
    */
@@ -127,9 +127,9 @@ export const TwoFactorSettingSchema = Schema.Struct({
    * Last update timestamp
    */
   updatedAt: Schema.DateTimeUtc,
-})
+});
 
-export type TwoFactorSetting = Schema.Schema.Type<typeof TwoFactorSettingSchema>
+export type TwoFactorSetting = Schema.Schema.Type<typeof TwoFactorSettingSchema>;
 
 export const RefreshTokenSchema = Schema.Struct({
   /**
@@ -164,9 +164,9 @@ export const RefreshTokenSchema = Schema.Struct({
    * Revocation status
    */
   revoked: Schema.Boolean,
-})
+});
 
-export type RefreshToken = Schema.Schema.Type<typeof RefreshTokenSchema>
+export type RefreshToken = Schema.Schema.Type<typeof RefreshTokenSchema>;
 
 export const EmailVerificationSchema = Schema.Struct({
   /**
@@ -189,9 +189,9 @@ export const EmailVerificationSchema = Schema.Struct({
    * Creation timestamp
    */
   createdAt: Schema.DateTimeUtc,
-})
+});
 
-export type EmailVerification = Schema.Schema.Type<typeof EmailVerificationSchema>
+export type EmailVerification = Schema.Schema.Type<typeof EmailVerificationSchema>;
 
 export const PasswordResetSchema = Schema.Struct({
   /**
@@ -218,9 +218,9 @@ export const PasswordResetSchema = Schema.Struct({
    * Creation timestamp
    */
   createdAt: Schema.DateTimeUtc,
-})
+});
 
-export type PasswordReset = Schema.Schema.Type<typeof PasswordResetSchema>
+export type PasswordReset = Schema.Schema.Type<typeof PasswordResetSchema>;
 
 export const UserRelationsSchema = Schema.Struct({
   ...UserSchema.fields,
@@ -229,41 +229,43 @@ export const UserRelationsSchema = Schema.Struct({
   refreshTokens: Schema.Array(RefreshTokenSchema),
   emailVerifications: Schema.Array(EmailVerificationSchema),
   passwordResets: Schema.Array(PasswordResetSchema),
-})
+});
 
-export type UserRelations = Schema.Schema.Type<typeof UserRelationsSchema>
+export type UserRelations = Schema.Schema.Type<typeof UserRelationsSchema>;
 
 export const OAuthAccountRelationsSchema = Schema.Struct({
   ...OAuthAccountSchema.fields,
   user: UserSchema,
-})
+});
 
-export type OAuthAccountRelations = Schema.Schema.Type<typeof OAuthAccountRelationsSchema>
+export type OAuthAccountRelations = Schema.Schema.Type<typeof OAuthAccountRelationsSchema>;
 
 export const TwoFactorSettingRelationsSchema = Schema.Struct({
   ...TwoFactorSettingSchema.fields,
   user: UserSchema,
-})
+});
 
-export type TwoFactorSettingRelations = Schema.Schema.Type<typeof TwoFactorSettingRelationsSchema>
+export type TwoFactorSettingRelations = Schema.Schema.Type<typeof TwoFactorSettingRelationsSchema>;
 
 export const RefreshTokenRelationsSchema = Schema.Struct({
   ...RefreshTokenSchema.fields,
   user: UserSchema,
-})
+});
 
-export type RefreshTokenRelations = Schema.Schema.Type<typeof RefreshTokenRelationsSchema>
+export type RefreshTokenRelations = Schema.Schema.Type<typeof RefreshTokenRelationsSchema>;
 
 export const EmailVerificationRelationsSchema = Schema.Struct({
   ...EmailVerificationSchema.fields,
   user: UserSchema,
-})
+});
 
-export type EmailVerificationRelations = Schema.Schema.Type<typeof EmailVerificationRelationsSchema>
+export type EmailVerificationRelations = Schema.Schema.Type<
+  typeof EmailVerificationRelationsSchema
+>;
 
 export const PasswordResetRelationsSchema = Schema.Struct({
   ...PasswordResetSchema.fields,
   user: UserSchema,
-})
+});
 
-export type PasswordResetRelations = Schema.Schema.Type<typeof PasswordResetRelationsSchema>
+export type PasswordResetRelations = Schema.Schema.Type<typeof PasswordResetRelationsSchema>;

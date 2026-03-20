@@ -12,10 +12,10 @@ export {
   createEmptyCommentInfo,
   extractCommentsFromSource,
   parseAnnotations,
-} from './comment-extractor.js'
+} from "./comment-extractor.js";
 
 // Schema loader exports
-export { loadSchemaFromModule, loadSchemaFromPath } from './schema-loader.js'
+export { loadSchemaFromModule, loadSchemaFromPath } from "./schema-loader.js";
 // Schema merger exports
 export {
   createMergedSchemaFromRuntime,
@@ -24,7 +24,7 @@ export {
   getForeignKeysTo,
   getTableRelations,
   mergeSchemaWithComments,
-} from './schema-merger.js'
+} from "./schema-merger.js";
 // Type exports
 export type {
   ColumnCommentMap,
@@ -42,4 +42,4 @@ export type {
   RuntimeSchemaInfo,
   RuntimeTableInfo,
   TableCommentMap,
-} from './types.js'
+} from "./types.js";

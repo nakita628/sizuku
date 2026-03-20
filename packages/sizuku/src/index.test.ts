@@ -1,25 +1,25 @@
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { sizuku as main } from './cli/index.js'
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { sizuku as main } from "./cli/index.js";
 
 // Test run
 // pnpm vitest run ./src/index.test.ts
 
-describe('main', () => {
-  const origCwd = process.cwd()
-  let tmpdir: string
+describe("main", () => {
+  const origCwd = process.cwd();
+  let tmpdir: string;
 
   beforeEach(() => {
-    vi.resetModules()
-    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'sizuku-main-'))
-    process.chdir(tmpdir)
+    vi.resetModules();
+    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-main-"));
+    process.chdir(tmpdir);
 
     // Create test schema file
-    const schemaDir = path.join(tmpdir, 'db')
-    fs.mkdirSync(schemaDir, { recursive: true })
-    const schemaFile = path.join(schemaDir, 'schema.ts')
+    const schemaDir = path.join(tmpdir, "db");
+    fs.mkdirSync(schemaDir, { recursive: true });
+    const schemaFile = path.join(schemaDir, "schema.ts");
     const schemaContent = `import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
 
 export const user = mysqlTable('user', {
@@ -31,21 +31,19 @@ export const user = mysqlTable('user', {
   /// @z.string().min(1).max(50)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))
   name: varchar('name', { length: 50 }).notNull(),
-})`
-    fs.writeFileSync(schemaFile, schemaContent, 'utf-8')
-  })
+})`;
+    fs.writeFileSync(schemaFile, schemaContent, "utf-8");
+  });
 
   afterEach(() => {
-    process.chdir(origCwd)
-    fs.rmSync(tmpdir, { recursive: true, force: true })
-  })
+    process.chdir(origCwd);
+    fs.rmSync(tmpdir, { recursive: true, force: true });
+  });
 
-  it('main success', async () => {
+  it("main success", async () => {
     // Create config file
-    const configFile = path.join(tmpdir, 'sizuku.config.ts')
-    const configContent = `import { defineConfig } from './src/config/index.js'
-
-export default defineConfig({
+    const configFile = path.join(tmpdir, "sizuku.config.ts");
+    const configContent = `export default {
   input: 'db/schema.ts',
   zod: {
     output: 'zod/index.ts',
@@ -62,32 +60,33 @@ export default defineConfig({
   mermaid: {
     output: 'mermaid-er/ER.md',
   },
-})`
-    fs.writeFileSync(configFile, configContent, 'utf-8')
+}`;
+    fs.writeFileSync(configFile, configContent, "utf-8");
 
     // Verify files exist
-    expect(fs.existsSync(configFile)).toBe(true)
-    expect(fs.existsSync(path.join(tmpdir, 'db/schema.ts'))).toBe(true)
-    expect(process.cwd()).toBe(tmpdir)
+    expect(fs.existsSync(configFile)).toBe(true);
+    expect(fs.existsSync(path.join(tmpdir, "db/schema.ts"))).toBe(true);
+    expect(process.cwd()).toBe(tmpdir);
 
-    const result = await main()
-    if (!result.ok) {
-      console.error('Main failed:', result.error)
-    }
-    expect(result.ok).toBe(true)
+    const result = await main();
+    expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value).toContain('Generated Zod schema at:')
-      expect(result.value).toContain('Generated Valibot schema at:')
-      expect(result.value).toContain('Generated Mermaid ER at:')
+      expect(result.value).toBe(
+        [
+          "💧 Generated Zod schema at: zod/index.ts",
+          "💧 Generated Valibot schema at: valibot/index.ts",
+          "💧 Generated Mermaid ER at: mermaid-er/ER.md",
+        ].join("\n"),
+      );
     }
-  })
+  });
 
-  it('main error', async () => {
+  it("main error", async () => {
     // No config file, should fail
-    const result = await main()
-    expect(result.ok).toBe(false)
+    const result = await main();
+    expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain('Config not found:')
+      expect(result.error).toBe(`❌ Config not found: ${path.join(tmpdir, "sizuku.config.ts")}`);
     }
-  })
-})
+  });
+});

@@ -2,132 +2,90 @@
  * Runtime types for extracting schema information from Drizzle ORM
  */
 
-export type DrizzleDialect = 'pg' | 'mysql' | 'sqlite'
+export type DrizzleDialect = "pg" | "mysql" | "sqlite";
 
-/**
- * Runtime column information extracted from Drizzle table
- */
-export interface RuntimeColumnInfo {
-  name: string
-  sqlType: string
-  isPrimaryKey: boolean
-  isNotNull: boolean
-  isUnique: boolean
-  hasDefault: boolean
-  defaultValue?: unknown
-  isAutoIncrement?: boolean
-}
+export type RuntimeColumnInfo = {
+  readonly name: string;
+  readonly sqlType: string;
+  readonly isPrimaryKey: boolean;
+  readonly isNotNull: boolean;
+  readonly isUnique: boolean;
+  readonly hasDefault: boolean;
+  readonly defaultValue?: unknown;
+  readonly isAutoIncrement?: boolean;
+};
 
-/**
- * Foreign key information extracted from table references
- */
-export interface RuntimeForeignKey {
-  sourceTable: string
-  sourceColumns: string[]
-  foreignTable: string
-  foreignColumns: string[]
-  onDelete?: string
-  onUpdate?: string
-}
+export type RuntimeForeignKey = {
+  readonly sourceTable: string;
+  readonly sourceColumns: string[];
+  readonly foreignTable: string;
+  readonly foreignColumns: string[];
+  readonly onDelete?: string;
+  readonly onUpdate?: string;
+};
 
-/**
- * Runtime table information extracted from Drizzle table
- */
-export interface RuntimeTableInfo {
-  name: string
-  tableName: string
-  schema?: string
-  dialect: DrizzleDialect
-  columns: RuntimeColumnInfo[]
-  foreignKeys: RuntimeForeignKey[]
-  primaryKeyColumns?: string[]
-}
+export type RuntimeTableInfo = {
+  readonly name: string;
+  readonly tableName: string;
+  readonly schema?: string;
+  readonly dialect: DrizzleDialect;
+  readonly columns: RuntimeColumnInfo[];
+  readonly foreignKeys: RuntimeForeignKey[];
+  readonly primaryKeyColumns?: string[];
+};
 
-/**
- * Relation information extracted from Drizzle relations() function
- */
-export interface RuntimeRelationInfo {
-  type: 'one' | 'many'
-  sourceTable: string
-  referencedTable: string
-  sourceColumns?: string[]
-  foreignColumns?: string[]
-  relationName?: string
-}
+export type RuntimeRelationInfo = {
+  readonly type: "one" | "many";
+  readonly sourceTable: string;
+  readonly referencedTable: string;
+  readonly sourceColumns?: string[];
+  readonly foreignColumns?: string[];
+  readonly relationName?: string;
+};
 
-/**
- * Enum information extracted from schema (PostgreSQL only)
- */
-export interface RuntimeEnumInfo {
-  name: string
-  values: string[]
-}
+export type RuntimeEnumInfo = {
+  readonly name: string;
+  readonly values: string[];
+};
 
-/**
- * Complete runtime schema information
- */
-export interface RuntimeSchemaInfo {
-  dialect: DrizzleDialect
-  tables: RuntimeTableInfo[]
-  relations: RuntimeRelationInfo[]
-  enums: RuntimeEnumInfo[]
-}
+export type RuntimeSchemaInfo = {
+  readonly dialect: DrizzleDialect;
+  readonly tables: RuntimeTableInfo[];
+  readonly relations: RuntimeRelationInfo[];
+  readonly enums: RuntimeEnumInfo[];
+};
 
-/**
- * Comment annotations extracted from source code
- */
-export interface CommentAnnotation {
-  type: 'zod' | 'valibot' | 'arktype' | 'effect' | 'description' | 'relation' | 'custom'
-  key: string
-  value: string
-}
+export type CommentAnnotation = {
+  readonly type: "zod" | "valibot" | "arktype" | "effect" | "description" | "relation" | "custom";
+  readonly key: string;
+  readonly value: string;
+};
 
-/**
- * Column comments map: tableName.columnName -> annotations
- */
-export type ColumnCommentMap = Map<string, CommentAnnotation[]>
+export type ColumnCommentMap = Map<string, CommentAnnotation[]>;
 
-/**
- * Table comments map: tableName -> annotations
- */
-export type TableCommentMap = Map<string, CommentAnnotation[]>
+export type TableCommentMap = Map<string, CommentAnnotation[]>;
 
-/**
- * Combined comment information
- */
-export interface CommentInfo {
-  tableComments: TableCommentMap
-  columnComments: ColumnCommentMap
-}
+export type CommentInfo = {
+  readonly tableComments: TableCommentMap;
+  readonly columnComments: ColumnCommentMap;
+};
 
-/**
- * Merged column information with runtime data and comments
- */
-export interface MergedColumnInfo extends RuntimeColumnInfo {
-  annotations: CommentAnnotation[]
-}
+export type MergedColumnInfo = RuntimeColumnInfo & {
+  readonly annotations: CommentAnnotation[];
+};
 
-/**
- * Merged table information with runtime data and comments
- */
-export interface MergedTableInfo extends Omit<RuntimeTableInfo, 'columns'> {
-  columns: MergedColumnInfo[]
-  annotations: CommentAnnotation[]
-}
+export type MergedTableInfo = Omit<RuntimeTableInfo, "columns"> & {
+  readonly columns: MergedColumnInfo[];
+  readonly annotations: CommentAnnotation[];
+};
 
-/**
- * Merged relation information with additional metadata
- */
-export interface MergedRelationInfo extends RuntimeRelationInfo {
-  annotations?: CommentAnnotation[]
-}
+export type MergedRelationInfo = RuntimeRelationInfo & {
+  readonly annotations?: CommentAnnotation[];
+};
 
-/**
- * Complete merged schema combining runtime and comment information
- */
-export interface MergedSchema {
-  dialect: DrizzleDialect
-  tables: MergedTableInfo[]
-  relations: MergedRelationInfo[]
-  enums: RuntimeEnumInfo[]
-}
+export type MergedSchema = {
+  readonly dialect: DrizzleDialect;
+  readonly tables: MergedTableInfo[];
+  readonly relations: MergedRelationInfo[];
+  readonly enums: RuntimeEnumInfo[];
+};
