@@ -416,8 +416,19 @@ export function inferInput(
  * ========================================================================== */
 
 /**
- * @param schema
- * @returns
+ * Generate a JSDoc comment block from a description
+ * @param description - The description text
+ * @returns The formatted JSDoc comment block
+ */
+export function makeCommentBlock(description: string): string {
+  if (!description) return "";
+  return `/**\n * ${description}\n */\n`;
+}
+
+/**
+ * Generate field definitions with optional JSDoc comments
+ * @param schema - The schema with fields to generate definitions for
+ * @param comment - Whether to include JSDoc comments
  */
 export function fieldDefinitions(
   schema: {
@@ -432,7 +443,7 @@ export function fieldDefinitions(
 ): string {
   return schema.fields
     .map(({ name, definition, description }) => {
-      const commentCode = description && comment ? `/**\n* ${description}\n*/\n` : "";
+      const commentCode = description && comment ? makeCommentBlock(description) : "";
       return `${commentCode}${name}:${definition}`;
     })
     .join(",\n");

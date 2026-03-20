@@ -136,20 +136,20 @@ describe("zodCode E-Commerce pattern", () => {
       true,
     );
     expect(result).toBe(`export const OrderSchema = z.object({/**
-* Order ID
-*/
+ * Order ID
+ */
 id:z.uuid(),
 /**
-* Order status
-*/
+ * Order status
+ */
 status:z.enum(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
 /**
-* Total amount in cents
-*/
+ * Total amount in cents
+ */
 totalAmount:z.number().int().nonnegative(),
 /**
-* Foreign key referencing Customer.id
-*/
+ * Foreign key referencing Customer.id
+ */
 customerId:z.uuid()})
 
 export type Order = z.infer<typeof OrderSchema>
@@ -219,12 +219,12 @@ describe("zodCode", () => {
     );
 
     const expected = `export const UserSchema = z.object({/**
-* Primary key
-*/
+ * Primary key
+ */
 id:z.uuid(),
 /**
-* Display name
-*/
+ * Display name
+ */
 name:z.string().min(1).max(50)})
 
 export type User = z.infer<typeof UserSchema>
@@ -307,11 +307,11 @@ export type UserRelations = z.infer<typeof UserRelationsSchema>
 
 describe("sizukuZod", () => {
   afterEach(() => {
-    if (!fs.existsSync("tmp")) {
-      fs.rmdirSync("tmp", { recursive: true });
-    }
     if (fs.existsSync("tmp/zod-test.ts")) {
       fs.unlinkSync("tmp/zod-test.ts");
+    }
+    if (fs.existsSync("tmp")) {
+      fs.rmdirSync("tmp", { recursive: true });
     }
   });
 

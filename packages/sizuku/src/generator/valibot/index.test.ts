@@ -135,16 +135,16 @@ describe("valibotCode E-Commerce pattern", () => {
       true,
     );
     expect(result).toBe(`export const OrderSchema = v.object({/**
-* Order ID
-*/
+ * Order ID
+ */
 id:v.pipe(v.string(), v.uuid()),
 /**
-* Order status
-*/
+ * Order status
+ */
 status:v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
 /**
-* Total amount in cents
-*/
+ * Total amount in cents
+ */
 totalAmount:v.pipe(v.number(), v.integer(), v.minValue(0))})
 
 export type Order = v.InferOutput<typeof OrderSchema>
@@ -215,12 +215,12 @@ describe("valibotCode", () => {
     );
 
     const expected = `export const UserSchema = v.object({/**
-* Primary key
-*/
+ * Primary key
+ */
 id:v.pipe(v.string(), v.uuid()),
 /**
-* Display name
-*/
+ * Display name
+ */
 name:v.pipe(v.string(), v.minLength(1), v.maxLength(50))})
 
 export type User = v.InferOutput<typeof UserSchema>
@@ -307,11 +307,11 @@ export type UserRelations = v.InferOutput<typeof UserRelationsSchema>
 
 describe("sizukuValibot", () => {
   afterEach(() => {
-    if (!fs.existsSync("tmp")) {
-      fs.rmdirSync("tmp", { recursive: true });
-    }
     if (fs.existsSync("tmp/valibot-test.ts")) {
       fs.unlinkSync("tmp/valibot-test.ts");
+    }
+    if (fs.existsSync("tmp")) {
+      fs.rmdirSync("tmp", { recursive: true });
     }
   });
 

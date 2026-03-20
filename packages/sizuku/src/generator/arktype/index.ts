@@ -4,6 +4,11 @@ import { mkdir, writeFile } from "../../fsp/index.js";
 import { extractRelationSchemas, extractSchemas } from "../../helper/extract-schemas.js";
 import { fieldDefinitions, inferArktype, makeCapitalized } from "../../utils/index.js";
 
+/**
+ * Generate ArkType type() definition from a schema
+ * @param schema - The schema to generate ArkType definition from
+ * @param comment - Whether to include JSDoc comments in the generated code
+ */
 function arktype(
   schema: {
     readonly name: string;
@@ -20,6 +25,12 @@ function arktype(
   return `export const ${makeCapitalized(schema.name)}Schema = type({${inner}})`;
 }
 
+/**
+ * Generate ArkType schema code with optional type inference
+ * @param schema - The schema to generate code from
+ * @param comment - Whether to include JSDoc comments in the generated code
+ * @param type - Whether to include type inference
+ */
 export function arktypeCode(
   schema: {
     readonly name: string;
@@ -41,6 +52,11 @@ export function arktypeCode(
   return `${arktypeSchema}\n`;
 }
 
+/**
+ * Generate ArkType relation schema code with spread base schema
+ * @param schema - The relation schema with base model reference
+ * @param withType - Whether to include type inference
+ */
 export function makeRelationArktypeCode(
   schema: {
     readonly name: string;

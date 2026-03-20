@@ -12,6 +12,7 @@ import {
   isNonEmpty,
   joinWithSpace,
   makeCapitalized,
+  makeCommentBlock,
   makeValibotObject,
   makeZodObject,
   parseFieldComments,
@@ -410,6 +411,16 @@ export const postRelations = relations(post, ({ one }) => ({
     });
   });
 
+  describe("makeCommentBlock", () => {
+    it("generates multi-line JSDoc", () => {
+      expect(makeCommentBlock("Primary key")).toBe("/**\n * Primary key\n */\n");
+    });
+
+    it("returns empty string for empty description", () => {
+      expect(makeCommentBlock("")).toBe("");
+    });
+  });
+
   describe("fieldDefinitions", () => {
     it.concurrent("fieldDefinitions comment true", () => {
       const result = fieldDefinitions(
@@ -428,12 +439,12 @@ export const postRelations = relations(post, ({ one }) => ({
       );
 
       const expected = `/**
-* Primary key
-*/
+ * Primary key
+ */
 id:z.uuid(),
 /**
-* Display name
-*/
+ * Display name
+ */
 name:z.string().min(1).max(50)`;
 
       expect(result).toBe(expected);
@@ -501,16 +512,16 @@ name:z.string().min(1).max(50)`;
         true,
       );
       expect(result).toBe(`/**
-* Order ID
-*/
+ * Order ID
+ */
 id:z.uuid(),
 /**
-* Total amount in cents
-*/
+ * Total amount in cents
+ */
 totalAmount:z.number().int().nonnegative(),
 /**
-* Customer note
-*/
+ * Customer note
+ */
 note:z.string().optional()`);
     });
 
@@ -545,8 +556,7 @@ note:z.string().optional()`);
           "@z.",
         ),
       ).toStrictEqual({
-        definition:
-          "z.enum(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+        definition: "z.enum(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
         description: "Order status",
         objectType: undefined,
       });
@@ -563,8 +573,7 @@ note:z.string().optional()`);
           "@v.",
         ),
       ).toStrictEqual({
-        definition:
-          "v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
+        definition: "v.picklist(['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])",
         description: "Order status",
         objectType: undefined,
       });
@@ -573,9 +582,7 @@ note:z.string().optional()`);
 
   describe("E-Commerce pattern - parseRelationLine", () => {
     it.concurrent("parses Order → OrderItem relation", () => {
-      expect(
-        parseRelationLine("@relation order.id orderItem.orderId one-to-many"),
-      ).toStrictEqual({
+      expect(parseRelationLine("@relation order.id orderItem.orderId one-to-many")).toStrictEqual({
         fromModel: "order",
         fromField: "id",
         toModel: "orderItem",
@@ -585,21 +592,19 @@ note:z.string().optional()`);
     });
 
     it.concurrent("parses Customer → Order relation", () => {
-      expect(
-        parseRelationLine("@relation customer.id order.customerId one-to-many"),
-      ).toStrictEqual({
-        fromModel: "customer",
-        fromField: "id",
-        toModel: "order",
-        toField: "customerId",
-        type: "one-to-many",
-      });
+      expect(parseRelationLine("@relation customer.id order.customerId one-to-many")).toStrictEqual(
+        {
+          fromModel: "customer",
+          fromField: "id",
+          toModel: "order",
+          toField: "customerId",
+          type: "one-to-many",
+        },
+      );
     });
 
     it.concurrent("parses User → Profile one-to-one relation", () => {
-      expect(
-        parseRelationLine("@relation user.id profile.userId one-to-one"),
-      ).toStrictEqual({
+      expect(parseRelationLine("@relation user.id profile.userId one-to-one")).toStrictEqual({
         fromModel: "user",
         fromField: "id",
         toModel: "profile",

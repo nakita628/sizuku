@@ -47,11 +47,11 @@ const TEST_CODE = [
 
 describe("sizukuEffect", () => {
   afterEach(() => {
-    if (!fs.existsSync("tmp")) {
-      fs.rmdirSync("tmp", { recursive: true });
-    }
     if (fs.existsSync("tmp/effect-test.ts")) {
       fs.unlinkSync("tmp/effect-test.ts");
+    }
+    if (fs.existsSync("tmp")) {
+      fs.rmdirSync("tmp", { recursive: true });
     }
   });
 

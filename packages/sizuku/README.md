@@ -247,22 +247,34 @@ export type PostRelations = v.InferInput<typeof PostRelationsSchema>;
 import { type } from "arktype";
 
 export const UserSchema = type({
-  /** Primary key */
+  /**
+   * Primary key
+   */
   id: "string.uuid",
-  /** Display name */
+  /**
+   * Display name
+   */
   name: "1 <= string <= 50",
 });
 
 export type User = typeof UserSchema.infer;
 
 export const PostSchema = type({
-  /** Primary key */
+  /**
+   * Primary key
+   */
   id: "string.uuid",
-  /** Article title */
+  /**
+   * Article title
+   */
   title: "1 <= string <= 100",
-  /** Body content (no length limit) */
+  /**
+   * Body content (no length limit)
+   */
   content: "1 <= string <= 65535",
-  /** Foreign key referencing User.id */
+  /**
+   * Foreign key referencing User.id
+   */
   userId: "string.uuid",
 });
 
@@ -275,22 +287,34 @@ export type Post = typeof PostSchema.infer;
 import { Schema } from "effect";
 
 export const UserSchema = Schema.Struct({
-  /** Primary key */
+  /**
+   * Primary key
+   */
   id: Schema.UUID,
-  /** Display name */
+  /**
+   * Display name
+   */
   name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
 });
 
 export type User = Schema.Schema.Type<typeof UserSchema>;
 
 export const PostSchema = Schema.Struct({
-  /** Primary key */
+  /**
+   * Primary key
+   */
   id: Schema.UUID,
-  /** Article title */
+  /**
+   * Article title
+   */
   title: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
-  /** Body content (no length limit) */
+  /**
+   * Body content (no length limit)
+   */
   content: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535)),
-  /** Foreign key referencing User.id */
+  /**
+   * Foreign key referencing User.id
+   */
   userId: Schema.UUID,
 });
 
