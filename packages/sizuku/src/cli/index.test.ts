@@ -8,20 +8,16 @@ const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
 
 Usage:
   sizuku <input> -o <output> [options]
-  sizuku                              (config mode: reads sizuku.config.ts)
 
 Options:
-  -o, --output <path>               Output file path (required in direct mode)
+  -o <path>                         Output file path
   --zod                             Generate Zod validation schema
   --valibot                         Generate Valibot validation schema
   --arktype                         Generate ArkType validation schema
   --effect                          Generate Effect Schema validation schema
   --zod-version <version>           Zod variant: 'v4' | 'mini' | '@hono/zod-openapi'
-  --export-types                    Export inferred types (default: true)
   --no-export-types                 Do not export inferred types
-  --with-comment                    Add JSDoc comments from schema annotations (default: true)
   --no-with-comment                 Do not add JSDoc comments
-  --with-relation                   Generate relation schemas (default: true)
   --no-with-relation                Do not generate relation schemas
   -h, --help                        Display this help message`;
 

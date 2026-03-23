@@ -27,12 +27,7 @@
   "type": "module",
   "main": "dist/index.mjs",
   "types": "dist/index.d.mts",
-  "exports": {
-    "./config": {
-      "types": "./dist/config/index.d.mts",
-      "import": "./dist/config/index.mjs"
-    }
-  },
+  "exports": {},
   "publishConfig": {
     "access": "public"
   },
@@ -46,9 +41,7 @@
     "@resvg/resvg-js": "^2.6.2",
     "@softwaretechnik/dbml-renderer": "^1.0.31",
     "oxfmt": "^0.40.0",
-    "ts-morph": "^27.0.2",
-    "tsx": "^4.20.6",
-    "zod": "^4.1.13"
+    "ts-morph": "^27.0.2"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
