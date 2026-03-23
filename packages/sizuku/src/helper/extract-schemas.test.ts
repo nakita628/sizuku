@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { extractSchemas, extractValibotSchemas, extractZodSchemas } from "./extract-schemas.js";
+import {
+  extractArktypeSchemas,
+  extractEffectSchemas,
+  extractSchemas,
+  extractValibotSchemas,
+  extractZodSchemas,
+} from "./extract-schemas.js";
 
 // Test run
 // pnpm vitest run ./src/helper/extract-schemas.test.ts
@@ -205,5 +211,58 @@ describe("extractSchemas", () => {
     const resultValibot = extractSchemas(sourceCodeWithObjectTypes, "valibot");
     expect(resultValibot[0].objectType).toBe("strict");
     expect(resultValibot[1].objectType).toBe("loose");
+  });
+});
+
+describe("extractArktypeSchemas", () => {
+  it("extracts arktype schema fields", () => {
+    const code = [
+      "export const user = mysqlTable('user', {",
+      '  /// @a."string.uuid"',
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      '  /// @a."string>=1"',
+      "  name: varchar('name', { length: 50 }).notNull(),",
+      "})",
+    ];
+    const result = extractArktypeSchemas(code);
+    expect(result.length).toBe(1);
+    expect(result[0].name).toBe("user");
+    expect(result[0].fields.length).toBe(2);
+    expect(result[0].fields[0].name).toBe("id");
+    expect(result[0].fields[0].definition).toBe('"string.uuid"');
+    expect(result[0].fields[1].name).toBe("name");
+    expect(result[0].fields[1].definition).toBe('"string>=1"');
+  });
+});
+
+describe("extractEffectSchemas", () => {
+  it("extracts effect schema fields", () => {
+    const code = [
+      "export const user = mysqlTable('user', {",
+      "  /// @e.Schema.UUID",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  /// @e.Schema.String.pipe(Schema.minLength(1))",
+      "  name: varchar('name', { length: 50 }).notNull(),",
+      "})",
+    ];
+    const result = extractEffectSchemas(code);
+    expect(result.length).toBe(1);
+    expect(result[0].name).toBe("user");
+    expect(result[0].fields.length).toBe(2);
+    expect(result[0].fields[0].name).toBe("id");
+    expect(result[0].fields[0].definition).toBe("Schema.UUID");
+    expect(result[0].fields[1].name).toBe("name");
+    expect(result[0].fields[1].definition).toBe("Schema.String.pipe(Schema.minLength(1))");
+  });
+
+  it("returns empty array for code without @e. annotations", () => {
+    const code = [
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "})",
+    ];
+    const result = extractEffectSchemas(code);
+    expect(result.length).toBe(1);
+    expect(result[0].fields[0].definition).toBe("");
   });
 });

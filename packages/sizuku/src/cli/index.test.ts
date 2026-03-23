@@ -403,6 +403,16 @@ describe("sizuku argv parsing", () => {
     process.argv = originalArgv;
   });
 
+  it("returns help text when no arguments provided", async () => {
+    process.argv = ["node", "sizuku"];
+    const { sizuku } = await import("./index.js");
+    const result = await sizuku();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toBe(HELP_TEXT);
+    }
+  });
+
   it("returns help text when input starts with -", async () => {
     process.argv = ["node", "sizuku", "-o", "output.dbml"];
     const { sizuku } = await import("./index.js");
@@ -481,7 +491,9 @@ describe("sizuku argv parsing", () => {
     const result = await sizuku();
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.startsWith("Failed to read input:")).toBe(true);
+      expect(result.error).toBe(
+        "Failed to read input: ENOENT: no such file or directory, open '/tmp/nonexistent-schema-file.ts'",
+      );
     }
   });
 });
@@ -960,7 +972,9 @@ describe("E2E: sizuku() full pipeline", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.startsWith("Failed to read input:")).toBe(true);
+      expect(result.error).toBe(
+        "Failed to read input: ENOENT: no such file or directory, open '/tmp/does-not-exist-12345.ts'",
+      );
     }
   });
 });

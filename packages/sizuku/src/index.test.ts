@@ -7,6 +7,23 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // Test run
 // pnpm vitest run ./src/index.test.ts
 
+const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
+
+Usage:
+  sizuku <input> -o <output> [options]
+
+Options:
+  -o <path>                         Output file path
+  --zod                             Generate Zod validation schema
+  --valibot                         Generate Valibot validation schema
+  --arktype                         Generate ArkType validation schema
+  --effect                          Generate Effect Schema validation schema
+  --zod-version <version>           Zod variant: 'v4' | 'mini' | '@hono/zod-openapi'
+  --no-export-types                 Do not export inferred types
+  --no-with-comment                 Do not add JSDoc comments
+  --no-with-relation                Do not generate relation schemas
+  -h, --help                        Display this help message`;
+
 // ============================================================================
 // CLI binary path
 // ============================================================================
@@ -141,21 +158,28 @@ export const TwoFactorConfirmation = sqliteTable(
 // ============================================================================
 
 describe("CLI binary: error handling", () => {
+  it("outputs help text with no arguments", async () => {
+    const result = await runCli([]);
+    expect(result.stdout).toBe(HELP_TEXT);
+    expect(result.stderr).toBe("");
+  });
+
   it("outputs help text with --help", async () => {
     const result = await runCli(["--help"]);
-    expect(result.stdout.startsWith("💧 sizuku")).toBe(true);
-    expect(result.stdout.includes("--zod")).toBe(true);
-    expect(result.stdout.includes("--valibot")).toBe(true);
+    expect(result.stdout).toBe(HELP_TEXT);
+    expect(result.stderr).toBe("");
   });
 
   it("outputs help text with -h", async () => {
     const result = await runCli(["-h"]);
-    expect(result.stdout.startsWith("💧 sizuku")).toBe(true);
+    expect(result.stdout).toBe(HELP_TEXT);
+    expect(result.stderr).toBe("");
   });
 
   it("outputs help when input starts with dash", async () => {
     const result = await runCli(["-o", "output.dbml"]);
-    expect(result.stderr.startsWith("💧 sizuku")).toBe(true);
+    expect(result.stderr).toBe(HELP_TEXT);
+    expect(result.stdout).toBe("");
   });
 
   it("outputs error when -o flag is missing", async () => {
@@ -191,7 +215,9 @@ describe("CLI binary: error handling", () => {
 
   it("outputs error when input file does not exist", async () => {
     const result = await runCli(["/tmp/nonexistent-file-12345.ts", "-o", "/tmp/out.dbml"]);
-    expect(result.stderr.startsWith("Failed to read input:")).toBe(true);
+    expect(result.stderr).toBe(
+      "Failed to read input: ENOENT: no such file or directory, open '/tmp/nonexistent-file-12345.ts'",
+    );
   });
 });
 
@@ -453,7 +479,9 @@ describe("CLI binary: stdout/stderr separation", () => {
     const result = await runCli(["/tmp/nonexistent.ts", "-o", "/tmp/out.dbml"]);
 
     expect(result.stdout).toBe("");
-    expect(result.stderr.length > 0).toBe(true);
+    expect(result.stderr).toBe(
+      "Failed to read input: ENOENT: no such file or directory, open '/tmp/nonexistent.ts'",
+    );
   });
 
   it("validation error: stderr has message, stdout is empty", async () => {
