@@ -2,7 +2,28 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { detectOutputType, stripImports } from "./index.js";
+import { detectOutputType, parseFlags, stripImports } from "./index.js";
+
+const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
+
+Usage:
+  sizuku <input> -o <output> [options]
+  sizuku                              (config mode: reads sizuku.config.ts)
+
+Options:
+  -o, --output <path>               Output file path (required in direct mode)
+  --zod                             Generate Zod validation schema
+  --valibot                         Generate Valibot validation schema
+  --arktype                         Generate ArkType validation schema
+  --effect                          Generate Effect Schema validation schema
+  --zod-version <version>           Zod variant: 'v4' | 'mini' | '@hono/zod-openapi'
+  --export-types                    Export inferred types (default: true)
+  --no-export-types                 Do not export inferred types
+  --with-comment                    Add JSDoc comments from schema annotations (default: true)
+  --no-with-comment                 Do not add JSDoc comments
+  --with-relation                   Generate relation schemas (default: true)
+  --no-with-relation                Do not generate relation schemas
+  -h, --help                        Display this help message`;
 
 // ============================================================================
 // Fixture: MySQL EC schema (User + Order + OrderItem with relations)
@@ -77,8 +98,8 @@ describe("detectOutputType", () => {
     expect(detectOutputType("ER.md")).toBe("mermaid");
   });
 
-  it("returns null for unsupported extension .ts", () => {
-    expect(detectOutputType("output.ts")).toBe(null);
+  it("returns typescript for .ts extension", () => {
+    expect(detectOutputType("output.ts")).toBe("typescript");
   });
 
   it("returns null for unsupported extension .json", () => {
@@ -236,6 +257,101 @@ export const post = mysqlTable('post', {
 });
 
 // ============================================================================
+// parseFlags
+// ============================================================================
+
+describe("parseFlags", () => {
+  it("returns all defaults when no flags", () => {
+    expect(parseFlags(["schema.ts", "-o", "out.ts"])).toStrictEqual({
+      zod: false,
+      valibot: false,
+      arktype: false,
+      effect: false,
+      zodVersion: undefined,
+      exportTypes: true,
+      withComment: true,
+      withRelation: true,
+    });
+  });
+
+  it("parses --zod flag", () => {
+    const flags = parseFlags(["schema.ts", "-o", "out.ts", "--zod"]);
+    expect(flags.zod).toBe(true);
+    expect(flags.valibot).toBe(false);
+  });
+
+  it("parses --valibot flag", () => {
+    const flags = parseFlags(["schema.ts", "-o", "out.ts", "--valibot"]);
+    expect(flags.valibot).toBe(true);
+    expect(flags.zod).toBe(false);
+  });
+
+  it("parses --arktype flag", () => {
+    const flags = parseFlags(["schema.ts", "-o", "out.ts", "--arktype"]);
+    expect(flags.arktype).toBe(true);
+  });
+
+  it("parses --effect flag", () => {
+    const flags = parseFlags(["schema.ts", "-o", "out.ts", "--effect"]);
+    expect(flags.effect).toBe(true);
+  });
+
+  it("parses --no-export-types", () => {
+    const flags = parseFlags(["--zod", "--no-export-types"]);
+    expect(flags.exportTypes).toBe(false);
+  });
+
+  it("parses --no-with-comment", () => {
+    const flags = parseFlags(["--zod", "--no-with-comment"]);
+    expect(flags.withComment).toBe(false);
+  });
+
+  it("parses --no-with-relation", () => {
+    const flags = parseFlags(["--zod", "--no-with-relation"]);
+    expect(flags.withRelation).toBe(false);
+  });
+
+  it("parses --zod-version=mini (equals syntax)", () => {
+    const flags = parseFlags(["--zod", "--zod-version=mini"]);
+    expect(flags.zodVersion).toBe("mini");
+  });
+
+  it("parses --zod-version v4 (space syntax)", () => {
+    const flags = parseFlags(["--zod", "--zod-version", "v4"]);
+    expect(flags.zodVersion).toBe("v4");
+  });
+
+  it("parses --zod-version=@hono/zod-openapi", () => {
+    const flags = parseFlags(["--zod", "--zod-version=@hono/zod-openapi"]);
+    expect(flags.zodVersion).toBe("@hono/zod-openapi");
+  });
+
+  it("returns undefined zodVersion for invalid value", () => {
+    const flags = parseFlags(["--zod", "--zod-version=invalid"]);
+    expect(flags.zodVersion).toBe(undefined);
+  });
+
+  it("combines multiple flags", () => {
+    const flags = parseFlags([
+      "--valibot",
+      "--no-export-types",
+      "--no-with-comment",
+      "--no-with-relation",
+    ]);
+    expect(flags).toStrictEqual({
+      zod: false,
+      valibot: true,
+      arktype: false,
+      effect: false,
+      zodVersion: undefined,
+      exportTypes: false,
+      withComment: false,
+      withRelation: false,
+    });
+  });
+});
+
+// ============================================================================
 // sizuku() - argv parsing integration (via process.argv mock)
 // ============================================================================
 
@@ -246,13 +362,33 @@ describe("sizuku argv parsing", () => {
     process.argv = originalArgv;
   });
 
-  it("returns error when input starts with -", async () => {
+  it("returns help text when input starts with -", async () => {
     process.argv = ["node", "sizuku", "-o", "output.dbml"];
     const { sizuku } = await import("./index.js");
     const result = await sizuku();
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe("Missing input file path");
+      expect(result.error).toBe(HELP_TEXT);
+    }
+  });
+
+  it("returns help text with --help flag", async () => {
+    process.argv = ["node", "sizuku", "--help"];
+    const { sizuku } = await import("./index.js");
+    const result = await sizuku();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toBe(HELP_TEXT);
+    }
+  });
+
+  it("returns help text with -h flag", async () => {
+    process.argv = ["node", "sizuku", "-h"];
+    const { sizuku } = await import("./index.js");
+    const result = await sizuku();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toBe(HELP_TEXT);
     }
   });
 
@@ -283,19 +419,19 @@ describe("sizuku argv parsing", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toBe(
-        "Unsupported output format: output.txt. Supported: .dbml, .png, .md",
+        "Unsupported output format: output.txt. Supported: .dbml, .png, .md, .ts",
       );
     }
   });
 
-  it("returns error for unsupported output format .ts", async () => {
+  it("returns error for .ts output without schema flag", async () => {
     process.argv = ["node", "sizuku", "schema.ts", "-o", "output.ts"];
     const { sizuku } = await import("./index.js");
     const result = await sizuku();
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toBe(
-        "Unsupported output format: output.ts. Supported: .dbml, .png, .md",
+        "Specify --zod, --valibot, --arktype, or --effect for .ts output",
       );
     }
   });
