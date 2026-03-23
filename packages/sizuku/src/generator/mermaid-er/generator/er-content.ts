@@ -16,7 +16,7 @@ const RELATIONSHIPS = {
  * @param relation - The relation info
  * @returns The Mermaid ER relation line
  */
-function generateRelationLine(relation: {
+export function makeRelationLine(relation: {
   readonly fromModel: string;
   readonly toModel: string;
   readonly fromField: string;
@@ -38,7 +38,7 @@ function generateRelationLine(relation: {
  * @param relations - The relations to deduplicate
  * @returns The deduplicated relations
  */
-function removeDuplicateRelations(relations: readonly string[]): readonly string[] {
+export function removeDuplicateRelations(relations: readonly string[]): readonly string[] {
   return [...new Set(relations)];
 }
 
@@ -67,7 +67,7 @@ export function erContent(
   }[],
 ): string {
   // Generate relation lines
-  const relationLines = removeDuplicateRelations(relations.map(generateRelationLine));
+  const relationLines = removeDuplicateRelations(relations.map(makeRelationLine));
 
   // Generate table definitions
   const tableDefinitions = tables.flatMap((table) => [
@@ -88,7 +88,7 @@ export function erContent(
 /**
  * Convert SQL type to a simplified Mermaid type
  */
-function simplifyType(sqlType: string): string {
+export function simplifyType(sqlType: string): string {
   const lower = sqlType.toLowerCase();
   if (lower.includes("int") || lower.includes("serial")) return "int";
   if (lower.includes("varchar") || lower.includes("text") || lower.includes("char"))

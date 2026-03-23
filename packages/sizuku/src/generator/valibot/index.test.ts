@@ -254,6 +254,47 @@ name:v.pipe(v.string(), v.minLength(1), v.maxLength(50))})
 `;
     expect(result).toBe(expected);
   });
+
+  it.concurrent("valibotCode strictObject", () => {
+    const result = valibotCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "v.string()" }],
+        objectType: "strict",
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const ConfigSchema = v.strictObject({key:v.string()})\n`);
+  });
+
+  it.concurrent("valibotCode looseObject", () => {
+    const result = valibotCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "v.string()" }],
+        objectType: "loose",
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const ConfigSchema = v.looseObject({key:v.string()})\n`);
+  });
+
+  it.concurrent("valibotCode strictObject with type", () => {
+    const result = valibotCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "v.string()" }],
+        objectType: "strict",
+      },
+      false,
+      true,
+    );
+    expect(result).toBe(
+      `export const ConfigSchema = v.strictObject({key:v.string()})\n\nexport type Config = v.InferOutput<typeof ConfigSchema>\n`,
+    );
+  });
 });
 
 describe("relationValibotCode", () => {

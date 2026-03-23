@@ -2,21 +2,19 @@
 
 # Sizuku
 
-**[Sizuku](https://www.npmjs.com/package/sizuku)** is a tool that generates validation schemas for Zod, Valibot, ArkType, and Effect Schema, as well as ER diagrams, from [Drizzle](https://orm.drizzle.team/) schemas.
+**[Sizuku](https://www.npmjs.com/package/sizuku)** is a CLI tool that generates validation schemas for Zod, Valibot, ArkType, and Effect Schema, as well as ER diagrams, from [Drizzle](https://orm.drizzle.team/) schemas.
 
 ## Features
 
-- 💎 Automatically generates [Zod](https://zod.dev/) schemas from your Drizzle schema
-- 🤖 Automatically generates [Valibot](https://valibot.dev/) schemas from your Drizzle schema
-- 🏹 Automatically generates [ArkType](https://arktype.io/) schemas from your Drizzle schema
-- ⚡ Automatically generates [Effect Schema](https://effect.website/docs/schema/introduction/) from your Drizzle schema
+- 💎 Generates [Zod](https://zod.dev/) schemas from your Drizzle schema
+- 🤖 Generates [Valibot](https://valibot.dev/) schemas from your Drizzle schema
+- 🏹 Generates [ArkType](https://arktype.io/) schemas from your Drizzle schema
+- ⚡ Generates [Effect Schema](https://effect.website/docs/schema/introduction/) from your Drizzle schema
 - 📊 Creates [Mermaid](https://mermaid.js.org/) ER diagrams
 - 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files
-- 🖼️ Outputs ER diagrams as **PNG** images using [dbml-renderer](https://github.com/softwaretechnik-berlin/dbml-renderer)
+- 🖼️ Outputs ER diagrams as **PNG** images
 
-## Getting Started
-
-### Installation
+## Installation
 
 ```bash
 npm install -D sizuku
@@ -24,9 +22,47 @@ npm install -D sizuku
 
 ## Usage
 
-### Example
+```
+sizuku <input> -o <output> [options]
+```
 
-Prepare schema.ts:
+### Options
+
+```
+-o <path>                         Output file path
+--zod                             Generate Zod validation schema
+--valibot                         Generate Valibot validation schema
+--arktype                         Generate ArkType validation schema
+--effect                          Generate Effect Schema validation schema
+--zod-version <version>           Zod variant: 'v4' | 'mini' | '@hono/zod-openapi'
+--no-export-types                 Do not export inferred types
+--no-with-comment                 Do not add JSDoc comments
+--no-with-relation                Do not generate relation schemas
+-h, --help                        Display help message
+```
+
+### Quick Start
+
+```sh
+# Generate Zod schema
+npx sizuku db/schema.ts -o zod/index.ts --zod
+
+# Generate Valibot schema
+npx sizuku db/schema.ts -o valibot/index.ts --valibot
+
+# Generate DBML
+npx sizuku db/schema.ts -o docs/schema.dbml
+
+# Generate ER diagram PNG
+npx sizuku db/schema.ts -o docs/er.png
+
+# Generate Mermaid ER diagram
+npx sizuku db/schema.ts -o docs/ER.md
+```
+
+## Schema Annotations
+
+Add `///` comments to your Drizzle schema fields with library-specific annotations:
 
 ```ts
 import { relations } from "drizzle-orm";
@@ -47,32 +83,24 @@ export const user = mysqlTable("user", {
   name: varchar("name", { length: 50 }).notNull(),
 });
 
-/// @relation user.id post.userId one-to-many
 export const post = mysqlTable("post", {
-  /// Primary key
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
   /// @a."string.uuid"
   /// @e.Schema.UUID
   id: varchar("id", { length: 36 }).primaryKey(),
-  /// Article title
   /// @z.string().min(1).max(100)
   /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))
   /// @a."1 <= string <= 100"
   /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))
   title: varchar("title", { length: 100 }).notNull(),
-  /// Body content (no length limit)
-  /// @z.string().min(1).max(65535)
-  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
-  /// @a."1 <= string <= 65535"
-  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
-  content: varchar("content", { length: 65535 }).notNull(),
-  /// Foreign key referencing User.id
   /// @z.uuid()
   /// @v.pipe(v.string(), v.uuid())
   /// @a."string.uuid"
   /// @e.Schema.UUID
-  userId: varchar("user_id", { length: 36 }).notNull(),
+  userId: varchar("user_id", { length: 36 })
+    .notNull()
+    .references(() => user.id),
 });
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -87,65 +115,15 @@ export const postRelations = relations(post, ({ one }) => ({
 }));
 ```
 
-Prepare sizuku.config.ts:
+Annotations are optional. Generators work without them (DBML/Mermaid don't need annotations at all).
 
-```ts
-import { defineConfig } from "sizuku/config";
-
-export default defineConfig({
-  input: "db/schema.ts",
-  zod: {
-    output: "zod/index.ts",
-    comment: true,
-    type: true,
-    zod: "v4",
-    relation: true,
-  },
-  valibot: {
-    output: "valibot/index.ts",
-    comment: true,
-    type: true,
-    relation: true,
-  },
-  arktype: {
-    output: "arktype/index.ts",
-    comment: true,
-    type: true,
-    relation: true,
-  },
-  effect: {
-    output: "effect/index.ts",
-    comment: true,
-    type: true,
-    relation: true,
-  },
-  mermaid: {
-    output: "mermaid-er/ER.md",
-  },
-  dbml: {
-    output: "docs/schema.dbml",
-  },
-});
-```
-
-Run Sizuku:
-
-```sh
-npx sizuku
-```
-
-Output:
-
-```
-💧 Generated Zod schema at: zod/index.ts
-💧 Generated Valibot schema at: valibot/index.ts
-💧 Generated ArkType schema at: arktype/index.ts
-💧 Generated Effect schema at: effect/index.ts
-💧 Generated Mermaid ER at: mermaid-er/ER.md
-💧 Generated DBML at: docs/schema.dbml
-```
+## Output Examples
 
 ### Zod
+
+```sh
+npx sizuku db/schema.ts -o zod/index.ts --zod
+```
 
 ```ts
 import * as z from "zod";
@@ -163,37 +141,19 @@ export const UserSchema = z.object({
 
 export type User = z.infer<typeof UserSchema>;
 
-export const PostSchema = z.object({
-  /**
-   * Primary key
-   */
-  id: z.uuid(),
-  /**
-   * Article title
-   */
-  title: z.string().min(1).max(100),
-  /**
-   * Body content (no length limit)
-   */
-  content: z.string().min(1).max(65535),
-  /**
-   * Foreign key referencing User.id
-   */
-  userId: z.uuid(),
+export const UserRelationsSchema = z.object({
+  ...UserSchema.shape,
+  posts: z.array(PostSchema),
 });
 
-export type Post = z.infer<typeof PostSchema>;
-
-export const UserRelationsSchema = z.object({ ...UserSchema.shape, posts: z.array(PostSchema) });
-
 export type UserRelations = z.infer<typeof UserRelationsSchema>;
-
-export const PostRelationsSchema = z.object({ ...PostSchema.shape, user: UserSchema });
-
-export type PostRelations = z.infer<typeof PostRelationsSchema>;
 ```
 
 ### Valibot
+
+```sh
+npx sizuku db/schema.ts -o valibot/index.ts --valibot
+```
 
 ```ts
 import * as v from "valibot";
@@ -211,115 +171,65 @@ export const UserSchema = v.object({
 
 export type User = v.InferOutput<typeof UserSchema>;
 
-export const PostSchema = v.object({
-  /**
-   * Primary key
-   */
-  id: v.pipe(v.string(), v.uuid()),
-  /**
-   * Article title
-   */
-  title: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
-  /**
-   * Body content (no length limit)
-   */
-  content: v.pipe(v.string(), v.minLength(1), v.maxLength(65535)),
-  /**
-   * Foreign key referencing User.id
-   */
-  userId: v.pipe(v.string(), v.uuid()),
+export const UserRelationsSchema = v.object({
+  ...UserSchema.entries,
+  posts: v.array(PostSchema),
 });
 
-export type Post = v.InferOutput<typeof PostSchema>;
-
-export const UserRelationsSchema = v.object({ ...UserSchema.entries, posts: v.array(PostSchema) });
-
 export type UserRelations = v.InferOutput<typeof UserRelationsSchema>;
-
-export const PostRelationsSchema = v.object({ ...PostSchema.entries, user: UserSchema });
-
-export type PostRelations = v.InferOutput<typeof PostRelationsSchema>;
 ```
 
 ### ArkType
+
+```sh
+npx sizuku db/schema.ts -o arktype/index.ts --arktype
+```
 
 ```ts
 import { type } from "arktype";
 
 export const UserSchema = type({
-  /** Primary key */
+  /**
+   * Primary key
+   */
   id: "string.uuid",
-  /** Display name */
+  /**
+   * Display name
+   */
   name: "1 <= string <= 50",
 });
 
 export type User = typeof UserSchema.infer;
-
-export const PostSchema = type({
-  /** Primary key */
-  id: "string.uuid",
-  /** Article title */
-  title: "1 <= string <= 100",
-  /** Body content (no length limit) */
-  content: "1 <= string <= 65535",
-  /** Foreign key referencing User.id */
-  userId: "string.uuid",
-});
-
-export type Post = typeof PostSchema.infer;
 ```
 
 ### Effect Schema
+
+```sh
+npx sizuku db/schema.ts -o effect/index.ts --effect
+```
 
 ```ts
 import { Schema } from "effect";
 
 export const UserSchema = Schema.Struct({
-  /** Primary key */
+  /**
+   * Primary key
+   */
   id: Schema.UUID,
-  /** Display name */
+  /**
+   * Display name
+   */
   name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
 });
 
-export type User = Schema.Schema.Type<typeof UserSchema>;
-
-export const PostSchema = Schema.Struct({
-  /** Primary key */
-  id: Schema.UUID,
-  /** Article title */
-  title: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
-  /** Body content (no length limit) */
-  content: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535)),
-  /** Foreign key referencing User.id */
-  userId: Schema.UUID,
-});
-
-export type Post = Schema.Schema.Type<typeof PostSchema>;
-```
-
-### Mermaid ER
-
-```mermaid
-erDiagram
-    user ||--}| post : "(id) - (userId)"
-    user {
-        varchar id "(PK) Primary key"
-        varchar name "Display name"
-    }
-    post {
-        varchar id "(PK) Primary key"
-        varchar title "Article title"
-        varchar content "Body content (no length limit)"
-        varchar userId "Foreign key referencing User.id"
-    }
+export type UserEncoded = typeof UserSchema.Encoded;
 ```
 
 ### DBML
 
-The `dbml` generator outputs a DBML schema file or ER diagram PNG depending on the file extension:
-
-- `.dbml` extension: outputs a DBML schema file
-- `.png` extension: outputs an ER diagram PNG image
+```sh
+npx sizuku db/schema.ts -o docs/schema.dbml
+```
 
 ```dbml
 Table user {
@@ -328,73 +238,59 @@ Table user {
 }
 
 Table post {
-  id varchar [pk, note: 'Primary key']
-  title varchar [note: 'Article title']
-  content varchar [note: 'Body content (no length limit)']
-  userId varchar [note: 'Foreign key referencing User.id']
+  id varchar [pk]
+  title varchar
+  userId varchar
 }
 
 Ref post_userId_user_id_fk: post.userId > user.id
 ```
 
-## Configuration
+### Mermaid ER
 
-```typescript
-import { defineConfig } from "sizuku/config";
-
-export default defineConfig({
-  // Input: Path to Drizzle schema file (must end with .ts)
-  input: "db/schema.ts",
-
-  // Zod Schema Generator
-  zod: {
-    output: "zod/index.ts", // Output file path (must end with .ts)
-    comment: true, // Include schema documentation (default: false)
-    type: true, // Generate TypeScript types (default: false)
-    zod: "v4", // Zod import: 'v4' | 'mini' | '@hono/zod-openapi' (default: 'v4')
-    relation: true, // Generate relation schemas (default: false)
-  },
-
-  // Valibot Schema Generator
-  valibot: {
-    output: "valibot/index.ts",
-    comment: true,
-    type: true,
-    relation: true,
-  },
-
-  // ArkType Schema Generator
-  arktype: {
-    output: "arktype/index.ts",
-    comment: true,
-    type: true,
-    relation: true, // Generate relation schemas (default: false)
-  },
-
-  // Effect Schema Generator
-  effect: {
-    output: "effect/index.ts",
-    comment: true,
-    type: true,
-    relation: true, // Generate relation schemas (default: false)
-  },
-
-  // Mermaid ER Diagram Generator
-  mermaid: {
-    output: "mermaid-er/ER.md", // Output file path
-  },
-
-  // DBML / ER Diagram PNG Generator
-  // Use .dbml extension for DBML text, .png extension for ER diagram image
-  dbml: {
-    output: "docs/schema.dbml", // Output file path (must end with .dbml or .png)
-  },
-});
+```sh
+npx sizuku db/schema.ts -o docs/ER.md
 ```
 
-### ⚠️ WARNING: Potential Breaking Changes Without Notice
+```mermaid
+erDiagram
+    user ||--}| post : "(id) - (userId)"
+    user {
+        varchar id PK "Primary key"
+        varchar name "Display name"
+    }
+    post {
+        varchar id PK
+        varchar title
+        varchar userId FK
+    }
+```
 
-This package is in active development and may introduce breaking changes without prior notice.
+## Relation Detection
+
+Sizuku detects relations from three sources:
+
+### 1. `.references()` chain
+
+```ts
+userId: varchar("user_id").references(() => user.id);
+```
+
+### 2. `foreignKey()` constraint
+
+```ts
+export const post = pgTable('post', { ... }, (t) => ({
+  fk: foreignKey({ columns: [t.userId], foreignColumns: [user.id] }),
+}))
+```
+
+### 3. `relations()` block
+
+```ts
+export const postRelations = relations(post, ({ one }) => ({
+  user: one(user, { fields: [post.userId], references: [user.id] }),
+}));
+```
 
 ## License
 

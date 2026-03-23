@@ -2,7 +2,12 @@ import path from "node:path";
 import { fmt } from "../../format/index.js";
 import { mkdir, writeFile } from "../../fsp/index.js";
 import { extractRelationSchemas, extractSchemas } from "../../helper/extract-schemas.js";
-import { fieldDefinitions, inferEffect, makeCapitalized } from "../../utils/index.js";
+import {
+  fieldDefinitions,
+  inferEffect,
+  makeCapitalized,
+  makeRelationFields,
+} from "../../utils/index.js";
 
 function effect(
   schema: {
@@ -54,10 +59,9 @@ export function makeRelationEffectCode(
   },
   withType: boolean,
 ): string {
-  const base = schema.baseName;
   const relName = `${schema.name}Schema`;
-  const baseSchema = `${makeCapitalized(base)}Schema`;
-  const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(",");
+  const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
+  const fields = makeRelationFields(schema.fields);
   const obj = `\nexport const ${makeCapitalized(relName)} = Schema.Struct({...${baseSchema}.fields,${fields}})`;
   if (withType) return `${obj}\n\n${inferEffect(schema.name)}\n`;
   return `${obj}`;

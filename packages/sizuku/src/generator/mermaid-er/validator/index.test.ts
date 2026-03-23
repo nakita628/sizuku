@@ -101,6 +101,61 @@ describe("parseTableInfo", () => {
     ];
     expect(result).toStrictEqual(expected);
   });
+
+  it.concurrent("parses single table with PK and FK", () => {
+    const result = parseTableInfo([
+      "export const order = pgTable('order', {",
+      "  id: serial('id').primaryKey(),",
+      "  userId: integer('user_id').references(() => user.id),",
+      "})",
+    ]);
+    expect(result).toStrictEqual([
+      {
+        name: "order",
+        fields: [
+          { name: "id", type: "serial", keyType: "PK", description: null },
+          { name: "userId", type: "integer", keyType: "FK", description: null },
+        ],
+      },
+    ]);
+  });
+
+  it.concurrent("parses SQLite table", () => {
+    const result = parseTableInfo([
+      "export const config = sqliteTable('config', {",
+      "  key: text('key').primaryKey(),",
+      "  value: text('value').notNull(),",
+      "})",
+    ]);
+    expect(result).toStrictEqual([
+      {
+        name: "config",
+        fields: [
+          { name: "key", type: "text", keyType: "PK", description: null },
+          { name: "value", type: "text", keyType: null, description: null },
+        ],
+      },
+    ]);
+  });
+
+  it.concurrent("returns empty array for code with no tables", () => {
+    const result = parseTableInfo(["const helper = () => {}", "export const something = 42"]);
+    expect(result).toStrictEqual([]);
+  });
+
+  it.concurrent("skips relation definitions", () => {
+    const result = parseTableInfo([
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "})",
+      "",
+      "export const userRelations = relations(user, ({ many }) => ({",
+      "  posts: many(post),",
+      "}))",
+    ]);
+    expect(result.length).toBe(1);
+    expect(result[0].name).toBe("user");
+  });
 });
 
 describe("extractRelationsFromSchema", () => {
@@ -192,5 +247,69 @@ describe("extractRelationsFromSchema", () => {
         isRequired: true,
       },
     ]);
+  });
+
+  it.concurrent("returns empty array when no relations exist", () => {
+    const code = [
+      "export const config = sqliteTable('config', {",
+      "  key: text('key').primaryKey(),",
+      "  value: text('value').notNull(),",
+      "})",
+    ];
+    const relations = extractRelationsFromSchema(code);
+    expect(relations).toStrictEqual([]);
+  });
+
+  it.concurrent("extracts optional FK without notNull", () => {
+    const code = [
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "})",
+      "",
+      "export const post = mysqlTable('post', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  userId: varchar('user_id', { length: 36 }).references(() => user.id),",
+      "})",
+    ];
+    const relations = extractRelationsFromSchema(code);
+    expect(relations).toStrictEqual([
+      {
+        fromModel: "user",
+        toModel: "post",
+        fromField: "id",
+        toField: "userId",
+        isRequired: false,
+      },
+    ]);
+  });
+
+  it.concurrent("deduplicates relations from multiple sources", () => {
+    const code = [
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "})",
+      "",
+      "export const post = mysqlTable('post', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id),",
+      "})",
+      "",
+      "export const postRelations = relations(post, ({ one }) => ({",
+      "  user: one(user, {",
+      "    fields: [post.userId],",
+      "    references: [user.id],",
+      "  }),",
+      "}))",
+    ];
+    const relations = extractRelationsFromSchema(code);
+    // Should be deduplicated to 1 relation
+    expect(relations.length).toBe(1);
+    expect(relations[0]).toStrictEqual({
+      fromModel: "user",
+      toModel: "post",
+      fromField: "id",
+      toField: "userId",
+      isRequired: true,
+    });
   });
 });

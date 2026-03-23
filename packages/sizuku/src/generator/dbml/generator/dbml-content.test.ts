@@ -1,104 +1,470 @@
 import { describe, expect, it } from "vitest";
-import { dbmlContent } from "./dbml-content.js";
+import {
+  dbmlContent,
+  escapeNote,
+  formatConstraints,
+  makeColumn,
+  makeEnum,
+  makeRef,
+  makeRefName,
+  makeTable,
+  makeColumnConstraints,
+  mapDrizzleType,
+} from "./dbml-content.js";
+
+// ============================================================================
+// mapDrizzleType
+// ============================================================================
+
+describe("mapDrizzleType", () => {
+  it("maps serial to serial", () => {
+    expect(mapDrizzleType("serial")).toBe("serial");
+  });
+
+  it("maps smallserial to smallserial", () => {
+    expect(mapDrizzleType("smallserial")).toBe("smallserial");
+  });
+
+  it("maps bigserial to bigserial", () => {
+    expect(mapDrizzleType("bigserial")).toBe("bigserial");
+  });
+
+  it("maps integer to integer", () => {
+    expect(mapDrizzleType("integer")).toBe("integer");
+  });
+
+  it("maps int to integer", () => {
+    expect(mapDrizzleType("int")).toBe("integer");
+  });
+
+  it("maps smallint to smallint", () => {
+    expect(mapDrizzleType("smallint")).toBe("smallint");
+  });
+
+  it("maps bigint to bigint", () => {
+    expect(mapDrizzleType("bigint")).toBe("bigint");
+  });
+
+  it("maps boolean to boolean", () => {
+    expect(mapDrizzleType("boolean")).toBe("boolean");
+  });
+
+  it("maps text to text", () => {
+    expect(mapDrizzleType("text")).toBe("text");
+  });
+
+  it("maps varchar to varchar", () => {
+    expect(mapDrizzleType("varchar")).toBe("varchar");
+  });
+
+  it("maps char to char", () => {
+    expect(mapDrizzleType("char")).toBe("char");
+  });
+
+  it("maps numeric to numeric", () => {
+    expect(mapDrizzleType("numeric")).toBe("numeric");
+  });
+
+  it("maps decimal to decimal", () => {
+    expect(mapDrizzleType("decimal")).toBe("decimal");
+  });
+
+  it("maps real to real", () => {
+    expect(mapDrizzleType("real")).toBe("real");
+  });
+
+  it("maps doublePrecision to double precision", () => {
+    expect(mapDrizzleType("doublePrecision")).toBe("double precision");
+  });
+
+  it("maps json to json", () => {
+    expect(mapDrizzleType("json")).toBe("json");
+  });
+
+  it("maps jsonb to jsonb", () => {
+    expect(mapDrizzleType("jsonb")).toBe("jsonb");
+  });
+
+  it("maps timestamp to timestamp", () => {
+    expect(mapDrizzleType("timestamp")).toBe("timestamp");
+  });
+
+  it("maps timestamptz to timestamptz", () => {
+    expect(mapDrizzleType("timestamptz")).toBe("timestamptz");
+  });
+
+  it("maps date to date", () => {
+    expect(mapDrizzleType("date")).toBe("date");
+  });
+
+  it("maps time to time", () => {
+    expect(mapDrizzleType("time")).toBe("time");
+  });
+
+  it("maps interval to interval", () => {
+    expect(mapDrizzleType("interval")).toBe("interval");
+  });
+
+  it("maps uuid to uuid", () => {
+    expect(mapDrizzleType("uuid")).toBe("uuid");
+  });
+
+  it("maps blob to blob", () => {
+    expect(mapDrizzleType("blob")).toBe("blob");
+  });
+
+  it("maps bytea to bytea", () => {
+    expect(mapDrizzleType("bytea")).toBe("bytea");
+  });
+
+  it("returns unknown type as-is (fallback)", () => {
+    expect(mapDrizzleType("customType")).toBe("customType");
+  });
+});
+
+// ============================================================================
+// escapeNote
+// ============================================================================
+
+describe("escapeNote", () => {
+  it("escapes single quotes", () => {
+    expect(escapeNote("User's email")).toBe("User\\'s email");
+  });
+
+  it("escapes multiple single quotes", () => {
+    expect(escapeNote("it's a user's note")).toBe("it\\'s a user\\'s note");
+  });
+
+  it("returns string without quotes unchanged", () => {
+    expect(escapeNote("Primary key")).toBe("Primary key");
+  });
+
+  it("handles empty string", () => {
+    expect(escapeNote("")).toBe("");
+  });
+});
+
+// ============================================================================
+// makeColumnConstraints
+// ============================================================================
+
+describe("makeColumnConstraints", () => {
+  it("returns pk for primary key column", () => {
+    expect(makeColumnConstraints({ name: "id", type: "serial", isPrimaryKey: true })).toStrictEqual(
+      ["pk"],
+    );
+  });
+
+  it("returns pk and increment for serial primary key", () => {
+    expect(
+      makeColumnConstraints({ name: "id", type: "serial", isPrimaryKey: true, isIncrement: true }),
+    ).toStrictEqual(["pk", "increment"]);
+  });
+
+  it("returns unique for unique column", () => {
+    expect(makeColumnConstraints({ name: "email", type: "varchar", isUnique: true })).toStrictEqual(
+      ["unique"],
+    );
+  });
+
+  it("returns not null for non-PK not null column", () => {
+    expect(makeColumnConstraints({ name: "name", type: "varchar", isNotNull: true })).toStrictEqual(
+      ["not null"],
+    );
+  });
+
+  it("does not add not null for primary key even if isNotNull is true", () => {
+    expect(
+      makeColumnConstraints({
+        name: "id",
+        type: "serial",
+        isPrimaryKey: true,
+        isNotNull: true,
+      }),
+    ).toStrictEqual(["pk"]);
+  });
+
+  it("includes default value", () => {
+    expect(
+      makeColumnConstraints({ name: "role", type: "varchar", defaultValue: "'USER'" }),
+    ).toStrictEqual(["default: 'USER'"]);
+  });
+
+  it("includes note", () => {
+    expect(makeColumnConstraints({ name: "id", type: "uuid", note: "Primary key" })).toStrictEqual([
+      "note: 'Primary key'",
+    ]);
+  });
+
+  it("returns empty array for column with no constraints", () => {
+    expect(makeColumnConstraints({ name: "bio", type: "text" })).toStrictEqual([]);
+  });
+
+  it("combines all constraints in correct order", () => {
+    expect(
+      makeColumnConstraints({
+        name: "id",
+        type: "serial",
+        isPrimaryKey: true,
+        isIncrement: true,
+        isUnique: true,
+        defaultValue: "1",
+        note: "PK",
+      }),
+    ).toStrictEqual(["pk", "increment", "unique", "default: 1", "note: 'PK'"]);
+  });
+});
+
+// ============================================================================
+// formatConstraints
+// ============================================================================
+
+describe("formatConstraints", () => {
+  it("returns empty string for empty array", () => {
+    expect(formatConstraints([])).toBe("");
+  });
+
+  it("formats single constraint", () => {
+    expect(formatConstraints(["pk"])).toBe(" [pk]");
+  });
+
+  it("formats multiple constraints with comma separator", () => {
+    expect(formatConstraints(["pk", "increment"])).toBe(" [pk, increment]");
+  });
+});
+
+// ============================================================================
+// makeColumn
+// ============================================================================
+
+describe("makeColumn", () => {
+  it("generates column with pk and increment", () => {
+    expect(makeColumn({ name: "id", type: "serial", isPrimaryKey: true, isIncrement: true })).toBe(
+      "  id serial [pk, increment]",
+    );
+  });
+
+  it("generates column without constraints", () => {
+    expect(makeColumn({ name: "bio", type: "text" })).toBe("  bio text");
+  });
+
+  it("generates column with note", () => {
+    expect(makeColumn({ name: "email", type: "varchar", note: "User email" })).toBe(
+      "  email varchar [note: 'User email']",
+    );
+  });
+
+  it("generates column with escaped note", () => {
+    expect(makeColumn({ name: "name", type: "text", note: "User's name" })).toBe(
+      "  name text [note: 'User\\'s name']",
+    );
+  });
+});
+
+// ============================================================================
+// makeTable
+// ============================================================================
+
+describe("makeTable", () => {
+  it("generates table with multiple columns", () => {
+    expect(
+      makeTable({
+        name: "users",
+        columns: [
+          { name: "id", type: "serial", isPrimaryKey: true, isIncrement: true },
+          { name: "name", type: "text" },
+        ],
+      }),
+    ).toBe("Table users {\n  id serial [pk, increment]\n  name text\n}");
+  });
+
+  it("generates table with note", () => {
+    expect(
+      makeTable({
+        name: "config",
+        columns: [{ name: "key", type: "text", isPrimaryKey: true }],
+        note: "App configuration",
+      }),
+    ).toBe("Table config {\n  key text [pk]\n\n  Note: 'App configuration'\n}");
+  });
+
+  it("generates table with empty columns", () => {
+    expect(makeTable({ name: "empty", columns: [] })).toBe("Table empty {\n}");
+  });
+});
+
+// ============================================================================
+// makeEnum
+// ============================================================================
+
+describe("makeEnum", () => {
+  it("generates enum with multiple values", () => {
+    expect(makeEnum({ name: "role", values: ["ADMIN", "USER", "GUEST"] })).toBe(
+      "Enum role {\n  ADMIN\n  USER\n  GUEST\n}",
+    );
+  });
+
+  it("generates enum with single value", () => {
+    expect(makeEnum({ name: "status", values: ["ACTIVE"] })).toBe("Enum status {\n  ACTIVE\n}");
+  });
+});
+
+// ============================================================================
+// makeRefName
+// ============================================================================
+
+describe("makeRefName", () => {
+  it("uses provided name", () => {
+    expect(
+      makeRefName({
+        name: "custom_fk",
+        fromTable: "posts",
+        fromColumn: "userId",
+        toTable: "users",
+        toColumn: "id",
+      }),
+    ).toBe("custom_fk");
+  });
+
+  it("generates default name when name is omitted", () => {
+    expect(
+      makeRefName({
+        fromTable: "posts",
+        fromColumn: "userId",
+        toTable: "users",
+        toColumn: "id",
+      }),
+    ).toBe("posts_userId_users_id_fk");
+  });
+});
+
+// ============================================================================
+// makeRef
+// ============================================================================
+
+describe("makeRef", () => {
+  it("generates ref with default operator (>)", () => {
+    expect(
+      makeRef({
+        fromTable: "posts",
+        fromColumn: "userId",
+        toTable: "users",
+        toColumn: "id",
+      }),
+    ).toBe("Ref posts_userId_users_id_fk: posts.userId > users.id");
+  });
+
+  it("generates ref with custom operator (<)", () => {
+    expect(
+      makeRef({
+        fromTable: "users",
+        fromColumn: "id",
+        toTable: "posts",
+        toColumn: "userId",
+        type: "<",
+      }),
+    ).toBe("Ref users_id_posts_userId_fk: users.id < posts.userId");
+  });
+
+  it("generates ref with one-to-one operator (-)", () => {
+    expect(
+      makeRef({
+        fromTable: "users",
+        fromColumn: "id",
+        toTable: "profiles",
+        toColumn: "userId",
+        type: "-",
+      }),
+    ).toBe("Ref users_id_profiles_userId_fk: users.id - profiles.userId");
+  });
+
+  it("generates ref with onDelete action", () => {
+    expect(
+      makeRef({
+        name: "fk_post_user",
+        fromTable: "posts",
+        fromColumn: "userId",
+        toTable: "users",
+        toColumn: "id",
+        onDelete: "cascade",
+      }),
+    ).toBe("Ref fk_post_user: posts.userId > users.id [delete: cascade]");
+  });
+
+  it("generates ref with onDelete and onUpdate actions", () => {
+    expect(
+      makeRef({
+        name: "fk",
+        fromTable: "a",
+        fromColumn: "bId",
+        toTable: "b",
+        toColumn: "id",
+        onDelete: "cascade",
+        onUpdate: "no action",
+      }),
+    ).toBe("Ref fk: a.bId > b.id [delete: cascade, update: no action]");
+  });
+});
+
+// ============================================================================
+// dbmlContent (integration - toBe strict)
+// ============================================================================
 
 describe("dbmlContent", () => {
-  it("generates basic table definition", () => {
-    const tables = [
-      {
-        name: "users",
-        fields: [
-          { name: "id", type: "serial", keyType: "PK" as const, description: null },
-          { name: "name", type: "text", keyType: null, description: null },
-        ],
-      },
-    ];
-    const relations: readonly {
-      fromModel: string;
-      toModel: string;
-      fromField: string;
-      toField: string;
-      isRequired: boolean;
-    }[] = [];
-
-    const result = dbmlContent(relations, tables);
-
-    expect(result).toContain("Table users {");
-    expect(result).toContain("id serial [pk, increment]");
-    expect(result).toContain("name text");
-    expect(result).toContain("}");
+  it("generates single table without relations", () => {
+    const result = dbmlContent(
+      [],
+      [
+        {
+          name: "config",
+          fields: [
+            { name: "key", type: "text", keyType: "PK", description: null },
+            { name: "value", type: "text", keyType: null, description: null },
+          ],
+        },
+      ],
+    );
+    expect(result).toBe("Table config {\n  key text [pk]\n  value text\n}");
   });
 
-  it("generates foreign key references", () => {
-    const tables = [
-      {
-        name: "users",
-        fields: [{ name: "id", type: "serial", keyType: "PK" as const, description: null }],
-      },
-      {
-        name: "posts",
-        fields: [
-          { name: "id", type: "serial", keyType: "PK" as const, description: null },
-          { name: "userId", type: "integer", keyType: "FK" as const, description: null },
-        ],
-      },
-    ];
-    const relations = [
-      {
-        fromModel: "users",
-        toModel: "posts",
-        fromField: "id",
-        toField: "userId",
-        isRequired: true,
-      },
-    ];
-
-    const result = dbmlContent(relations, tables);
-
-    expect(result).toContain("Ref posts_userId_users_id_fk: posts.userId > users.id");
-  });
-
-  it("includes field descriptions as notes", () => {
-    const tables = [
-      {
-        name: "users",
-        fields: [
-          { name: "id", type: "serial", keyType: "PK" as const, description: "Primary key" },
-          { name: "email", type: "varchar", keyType: null, description: "User's email address" },
-        ],
-      },
-    ];
-    const relations: readonly {
-      fromModel: string;
-      toModel: string;
-      fromField: string;
-      toField: string;
-      isRequired: boolean;
-    }[] = [];
-
-    const result = dbmlContent(relations, tables);
-
-    expect(result).toContain("id serial [pk, increment, note: 'Primary key']");
-    expect(result).toContain("email varchar [note: 'User\\'s email address']");
-  });
-
-  it("generates tables without auto-generated comment header", () => {
-    const tables = [
-      {
-        name: "users",
-        fields: [{ name: "id", type: "serial", keyType: "PK" as const, description: null }],
-      },
-    ];
-    const relations: readonly {
-      fromModel: string;
-      toModel: string;
-      fromField: string;
-      toField: string;
-      isRequired: boolean;
-    }[] = [];
-
-    const result = dbmlContent(relations, tables);
-
-    expect(result).toContain("Table users {");
-    expect(result).not.toContain("THIS FILE WAS AUTOMATICALLY GENERATED");
+  it("generates tables with relations and descriptions", () => {
+    const result = dbmlContent(
+      [
+        {
+          fromModel: "users",
+          toModel: "posts",
+          fromField: "id",
+          toField: "userId",
+          isRequired: true,
+        },
+      ],
+      [
+        {
+          name: "users",
+          fields: [{ name: "id", type: "serial", keyType: "PK", description: "Primary key" }],
+        },
+        {
+          name: "posts",
+          fields: [
+            { name: "id", type: "serial", keyType: "PK", description: null },
+            { name: "userId", type: "integer", keyType: "FK", description: null },
+          ],
+        },
+      ],
+    );
+    expect(result).toBe(
+      [
+        "Table users {",
+        "  id serial [pk, increment, note: 'Primary key']",
+        "}",
+        "",
+        "Table posts {",
+        "  id serial [pk, increment]",
+        "  userId integer",
+        "}",
+        "",
+        "Ref posts_userId_users_id_fk: posts.userId > users.id",
+      ].join("\n"),
+    );
   });
 });

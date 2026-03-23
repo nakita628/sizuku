@@ -1,1 +1,7 @@
-export { erContent, erContentFromMergedSchema } from "./er-content.js";
+export {
+  erContent,
+  erContentFromMergedSchema,
+  makeRelationLine,
+  removeDuplicateRelations,
+  simplifyType,
+} from "./er-content.js";

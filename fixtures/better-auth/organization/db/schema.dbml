@@ -1,0 +1,86 @@
+Table user {
+  id text [pk, note: 'Primary key']
+  name text [note: 'name']
+  email text [note: 'email']
+  emailVerified boolean [note: 'emailVerified']
+  image text [note: 'image']
+  createdAt timestamp [note: 'createdAt']
+  updatedAt timestamp [note: 'updatedAt']
+}
+
+Table session {
+  id text [pk, note: 'Primary key']
+  expiresAt timestamp [note: 'expiresAt']
+  token text [note: 'token']
+  createdAt timestamp [note: 'createdAt']
+  updatedAt timestamp [note: 'updatedAt']
+  ipAddress text [note: 'ipAddress']
+  userAgent text [note: 'userAgent']
+  userId text [note: 'userId']
+  activeOrganizationId text [note: 'activeOrganizationId']
+}
+
+Table account {
+  id text [pk, note: 'Primary key']
+  accountId text [note: 'accountId']
+  providerId text [note: 'providerId']
+  userId text [note: 'userId']
+  accessToken text [note: 'accessToken']
+  refreshToken text [note: 'refreshToken']
+  idToken text [note: 'idToken']
+  accessTokenExpiresAt timestamp [note: 'accessTokenExpiresAt']
+  refreshTokenExpiresAt timestamp [note: 'refreshTokenExpiresAt']
+  scope text [note: 'scope']
+  password text [note: 'password']
+  createdAt timestamp [note: 'createdAt']
+  updatedAt timestamp [note: 'updatedAt']
+}
+
+Table verification {
+  id text [pk, note: 'Primary key']
+  identifier text [note: 'identifier']
+  value text [note: 'value']
+  expiresAt timestamp [note: 'expiresAt']
+  createdAt timestamp [note: 'createdAt']
+  updatedAt timestamp [note: 'updatedAt']
+}
+
+Table organization {
+  id text [pk, note: 'Primary key']
+  name text [note: 'name']
+  slug text [note: 'slug']
+  logo text [note: 'logo']
+  createdAt timestamp [note: 'createdAt']
+  metadata text [note: 'metadata']
+}
+
+Table member {
+  id text [pk, note: 'Primary key']
+  organizationId text [note: 'organizationId']
+  userId text [note: 'userId']
+  role text [note: 'role']
+  createdAt timestamp [note: 'createdAt']
+}
+
+Table invitation {
+  id text [pk, note: 'Primary key']
+  organizationId text [note: 'organizationId']
+  email text [note: 'email']
+  role text [note: 'role']
+  status text [note: 'status']
+  expiresAt timestamp [note: 'expiresAt']
+  createdAt timestamp [note: 'createdAt']
+  inviterId text [note: 'inviterId']
+}
+
+Ref session_userId_user_id_fk: session.userId > user.id
+
+Ref account_userId_user_id_fk: account.userId > user.id
+
+Ref member_organizationId_organization_id_fk: member.organizationId > organization.id
+
+Ref member_userId_user_id_fk: member.userId > user.id
+
+Ref invitation_organizationId_organization_id_fk: invitation.organizationId > organization.id
+
+Ref invitation_inviterId_user_id_fk: invitation.inviterId > user.id

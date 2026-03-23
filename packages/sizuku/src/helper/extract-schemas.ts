@@ -366,14 +366,15 @@ function makeSchemaExtractor(
     const commentLines: string[] = [];
 
     // Find the line number where this statement starts
-    const lineNumber = (() => {
-      let acc = 0;
-      for (let i = 0; i < originalSourceLines.length; i++) {
-        if (acc >= statementStart) return i;
-        acc += originalSourceLines[i].length + 1; // +1 for the "\n" newline character
-      }
-      return 0;
-    })();
+    const lineNumber = originalSourceLines.reduce(
+      (state, line, i) =>
+        state.found
+          ? state
+          : state.acc >= statementStart
+            ? { acc: state.acc, index: i, found: true }
+            : { acc: state.acc + line.length + 1, index: 0, found: false },
+      { acc: 0, index: 0, found: false },
+    ).index;
 
     // Collect comments immediately before the statement
     for (let i = lineNumber - 1; i >= 0; i--) {
@@ -450,22 +451,20 @@ export function extractSchemas(
   const sourceFile = project.createSourceFile("temp.ts", sourceCode);
   const sourceText = sourceFile.getFullText();
 
-  const commentPrefix: ValidationTag =
-    library === "zod"
-      ? "@z."
-      : library === "valibot"
-        ? "@v."
-        : library === "arktype"
-          ? "@a."
-          : "@e.";
-  const schemaPrefix: SchemaPrefix =
-    library === "zod"
-      ? "z"
-      : library === "valibot"
-        ? "v"
-        : library === "arktype"
-          ? "type"
-          : "Schema";
+  const commentPrefixMap: Record<string, ValidationTag> = {
+    zod: "@z.",
+    valibot: "@v.",
+    arktype: "@a.",
+    effect: "@e.",
+  };
+  const schemaPrefixMap: Record<string, SchemaPrefix> = {
+    zod: "z",
+    valibot: "v",
+    arktype: "type",
+    effect: "Schema",
+  };
+  const commentPrefix = commentPrefixMap[library];
+  const schemaPrefix = schemaPrefixMap[library];
 
   const extractField = createExtractFieldFromProperty((lines) =>
     parseFieldComments(lines, commentPrefix),
@@ -593,22 +592,20 @@ export function extractRelationSchemas(
   const sourceFile = project.createSourceFile("temp.ts", sourceCode);
   const sourceText = sourceFile.getFullText();
 
-  const commentPrefix: ValidationTag =
-    library === "zod"
-      ? "@z."
-      : library === "valibot"
-        ? "@v."
-        : library === "arktype"
-          ? "@a."
-          : "@e.";
-  const schemaPrefix: SchemaPrefix =
-    library === "zod"
-      ? "z"
-      : library === "valibot"
-        ? "v"
-        : library === "arktype"
-          ? "type"
-          : "Schema";
+  const commentPrefixMap: Record<string, ValidationTag> = {
+    zod: "@z.",
+    valibot: "@v.",
+    arktype: "@a.",
+    effect: "@e.",
+  };
+  const schemaPrefixMap: Record<string, SchemaPrefix> = {
+    zod: "z",
+    valibot: "v",
+    arktype: "type",
+    effect: "Schema",
+  };
+  const commentPrefix = commentPrefixMap[library];
+  const schemaPrefix = schemaPrefixMap[library];
 
   // First, extract base schemas to get their objectType
   const baseSchemas = extractSchemas(lines, library);
@@ -670,20 +667,7 @@ export function extractRelations(code: string[]): {
   toField: string;
   type: string;
 }[] {
-  const relations: {
-    fromModel: string;
-    toModel: string;
-    fromField: string;
-    toField: string;
-    type: string;
-  }[] = [];
-  for (const line of code) {
-    const relation = parseRelationLine(line);
-    if (relation) {
-      relations.push(relation);
-    }
-  }
-  return relations;
+  return code.map(parseRelationLine).filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
 /**

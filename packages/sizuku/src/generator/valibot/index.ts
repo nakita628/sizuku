@@ -6,7 +6,9 @@ import {
   fieldDefinitions,
   inferOutput,
   makeCapitalized,
+  makeRelationFields,
   makeValibotObject,
+  resolveWrapperType,
 } from "../../utils/index.js";
 
 function valibot(
@@ -21,12 +23,7 @@ function valibot(
   },
   comment: boolean,
 ): string {
-  const wrapperType =
-    schema.objectType === "strict"
-      ? "strictObject"
-      : schema.objectType === "loose"
-        ? "looseObject"
-        : "object";
+  const wrapperType = resolveWrapperType(schema.objectType);
   const inner = fieldDefinitions(schema, comment);
   const objectCode = makeValibotObject(inner, wrapperType);
   return `export const ${makeCapitalized(schema.name)}Schema = ${objectCode}`;
@@ -67,16 +64,10 @@ export function relationValibotCode(
   },
   withType: boolean,
 ): string {
-  const base = schema.baseName;
   const relName = `${schema.name}Schema`;
-  const baseSchema = `${makeCapitalized(base)}Schema`;
-  const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(",");
-  const objectType =
-    schema.objectType === "strict"
-      ? "strictObject"
-      : schema.objectType === "loose"
-        ? "looseObject"
-        : "object";
+  const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
+  const fields = makeRelationFields(schema.fields);
+  const objectType = resolveWrapperType(schema.objectType);
   const obj = `\nexport const ${makeCapitalized(relName)} = v.${objectType}({...${baseSchema}.entries,${fields}})`;
   if (withType) return `${obj}\n\n${inferOutput(schema.name)}\n`;
   return `${obj}`;

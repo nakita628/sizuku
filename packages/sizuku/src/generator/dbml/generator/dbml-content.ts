@@ -75,7 +75,7 @@ type RelationInfo = {
 /**
  * Map Drizzle column types to DBML types
  */
-function mapDrizzleType(drizzleType: string): string {
+export function mapDrizzleType(drizzleType: string): string {
   const typeMap: Record<string, string> = {
     serial: "serial",
     smallserial: "smallserial",
@@ -111,7 +111,7 @@ function mapDrizzleType(drizzleType: string): string {
 // DBML Generation Helpers
 // ============================================================================
 
-function escapeNote(str: string): string {
+export function escapeNote(str: string): string {
   return str.replace(/'/g, "\\'");
 }
 
@@ -119,7 +119,7 @@ function quote(value: string): string {
   return `'${escapeNote(value)}'`;
 }
 
-function makeColumnConstraints(column: DBMLColumn): readonly string[] {
+export function makeColumnConstraints(column: DBMLColumn): readonly string[] {
   const constraints: string[] = [];
 
   if (column.isPrimaryKey) {
@@ -149,22 +149,22 @@ function makeColumnConstraints(column: DBMLColumn): readonly string[] {
   return constraints;
 }
 
-function formatConstraints(constraints: readonly string[]): string {
+export function formatConstraints(constraints: readonly string[]): string {
   return constraints.length > 0 ? ` [${constraints.join(", ")}]` : "";
 }
 
-function generateColumn(column: DBMLColumn): string {
+export function makeColumn(column: DBMLColumn): string {
   const constraints = makeColumnConstraints(column);
   return `  ${column.name} ${column.type}${formatConstraints(constraints)}`;
 }
 
-function generateTable(table: DBMLTable): string {
+export function makeTable(table: DBMLTable): string {
   const lines: string[] = [];
 
   lines.push(`Table ${table.name} {`);
 
   for (const column of table.columns) {
-    lines.push(generateColumn(column));
+    lines.push(makeColumn(column));
   }
 
   if (table.note) {
@@ -177,7 +177,7 @@ function generateTable(table: DBMLTable): string {
   return lines.join("\n");
 }
 
-function generateEnum(enumDef: DBMLEnum): string {
+export function makeEnum(enumDef: DBMLEnum): string {
   const lines: string[] = [];
 
   lines.push(`Enum ${enumDef.name} {`);
@@ -191,12 +191,12 @@ function generateEnum(enumDef: DBMLEnum): string {
   return lines.join("\n");
 }
 
-function generateRefName(ref: DBMLRef): string {
+export function makeRefName(ref: DBMLRef): string {
   return ref.name ?? `${ref.fromTable}_${ref.fromColumn}_${ref.toTable}_${ref.toColumn}_fk`;
 }
 
-function generateRef(ref: DBMLRef): string {
-  const name = generateRefName(ref);
+export function makeRef(ref: DBMLRef): string {
+  const name = makeRefName(ref);
   const operator = ref.type ?? ">";
   const actions: string[] = [];
 
@@ -213,22 +213,22 @@ function generateRef(ref: DBMLRef): string {
   return `Ref ${name}: ${ref.fromTable}.${ref.fromColumn} ${operator} ${ref.toTable}.${ref.toColumn}${actionStr}`;
 }
 
-function generateDBMLContent(options: DBMLContentOptions): string {
+function makeDBMLContent(options: DBMLContentOptions): string {
   const sections: string[] = [];
 
   if (options.enums) {
     for (const enumDef of options.enums) {
-      sections.push(generateEnum(enumDef));
+      sections.push(makeEnum(enumDef));
     }
   }
 
   for (const table of options.tables) {
-    sections.push(generateTable(table));
+    sections.push(makeTable(table));
   }
 
   if (options.refs) {
     for (const ref of options.refs) {
-      sections.push(generateRef(ref));
+      sections.push(makeRef(ref));
     }
   }
 
@@ -285,7 +285,7 @@ export function dbmlContent(
   relations: readonly RelationInfo[],
   tables: readonly TableInfo[],
 ): string {
-  return generateDBMLContent({
+  return makeDBMLContent({
     tables: tables.map(toDBMLTable),
     refs: relations.map(toDBMLRef),
   });

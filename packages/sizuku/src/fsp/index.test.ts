@@ -2,7 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { mkdir, readFileSync, writeFile } from ".";
+import { mkdir, readFileSync, writeFile, writeFileBinary } from ".";
 
 // Test run
 // pnpm vitest run ./src/fsp/index.test.ts
@@ -12,23 +12,30 @@ const TEST_DIR = path.join(process.cwd(), "test-tmp-dir");
 describe("fsp", () => {
   afterEach(async () => {
     if (fs.existsSync(TEST_DIR)) {
-      await fsp.rmdir(TEST_DIR, { recursive: true });
+      await fsp.rm(TEST_DIR, { recursive: true });
     }
   });
   describe("mkdir", () => {
     it("returns ok when directory is created", async () => {
       const result = await mkdir(TEST_DIR);
-      expect(result).toEqual({ ok: true, value: undefined });
+      expect(result).toStrictEqual({ ok: true, value: undefined });
       expect(fs.existsSync(TEST_DIR)).toBe(true);
     });
 
     it("returns ok when directory already exists (recursive:true)", async () => {
       await fsp.mkdir(TEST_DIR, { recursive: true });
       const result = await mkdir(TEST_DIR);
-      expect(result).toEqual({ ok: true, value: undefined });
+      expect(result).toStrictEqual({ ok: true, value: undefined });
     });
 
-    it("returns err for invalid path", async () => {
+    it("creates nested directories", async () => {
+      const nested = path.join(TEST_DIR, "a", "b", "c");
+      const result = await mkdir(nested);
+      expect(result).toStrictEqual({ ok: true, value: undefined });
+      expect(fs.existsSync(nested)).toBe(true);
+    });
+
+    it("returns err for invalid path (file exists at path)", async () => {
       const filePath = path.join(TEST_DIR, "foo.txt");
       await fsp.mkdir(TEST_DIR, { recursive: true });
       await fsp.writeFile(filePath, "dummy");
@@ -37,7 +44,7 @@ describe("fsp", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(typeof result.error).toBe("string");
-        expect(result.error.length).toBeGreaterThan(0);
+        expect(result.error.length > 0).toBe(true);
       }
     });
   });
@@ -46,12 +53,21 @@ describe("fsp", () => {
     beforeEach(async () => {
       await fsp.mkdir(TEST_DIR, { recursive: true });
     });
-    it("writes file successfully", async () => {
+
+    it("writes file successfully and returns ok", async () => {
       const filePath = path.join(TEST_DIR, "ok.txt");
       const result = await writeFile(filePath, "hello");
-      expect(result.ok).toBe(true);
+      expect(result).toStrictEqual({ ok: true, value: undefined });
       const text = await fsp.readFile(filePath, "utf-8");
       expect(text).toBe("hello");
+    });
+
+    it("overwrites existing file", async () => {
+      const filePath = path.join(TEST_DIR, "overwrite.txt");
+      await writeFile(filePath, "first");
+      await writeFile(filePath, "second");
+      const text = await fsp.readFile(filePath, "utf-8");
+      expect(text).toBe("second");
     });
 
     it("returns err for invalid path", async () => {
@@ -62,13 +78,44 @@ describe("fsp", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(typeof result.error).toBe("string");
-        expect(result.error.length).toBeGreaterThan(0);
+        expect(result.error.length > 0).toBe(true);
+      }
+    });
+  });
+
+  describe("writeFileBinary", () => {
+    beforeEach(async () => {
+      await fsp.mkdir(TEST_DIR, { recursive: true });
+    });
+
+    it("writes binary data successfully and returns ok", async () => {
+      const filePath = path.join(TEST_DIR, "binary.bin");
+      const data = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+      const result = await writeFileBinary(filePath, data);
+      expect(result).toStrictEqual({ ok: true, value: undefined });
+      const content = fs.readFileSync(filePath);
+      expect(content[0]).toBe(0x89);
+      expect(content[1]).toBe(0x50);
+      expect(content[2]).toBe(0x4e);
+      expect(content[3]).toBe(0x47);
+      expect(content.length).toBe(4);
+    });
+
+    it("returns err for invalid path", async () => {
+      const filePath = path.join(TEST_DIR, "foo.txt");
+      await fsp.writeFile(filePath, "dummy");
+      const badPath = path.join(filePath, "bad.bin");
+      const result = await writeFileBinary(badPath, Buffer.from([0x00]));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(typeof result.error).toBe("string");
+        expect(result.error.length > 0).toBe(true);
       }
     });
   });
 });
 
-describe("readFileSync (integration)", () => {
+describe("readFileSync", () => {
   const testFilePath = path.join(TEST_DIR, "test-file.txt");
   const nonExistentPath = path.join(TEST_DIR, "no-such-file.txt");
 
@@ -83,16 +130,31 @@ describe("readFileSync (integration)", () => {
     }
   });
 
-  it("should return Ok when reading an existing file", () => {
+  it("returns ok with content for existing file", () => {
     const result = readFileSync(testFilePath);
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe("hello world");
+    expect(result).toStrictEqual({ ok: true, value: "hello world" });
+  });
+
+  it("returns err for non-existent file", () => {
+    const result = readFileSync(nonExistentPath);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(typeof result.error).toBe("string");
+      expect(result.error.length > 0).toBe(true);
     }
   });
 
-  it("should return Err when reading a non-existent file", () => {
-    const result = readFileSync(nonExistentPath);
-    expect(result.ok).toBe(false);
+  it("reads empty file correctly", () => {
+    const emptyFilePath = path.join(TEST_DIR, "empty.txt");
+    fs.writeFileSync(emptyFilePath, "", "utf-8");
+    const result = readFileSync(emptyFilePath);
+    expect(result).toStrictEqual({ ok: true, value: "" });
+  });
+
+  it("reads UTF-8 content with multibyte characters", () => {
+    const utfFilePath = path.join(TEST_DIR, "utf8.txt");
+    fs.writeFileSync(utfFilePath, "日本語テスト 🚀", "utf-8");
+    const result = readFileSync(utfFilePath);
+    expect(result).toStrictEqual({ ok: true, value: "日本語テスト 🚀" });
   });
 });

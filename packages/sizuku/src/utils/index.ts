@@ -14,6 +14,40 @@ export function makeCapitalized(str: string): string {
 }
 
 /**
+ * Resolve schema object wrapper type from objectType annotation.
+ */
+export function resolveWrapperType(
+  objectType: "strict" | "loose" | undefined,
+): "strictObject" | "looseObject" | "object" {
+  if (objectType === "strict") return "strictObject";
+  if (objectType === "loose") return "looseObject";
+  return "object";
+}
+
+/**
+ * Resolve ArkType undeclared key handling prefix.
+ *
+ * ArkType uses `"+"` key to control unknown property behavior:
+ * - strict → `"+": "reject"` (reject unknown keys)
+ * - loose → `"+": "ignore"` (preserve unknown keys, which is ArkType's default)
+ * - undefined → no prefix (default behavior: preserve unknown keys)
+ */
+export function resolveArktypeUndeclared(objectType: "strict" | "loose" | undefined): string {
+  if (objectType === "strict") return '"+":"reject",';
+  if (objectType === "loose") return '"+":"ignore",';
+  return "";
+}
+
+/**
+ * Join relation schema fields into a comma-separated string.
+ */
+export function makeRelationFields(
+  fields: readonly { readonly name: string; readonly definition: string }[],
+): string {
+  return fields.map((f) => `${f.name}:${f.definition}`).join(",");
+}
+
+/**
  * Generates a Zod object wrapper.
  *
  * @param inner - The inner field definitions string.
