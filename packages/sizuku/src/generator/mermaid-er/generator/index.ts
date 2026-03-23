@@ -1,7 +1,7 @@
 export {
   erContent,
   erContentFromMergedSchema,
-  generateRelationLine,
+  makeRelationLine,
   removeDuplicateRelations,
   simplifyType,
 } from "./er-content.js";

@@ -16,7 +16,7 @@ const RELATIONSHIPS = {
  * @param relation - The relation info
  * @returns The Mermaid ER relation line
  */
-export function generateRelationLine(relation: {
+export function makeRelationLine(relation: {
   readonly fromModel: string;
   readonly toModel: string;
   readonly fromField: string;
@@ -67,7 +67,7 @@ export function erContent(
   }[],
 ): string {
   // Generate relation lines
-  const relationLines = removeDuplicateRelations(relations.map(generateRelationLine));
+  const relationLines = removeDuplicateRelations(relations.map(makeRelationLine));
 
   // Generate table definitions
   const tableDefinitions = tables.flatMap((table) => [

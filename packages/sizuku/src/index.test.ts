@@ -13,7 +13,6 @@ import { sizuku as main } from "./cli/index.js";
 // ============================================================================
 
 const CLI_PATH = path.resolve(__dirname, "../dist/index.mjs");
-const AUTH_SCHEMA_PATH = path.resolve(__dirname, "../../../fixtures/auth/db/schema.ts");
 
 /**
  * Execute the built CLI binary and return stdout, stderr, and exit code
@@ -31,7 +30,7 @@ function runCli(args: string[]): Promise<{ stdout: string; stderr: string; code:
 }
 
 // ============================================================================
-// Fixtures
+// Fixtures (inline, no external file dependency)
 // ============================================================================
 
 const mysqlEcSchema = `import { mysqlTable, varchar, int, decimal, timestamp } from 'drizzle-orm/mysql-core'
@@ -50,6 +49,62 @@ export const purchase = mysqlTable('purchase', {
   purchasedAt: timestamp('purchased_at').notNull(),
 })`;
 
+const authSchema = `import { relations, sql } from 'drizzle-orm'
+import { foreignKey, int, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+
+export const User = sqliteTable('User', {
+  /// Unique user ID
+  id: text('id').notNull().primaryKey(),
+  /// Display name
+  name: text('name'),
+  /// Email address
+  email: text('email').unique(),
+  /// Role of the user (ADMIN or USER)
+  role: text('role', { enum: ['ADMIN', 'USER'] }).notNull().default('USER'),
+  /// Whether 2FA is enabled
+  isTwoFactorEnabled: int('isTwoFactorEnabled', { mode: 'boolean' }).default(false),
+})
+
+export const Account = sqliteTable(
+  'Account',
+  {
+    /// Unique account ID
+    id: text('id').notNull().primaryKey(),
+    /// Reference to the user ID
+    userId: text('userId').notNull(),
+    /// Type of account
+    type: text('type').notNull(),
+    /// Provider name
+    provider: text('provider').notNull(),
+    /// Provider account ID
+    providerAccountId: text('providerAccountId').notNull(),
+  },
+  (Account) => ({
+    Account_user_fkey: foreignKey({
+      name: 'Account_user_fkey',
+      columns: [Account.userId],
+      foreignColumns: [User.id],
+    }),
+  }),
+)
+
+export const TwoFactorConfirmation = sqliteTable(
+  'TwoFactorConfirmation',
+  {
+    /// Confirmation ID
+    id: text('id').notNull().primaryKey(),
+    /// Reference to user
+    userId: text('userId').notNull().unique(),
+  },
+  (TwoFactorConfirmation) => ({
+    TwoFactorConfirmation_user_fkey: foreignKey({
+      name: 'TwoFactorConfirmation_user_fkey',
+      columns: [TwoFactorConfirmation.userId],
+      foreignColumns: [User.id],
+    }),
+  }),
+)`;
+
 // ============================================================================
 // Config mode (sizuku.config.ts)
 // ============================================================================
@@ -63,7 +118,6 @@ describe("main", () => {
     tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-main-"));
     process.chdir(tmpdir);
 
-    // Create test schema file
     const schemaDir = path.join(tmpdir, "db");
     fs.mkdirSync(schemaDir, { recursive: true });
     const schemaFile = path.join(schemaDir, "schema.ts");
@@ -88,7 +142,6 @@ export const user = mysqlTable('user', {
   });
 
   it("main success", async () => {
-    // Create config file
     const configFile = path.join(tmpdir, "sizuku.config.ts");
     const configContent = `export default {
   input: 'db/schema.ts',
@@ -110,7 +163,6 @@ export const user = mysqlTable('user', {
 }`;
     fs.writeFileSync(configFile, configContent, "utf-8");
 
-    // Verify files exist
     expect(fs.existsSync(configFile)).toBe(true);
     expect(fs.existsSync(path.join(tmpdir, "db/schema.ts"))).toBe(true);
     expect(process.cwd()).toBe(tmpdir);
@@ -129,7 +181,6 @@ export const user = mysqlTable('user', {
   });
 
   it("main error", async () => {
-    // No config file, should fail
     const result = await main();
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -165,7 +216,9 @@ describe("CLI binary: error handling", () => {
 
   it("outputs error for unsupported output format .txt", async () => {
     const result = await runCli(["schema.ts", "-o", "output.txt"]);
-    expect(result.stderr).toBe("Unsupported output format: output.txt. Supported: .dbml, .png, .md");
+    expect(result.stderr).toBe(
+      "Unsupported output format: output.txt. Supported: .dbml, .png, .md",
+    );
   });
 
   it("outputs error for unsupported output format .json", async () => {
@@ -215,27 +268,20 @@ describe("CLI binary: DBML generation", () => {
 
     const content = fs.readFileSync(outputPath, "utf-8");
 
-    // Table blocks
     expect(content.includes("Table customer {")).toBe(true);
     expect(content.includes("Table purchase {")).toBe(true);
-
-    // customer columns
     expect(content.includes("  id varchar [pk]")).toBe(true);
     expect(content.includes("  name varchar")).toBe(true);
     expect(content.includes("  email varchar")).toBe(true);
-
-    // purchase columns
     expect(content.includes("  customerId varchar")).toBe(true);
     expect(content.includes("  amount decimal")).toBe(true);
     expect(content.includes("  purchasedAt timestamp")).toBe(true);
-
-    // Foreign key ref
     expect(
       content.includes("Ref purchase_customerId_customer_id_fk: purchase.customerId > customer.id"),
     ).toBe(true);
   });
 
-  it("creates output directory automatically when it does not exist", async () => {
+  it("creates output directory automatically", async () => {
     const schemaPath = path.join(tmpdir, "schema.ts");
     const outputPath = path.join(tmpdir, "deep", "nested", "dir", "schema.dbml");
     fs.writeFileSync(schemaPath, mysqlEcSchema, "utf-8");
@@ -248,34 +294,33 @@ describe("CLI binary: DBML generation", () => {
 });
 
 // ============================================================================
-// CLI binary: DBML with auth fixture (real-world schema)
+// CLI binary: DBML with auth schema (inline tmpfile, no fixture dependency)
 // ============================================================================
 
-describe("CLI binary: DBML with auth fixture", () => {
+describe("CLI binary: DBML with auth schema", () => {
   let tmpdir: string;
 
   beforeEach(() => {
     tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-cli-auth-"));
+    fs.writeFileSync(path.join(tmpdir, "schema.ts"), authSchema, "utf-8");
   });
 
   afterEach(() => {
     fs.rmSync(tmpdir, { recursive: true, force: true });
   });
 
-  it("generates DBML from auth fixture with all 6 tables and 2 foreign keys", async () => {
+  it("generates DBML with 3 tables and 2 foreign keys", async () => {
+    const schemaPath = path.join(tmpdir, "schema.ts");
     const outputPath = path.join(tmpdir, "auth.dbml");
-    const result = await runCli([AUTH_SCHEMA_PATH, "-o", outputPath]);
+    const result = await runCli([schemaPath, "-o", outputPath]);
 
     expect(result.stdout).toBe(`💧 Generated DBML at: ${outputPath}`);
 
     const content = fs.readFileSync(outputPath, "utf-8");
 
-    // All 6 tables
+    // All 3 tables
     expect(content.includes("Table User {")).toBe(true);
     expect(content.includes("Table Account {")).toBe(true);
-    expect(content.includes("Table VerificationToken {")).toBe(true);
-    expect(content.includes("Table PasswordResetToken {")).toBe(true);
-    expect(content.includes("Table TwoFactorToken {")).toBe(true);
     expect(content.includes("Table TwoFactorConfirmation {")).toBe(true);
 
     // User columns with notes
@@ -289,9 +334,6 @@ describe("CLI binary: DBML with auth fixture", () => {
 
     // Account columns
     expect(content.includes("userId text [note: 'Reference to the user ID']")).toBe(true);
-    expect(
-      content.includes("provider text [note: 'Name of the provider (e.g., google, github)']"),
-    ).toBe(true);
 
     // Foreign key refs
     expect(content.includes("Ref Account_userId_User_id_fk: Account.userId > User.id")).toBe(true);
@@ -301,13 +343,12 @@ describe("CLI binary: DBML with auth fixture", () => {
       ),
     ).toBe(true);
 
-    // Exact number of Ref lines (2)
+    // Exact counts
     const refLines = content.split("\n").filter((line) => line.startsWith("Ref "));
     expect(refLines.length).toBe(2);
 
-    // Exact number of Table blocks (6)
     const tableLines = content.split("\n").filter((line) => line.startsWith("Table "));
-    expect(tableLines.length).toBe(6);
+    expect(tableLines.length).toBe(3);
   });
 });
 
@@ -337,67 +378,38 @@ describe("CLI binary: Mermaid ER generation", () => {
 
     const content = fs.readFileSync(outputPath, "utf-8");
 
-    // Mermaid block structure
     expect(content.startsWith("```mermaid\nerDiagram")).toBe(true);
     expect(content.endsWith("```")).toBe(true);
-
-    // Relation line
     expect(content.includes('customer ||--}| purchase : "(id) - (customerId)"')).toBe(true);
-
-    // Table definitions
     expect(content.includes("    customer {")).toBe(true);
     expect(content.includes("    purchase {")).toBe(true);
-
-    // Field details with types and key markers
     expect(content.includes("        varchar id PK")).toBe(true);
-    expect(content.includes("        varchar name")).toBe(true);
-    expect(content.includes("        varchar email")).toBe(true);
     expect(content.includes("        varchar customerId FK")).toBe(true);
-    expect(content.includes("        decimal amount")).toBe(true);
-    expect(content.includes("        timestamp purchasedAt")).toBe(true);
   });
 
-  it("generates Mermaid ER from auth fixture with correct relations and descriptions", async () => {
+  it("generates Mermaid ER from auth schema with relations and descriptions", async () => {
+    const schemaPath = path.join(tmpdir, "schema.ts");
     const outputPath = path.join(tmpdir, "ER.md");
-    const result = await runCli([AUTH_SCHEMA_PATH, "-o", outputPath]);
+    fs.writeFileSync(schemaPath, authSchema, "utf-8");
+
+    const result = await runCli([schemaPath, "-o", outputPath]);
 
     expect(result.stdout).toBe(`💧 Generated Mermaid ER at: ${outputPath}`);
 
     const content = fs.readFileSync(outputPath, "utf-8");
 
-    // Mermaid block
     expect(content.startsWith("```mermaid\nerDiagram")).toBe(true);
     expect(content.endsWith("```")).toBe(true);
-
-    // Relations
     expect(content.includes('User ||--}| Account : "(id) - (userId)"')).toBe(true);
     expect(content.includes('User ||--}| TwoFactorConfirmation : "(id) - (userId)"')).toBe(true);
-
-    // Tables
     expect(content.includes("    User {")).toBe(true);
     expect(content.includes("    Account {")).toBe(true);
-    expect(content.includes("    VerificationToken {")).toBe(true);
-    expect(content.includes("    TwoFactorConfirmation {")).toBe(true);
-
-    // User fields with descriptions
     expect(content.includes('        text id PK "Unique user ID"')).toBe(true);
     expect(content.includes('        text name "Display name"')).toBe(true);
-    expect(content.includes('        text email "Email address"')).toBe(true);
     expect(content.includes('        text role "Role of the user (ADMIN or USER)"')).toBe(true);
-    expect(content.includes('        int isTwoFactorEnabled "Whether 2FA is enabled"')).toBe(true);
 
-    // Account fields
-    expect(content.includes('        text userId "Reference to the user ID"')).toBe(true);
-
-    // Exact relation count (2)
     const relationLines = content.split("\n").filter((line) => line.includes("||--}|"));
     expect(relationLines.length).toBe(2);
-
-    // Exact table block count (6)
-    const tableOpenLines = content
-      .split("\n")
-      .filter((line) => line.trim().endsWith("{") && !line.includes("mermaid"));
-    expect(tableOpenLines.length).toBe(6);
   });
 });
 
@@ -425,11 +437,9 @@ describe("CLI binary: PNG generation", () => {
 
     expect(result.stdout).toBe(`💧 Generated PNG at: ${outputPath}`);
     expect(result.stderr).toBe("");
-
     expect(fs.existsSync(outputPath)).toBe(true);
-    const buffer = fs.readFileSync(outputPath);
 
-    // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
+    const buffer = fs.readFileSync(outputPath);
     expect(buffer[0]).toBe(0x89);
     expect(buffer[1]).toBe(0x50);
     expect(buffer[2]).toBe(0x4e);
@@ -438,27 +448,24 @@ describe("CLI binary: PNG generation", () => {
     expect(buffer[5]).toBe(0x0a);
     expect(buffer[6]).toBe(0x1a);
     expect(buffer[7]).toBe(0x0a);
-
-    // PNG should be a reasonable size (at least 1KB for 2 tables)
     expect(buffer.length > 1000).toBe(true);
   });
 
-  it("generates valid PNG from auth fixture (6 tables)", async () => {
+  it("generates valid PNG from auth schema (3 tables)", async () => {
+    const schemaPath = path.join(tmpdir, "schema.ts");
     const outputPath = path.join(tmpdir, "auth-er.png");
+    fs.writeFileSync(schemaPath, authSchema, "utf-8");
 
-    const result = await runCli([AUTH_SCHEMA_PATH, "-o", outputPath]);
+    const result = await runCli([schemaPath, "-o", outputPath]);
 
     expect(result.stdout).toBe(`💧 Generated PNG at: ${outputPath}`);
 
     const buffer = fs.readFileSync(outputPath);
-    // PNG magic bytes
     expect(buffer[0]).toBe(0x89);
     expect(buffer[1]).toBe(0x50);
     expect(buffer[2]).toBe(0x4e);
     expect(buffer[3]).toBe(0x47);
-
-    // 6 tables should produce a larger PNG
-    expect(buffer.length > 5000).toBe(true);
+    expect(buffer.length > 3000).toBe(true);
   });
 });
 

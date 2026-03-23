@@ -366,14 +366,15 @@ function makeSchemaExtractor(
     const commentLines: string[] = [];
 
     // Find the line number where this statement starts
-    const lineNumber = (() => {
-      let acc = 0;
-      for (let i = 0; i < originalSourceLines.length; i++) {
-        if (acc >= statementStart) return i;
-        acc += originalSourceLines[i].length + 1; // +1 for the "\n" newline character
-      }
-      return 0;
-    })();
+    const lineNumber = originalSourceLines.reduce(
+      (state, line, i) =>
+        state.found
+          ? state
+          : state.acc >= statementStart
+            ? { acc: state.acc, index: i, found: true }
+            : { acc: state.acc + line.length + 1, index: 0, found: false },
+      { acc: 0, index: 0, found: false },
+    ).index;
 
     // Collect comments immediately before the statement
     for (let i = lineNumber - 1; i >= 0; i--) {

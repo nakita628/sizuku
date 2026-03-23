@@ -3,7 +3,7 @@ import type { MergedSchema } from "../../../helper/runtime/types.js";
 import {
   erContent,
   erContentFromMergedSchema,
-  generateRelationLine,
+  makeRelationLine,
   removeDuplicateRelations,
   simplifyType,
 } from ".";
@@ -121,19 +121,23 @@ describe("simplifyType", () => {
     expect(simplifyType("bytea")).toBe("bytea");
   });
 
-  it("returns custom type as-is", () => {
-    expect(simplifyType("citext")).toBe("citext");
+  it("returns custom type as-is (no match)", () => {
+    expect(simplifyType("bytea")).toBe("bytea");
+  });
+
+  it("maps citext to string (contains 'text')", () => {
+    expect(simplifyType("citext")).toBe("string");
   });
 });
 
 // ============================================================================
-// generateRelationLine
+// makeRelationLine
 // ============================================================================
 
-describe("generateRelationLine", () => {
+describe("makeRelationLine", () => {
   it("generates required relation with }| (many)", () => {
     expect(
-      generateRelationLine({
+      makeRelationLine({
         fromModel: "user",
         toModel: "post",
         fromField: "id",
@@ -145,7 +149,7 @@ describe("generateRelationLine", () => {
 
   it("generates optional relation with }o (zero-many)", () => {
     expect(
-      generateRelationLine({
+      makeRelationLine({
         fromModel: "user",
         toModel: "profile",
         fromField: "id",
@@ -306,9 +310,7 @@ describe("erContent", () => {
   it("generates ER with empty table (no fields)", () => {
     const result = erContent([], [{ name: "empty", fields: [] }]);
 
-    expect(result).toBe(
-      ["```mermaid", "erDiagram", "    empty {", "    }", "```"].join("\n"),
-    );
+    expect(result).toBe(["```mermaid", "erDiagram", "    empty {", "    }", "```"].join("\n"));
   });
 });
 

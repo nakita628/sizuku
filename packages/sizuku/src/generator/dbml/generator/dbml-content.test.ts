@@ -3,11 +3,11 @@ import {
   dbmlContent,
   escapeNote,
   formatConstraints,
-  generateColumn,
-  generateEnum,
-  generateRef,
-  generateRefName,
-  generateTable,
+  makeColumn,
+  makeEnum,
+  makeRef,
+  makeRefName,
+  makeTable,
   makeColumnConstraints,
   mapDrizzleType,
 } from "./dbml-content.js";
@@ -168,9 +168,9 @@ describe("makeColumnConstraints", () => {
   });
 
   it("returns not null for non-PK not null column", () => {
-    expect(
-      makeColumnConstraints({ name: "name", type: "varchar", isNotNull: true }),
-    ).toStrictEqual(["not null"]);
+    expect(makeColumnConstraints({ name: "name", type: "varchar", isNotNull: true })).toStrictEqual(
+      ["not null"],
+    );
   });
 
   it("does not add not null for primary key even if isNotNull is true", () => {
@@ -191,9 +191,9 @@ describe("makeColumnConstraints", () => {
   });
 
   it("includes note", () => {
-    expect(
-      makeColumnConstraints({ name: "id", type: "uuid", note: "Primary key" }),
-    ).toStrictEqual(["note: 'Primary key'"]);
+    expect(makeColumnConstraints({ name: "id", type: "uuid", note: "Primary key" })).toStrictEqual([
+      "note: 'Primary key'",
+    ]);
   });
 
   it("returns empty array for column with no constraints", () => {
@@ -234,41 +234,41 @@ describe("formatConstraints", () => {
 });
 
 // ============================================================================
-// generateColumn
+// makeColumn
 // ============================================================================
 
-describe("generateColumn", () => {
+describe("makeColumn", () => {
   it("generates column with pk and increment", () => {
-    expect(
-      generateColumn({ name: "id", type: "serial", isPrimaryKey: true, isIncrement: true }),
-    ).toBe("  id serial [pk, increment]");
+    expect(makeColumn({ name: "id", type: "serial", isPrimaryKey: true, isIncrement: true })).toBe(
+      "  id serial [pk, increment]",
+    );
   });
 
   it("generates column without constraints", () => {
-    expect(generateColumn({ name: "bio", type: "text" })).toBe("  bio text");
+    expect(makeColumn({ name: "bio", type: "text" })).toBe("  bio text");
   });
 
   it("generates column with note", () => {
-    expect(generateColumn({ name: "email", type: "varchar", note: "User email" })).toBe(
+    expect(makeColumn({ name: "email", type: "varchar", note: "User email" })).toBe(
       "  email varchar [note: 'User email']",
     );
   });
 
   it("generates column with escaped note", () => {
-    expect(generateColumn({ name: "name", type: "text", note: "User's name" })).toBe(
+    expect(makeColumn({ name: "name", type: "text", note: "User's name" })).toBe(
       "  name text [note: 'User\\'s name']",
     );
   });
 });
 
 // ============================================================================
-// generateTable
+// makeTable
 // ============================================================================
 
-describe("generateTable", () => {
+describe("makeTable", () => {
   it("generates table with multiple columns", () => {
     expect(
-      generateTable({
+      makeTable({
         name: "users",
         columns: [
           { name: "id", type: "serial", isPrimaryKey: true, isIncrement: true },
@@ -280,7 +280,7 @@ describe("generateTable", () => {
 
   it("generates table with note", () => {
     expect(
-      generateTable({
+      makeTable({
         name: "config",
         columns: [{ name: "key", type: "text", isPrimaryKey: true }],
         note: "App configuration",
@@ -289,36 +289,34 @@ describe("generateTable", () => {
   });
 
   it("generates table with empty columns", () => {
-    expect(generateTable({ name: "empty", columns: [] })).toBe("Table empty {\n}");
+    expect(makeTable({ name: "empty", columns: [] })).toBe("Table empty {\n}");
   });
 });
 
 // ============================================================================
-// generateEnum
+// makeEnum
 // ============================================================================
 
-describe("generateEnum", () => {
+describe("makeEnum", () => {
   it("generates enum with multiple values", () => {
-    expect(generateEnum({ name: "role", values: ["ADMIN", "USER", "GUEST"] })).toBe(
+    expect(makeEnum({ name: "role", values: ["ADMIN", "USER", "GUEST"] })).toBe(
       "Enum role {\n  ADMIN\n  USER\n  GUEST\n}",
     );
   });
 
   it("generates enum with single value", () => {
-    expect(generateEnum({ name: "status", values: ["ACTIVE"] })).toBe(
-      "Enum status {\n  ACTIVE\n}",
-    );
+    expect(makeEnum({ name: "status", values: ["ACTIVE"] })).toBe("Enum status {\n  ACTIVE\n}");
   });
 });
 
 // ============================================================================
-// generateRefName
+// makeRefName
 // ============================================================================
 
-describe("generateRefName", () => {
+describe("makeRefName", () => {
   it("uses provided name", () => {
     expect(
-      generateRefName({
+      makeRefName({
         name: "custom_fk",
         fromTable: "posts",
         fromColumn: "userId",
@@ -330,7 +328,7 @@ describe("generateRefName", () => {
 
   it("generates default name when name is omitted", () => {
     expect(
-      generateRefName({
+      makeRefName({
         fromTable: "posts",
         fromColumn: "userId",
         toTable: "users",
@@ -341,13 +339,13 @@ describe("generateRefName", () => {
 });
 
 // ============================================================================
-// generateRef
+// makeRef
 // ============================================================================
 
-describe("generateRef", () => {
+describe("makeRef", () => {
   it("generates ref with default operator (>)", () => {
     expect(
-      generateRef({
+      makeRef({
         fromTable: "posts",
         fromColumn: "userId",
         toTable: "users",
@@ -358,7 +356,7 @@ describe("generateRef", () => {
 
   it("generates ref with custom operator (<)", () => {
     expect(
-      generateRef({
+      makeRef({
         fromTable: "users",
         fromColumn: "id",
         toTable: "posts",
@@ -370,7 +368,7 @@ describe("generateRef", () => {
 
   it("generates ref with one-to-one operator (-)", () => {
     expect(
-      generateRef({
+      makeRef({
         fromTable: "users",
         fromColumn: "id",
         toTable: "profiles",
@@ -382,7 +380,7 @@ describe("generateRef", () => {
 
   it("generates ref with onDelete action", () => {
     expect(
-      generateRef({
+      makeRef({
         name: "fk_post_user",
         fromTable: "posts",
         fromColumn: "userId",
@@ -395,7 +393,7 @@ describe("generateRef", () => {
 
   it("generates ref with onDelete and onUpdate actions", () => {
     expect(
-      generateRef({
+      makeRef({
         name: "fk",
         fromTable: "a",
         fromColumn: "bId",
@@ -443,9 +441,7 @@ describe("dbmlContent", () => {
       [
         {
           name: "users",
-          fields: [
-            { name: "id", type: "serial", keyType: "PK", description: "Primary key" },
-          ],
+          fields: [{ name: "id", type: "serial", keyType: "PK", description: "Primary key" }],
         },
         {
           name: "posts",
