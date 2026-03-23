@@ -127,6 +127,92 @@ export const PostRelationsSchema = Schema.Struct({ ...PostSchema.fields, user: U
   });
 });
 
+describe("effectCode JSDoc", () => {
+  it.concurrent("effectCode comment true type true", () => {
+    const result = effectCode(
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: "Schema.UUID", description: "Primary key" },
+          {
+            name: "name",
+            definition: "Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50))",
+            description: "Display name",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+
+    const expected = `export const UserSchema = Schema.Struct({/**
+ * Primary key
+ */
+id:Schema.UUID,
+/**
+ * Display name
+ */
+name:Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50))})
+
+export type UserEncoded = typeof UserSchema.Encoded
+`;
+    expect(result).toBe(expected);
+  });
+
+  it.concurrent("effectCode comment false type true", () => {
+    const result = effectCode(
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: "Schema.UUID", description: "Primary key" },
+          { name: "name", definition: "Schema.String", description: "Display name" },
+        ],
+      },
+      false,
+      true,
+    );
+
+    const expected = `export const UserSchema = Schema.Struct({id:Schema.UUID,
+name:Schema.String})
+
+export type UserEncoded = typeof UserSchema.Encoded
+`;
+    expect(result).toBe(expected);
+  });
+
+  it.concurrent("effectCode comment true type false", () => {
+    const result = effectCode(
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: "Schema.UUID", description: "Primary key" },
+        ],
+      },
+      true,
+      false,
+    );
+
+    const expected = `export const UserSchema = Schema.Struct({/**
+ * Primary key
+ */
+id:Schema.UUID})
+`;
+    expect(result).toBe(expected);
+  });
+
+  it.concurrent("effectCode comment false type false", () => {
+    const result = effectCode(
+      {
+        name: "user",
+        fields: [{ name: "id", definition: "Schema.UUID" }],
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const UserSchema = Schema.Struct({id:Schema.UUID})\n`);
+  });
+});
+
 describe("effectCode strict/loose (Effect has no schema-level strict/loose API)", () => {
   it.concurrent("strict objectType is ignored - still generates Schema.Struct", () => {
     const result = effectCode(
