@@ -2,7 +2,12 @@ import path from "node:path";
 import { fmt } from "../../format/index.js";
 import { mkdir, writeFile } from "../../fsp/index.js";
 import { extractRelationSchemas, extractSchemas } from "../../helper/extract-schemas.js";
-import { fieldDefinitions, inferArktype, makeCapitalized } from "../../utils/index.js";
+import {
+  fieldDefinitions,
+  inferArktype,
+  makeCapitalized,
+  makeRelationFields,
+} from "../../utils/index.js";
 
 /**
  * Generate ArkType type() definition from a schema
@@ -70,10 +75,9 @@ export function makeRelationArktypeCode(
   },
   withType: boolean,
 ): string {
-  const base = schema.baseName;
   const relName = `${schema.name}Schema`;
-  const baseSchema = `${makeCapitalized(base)}Schema`;
-  const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(",");
+  const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
+  const fields = makeRelationFields(schema.fields);
   const obj = `\nexport const ${makeCapitalized(relName)} = type({...${baseSchema}.t,${fields}})`;
   if (withType) return `${obj}\n\n${inferArktype(schema.name)}\n`;
   return `${obj}`;

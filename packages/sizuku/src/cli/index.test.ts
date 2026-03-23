@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { detectOutputType, parseFlags, stripImports } from "./index.js";
+import { detectOutputType, parseFlags, resolveSchemaLibrary, stripImports } from "./index.js";
 
 const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
 
@@ -347,6 +347,51 @@ describe("parseFlags", () => {
       exportTypes: false,
       withComment: false,
       withRelation: false,
+    });
+  });
+});
+
+// ============================================================================
+// resolveSchemaLibrary
+// ============================================================================
+
+describe("resolveSchemaLibrary", () => {
+  it("returns zod when --zod flag is set", () => {
+    expect(resolveSchemaLibrary(parseFlags(["--zod"]))).toStrictEqual({
+      name: "zod",
+      label: "Zod",
+    });
+  });
+
+  it("returns valibot when --valibot flag is set", () => {
+    expect(resolveSchemaLibrary(parseFlags(["--valibot"]))).toStrictEqual({
+      name: "valibot",
+      label: "Valibot",
+    });
+  });
+
+  it("returns arktype when --arktype flag is set", () => {
+    expect(resolveSchemaLibrary(parseFlags(["--arktype"]))).toStrictEqual({
+      name: "arktype",
+      label: "ArkType",
+    });
+  });
+
+  it("returns effect when --effect flag is set", () => {
+    expect(resolveSchemaLibrary(parseFlags(["--effect"]))).toStrictEqual({
+      name: "effect",
+      label: "Effect",
+    });
+  });
+
+  it("returns null when no library flag is set", () => {
+    expect(resolveSchemaLibrary(parseFlags([]))).toBe(null);
+  });
+
+  it("returns zod when both --zod and --valibot are set (first wins)", () => {
+    expect(resolveSchemaLibrary(parseFlags(["--zod", "--valibot"]))).toStrictEqual({
+      name: "zod",
+      label: "Zod",
     });
   });
 });

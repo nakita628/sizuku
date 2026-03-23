@@ -118,16 +118,31 @@ async function sizukuDirectDiagram(
 }
 
 /**
+ * Resolve which schema library to use from flags
+ */
+export function resolveSchemaLibrary(flags: ReturnType<typeof parseFlags>): {
+  readonly name: string
+  readonly label: string
+} | null {
+  if (flags.zod) return { name: 'zod', label: 'Zod' }
+  if (flags.valibot) return { name: 'valibot', label: 'Valibot' }
+  if (flags.arktype) return { name: 'arktype', label: 'ArkType' }
+  if (flags.effect) return { name: 'effect', label: 'Effect' }
+  return null
+}
+
+/**
  * Run sizuku in direct CLI mode for validation schema output
  */
 async function sizukuDirectSchema(
   input: string,
-  output: string,
+  output: `${string}.ts`,
   flags: ReturnType<typeof parseFlags>,
 ): Promise<
   { readonly ok: true; readonly value: string } | { readonly ok: false; readonly error: string }
 > {
-  if (!flags.zod && !flags.valibot && !flags.arktype && !flags.effect) {
+  const lib = resolveSchemaLibrary(flags)
+  if (!lib) {
     return {
       ok: false,
       error: 'Specify --zod, --valibot, --arktype, or --effect for .ts output',
@@ -140,55 +155,21 @@ async function sizukuDirectSchema(
   }
 
   const code = stripImports(contentResult.value)
-  const tsOutput = output as `${string}.ts`
 
-  if (flags.zod) {
-    const result = await sizukuZod(
-      code,
-      tsOutput,
-      flags.withComment,
-      flags.exportTypes,
-      flags.zodVersion,
-      flags.withRelation,
-    )
-    if (!result.ok) return result
-    return { ok: true, value: `💧 Generated Zod schema at: ${output}` }
+  const generators = {
+    zod: () =>
+      sizukuZod(code, output, flags.withComment, flags.exportTypes, flags.zodVersion, flags.withRelation),
+    valibot: () =>
+      sizukuValibot(code, output, flags.withComment, flags.exportTypes, flags.withRelation),
+    arktype: () =>
+      sizukuArktype(code, output, flags.withComment, flags.exportTypes, flags.withRelation),
+    effect: () =>
+      sizukuEffect(code, output, flags.withComment, flags.exportTypes, flags.withRelation),
   }
 
-  if (flags.valibot) {
-    const result = await sizukuValibot(
-      code,
-      tsOutput,
-      flags.withComment,
-      flags.exportTypes,
-      flags.withRelation,
-    )
-    if (!result.ok) return result
-    return { ok: true, value: `💧 Generated Valibot schema at: ${output}` }
-  }
-
-  if (flags.arktype) {
-    const result = await sizukuArktype(
-      code,
-      tsOutput,
-      flags.withComment,
-      flags.exportTypes,
-      flags.withRelation,
-    )
-    if (!result.ok) return result
-    return { ok: true, value: `💧 Generated ArkType schema at: ${output}` }
-  }
-
-  // flags.effect (guaranteed by early check)
-  const result = await sizukuEffect(
-    code,
-    tsOutput,
-    flags.withComment,
-    flags.exportTypes,
-    flags.withRelation,
-  )
+  const result = await generators[lib.name]()
   if (!result.ok) return result
-  return { ok: true, value: `💧 Generated Effect schema at: ${output}` }
+  return { ok: true, value: `💧 Generated ${lib.label} schema at: ${output}` }
 }
 
 /**
@@ -314,7 +295,7 @@ export async function sizuku(): Promise<
   }
 
   if (outputType === 'typescript') {
-    return sizukuDirectSchema(input, output, parseFlags(argv))
+    return sizukuDirectSchema(input, output as `${string}.ts`, parseFlags(argv))
   }
 
   return sizukuDirectDiagram(input, output, outputType)

@@ -451,22 +451,20 @@ export function extractSchemas(
   const sourceFile = project.createSourceFile("temp.ts", sourceCode);
   const sourceText = sourceFile.getFullText();
 
-  const commentPrefix: ValidationTag =
-    library === "zod"
-      ? "@z."
-      : library === "valibot"
-        ? "@v."
-        : library === "arktype"
-          ? "@a."
-          : "@e.";
-  const schemaPrefix: SchemaPrefix =
-    library === "zod"
-      ? "z"
-      : library === "valibot"
-        ? "v"
-        : library === "arktype"
-          ? "type"
-          : "Schema";
+  const commentPrefixMap: Record<string, ValidationTag> = {
+    zod: "@z.",
+    valibot: "@v.",
+    arktype: "@a.",
+    effect: "@e.",
+  };
+  const schemaPrefixMap: Record<string, SchemaPrefix> = {
+    zod: "z",
+    valibot: "v",
+    arktype: "type",
+    effect: "Schema",
+  };
+  const commentPrefix = commentPrefixMap[library];
+  const schemaPrefix = schemaPrefixMap[library];
 
   const extractField = createExtractFieldFromProperty((lines) =>
     parseFieldComments(lines, commentPrefix),
@@ -594,22 +592,20 @@ export function extractRelationSchemas(
   const sourceFile = project.createSourceFile("temp.ts", sourceCode);
   const sourceText = sourceFile.getFullText();
 
-  const commentPrefix: ValidationTag =
-    library === "zod"
-      ? "@z."
-      : library === "valibot"
-        ? "@v."
-        : library === "arktype"
-          ? "@a."
-          : "@e.";
-  const schemaPrefix: SchemaPrefix =
-    library === "zod"
-      ? "z"
-      : library === "valibot"
-        ? "v"
-        : library === "arktype"
-          ? "type"
-          : "Schema";
+  const commentPrefixMap: Record<string, ValidationTag> = {
+    zod: "@z.",
+    valibot: "@v.",
+    arktype: "@a.",
+    effect: "@e.",
+  };
+  const schemaPrefixMap: Record<string, SchemaPrefix> = {
+    zod: "z",
+    valibot: "v",
+    arktype: "type",
+    effect: "Schema",
+  };
+  const commentPrefix = commentPrefixMap[library];
+  const schemaPrefix = schemaPrefixMap[library];
 
   // First, extract base schemas to get their objectType
   const baseSchemas = extractSchemas(lines, library);
@@ -671,20 +667,9 @@ export function extractRelations(code: string[]): {
   toField: string;
   type: string;
 }[] {
-  const relations: {
-    fromModel: string;
-    toModel: string;
-    fromField: string;
-    toField: string;
-    type: string;
-  }[] = [];
-  for (const line of code) {
-    const relation = parseRelationLine(line);
-    if (relation) {
-      relations.push(relation);
-    }
-  }
-  return relations;
+  return code
+    .map(parseRelationLine)
+    .filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
 /**

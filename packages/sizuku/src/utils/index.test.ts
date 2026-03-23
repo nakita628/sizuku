@@ -25,6 +25,8 @@ import {
   splitByTo,
   splitByWhitespace,
   startsWith,
+  makeRelationFields,
+  resolveWrapperType,
   trimString,
 } from "./index";
 
@@ -689,5 +691,40 @@ note:z.string().optional()`);
     it.concurrent("many-to-many for Product → Tag", () => {
       expect(makeRelationLine("many-to-many")).toStrictEqual({ ok: true, value: "}|--}|" });
     });
+  });
+});
+
+describe("resolveWrapperType", () => {
+  it("returns strictObject for strict", () => {
+    expect(resolveWrapperType("strict")).toBe("strictObject");
+  });
+
+  it("returns looseObject for loose", () => {
+    expect(resolveWrapperType("loose")).toBe("looseObject");
+  });
+
+  it("returns object for undefined", () => {
+    expect(resolveWrapperType(undefined)).toBe("object");
+  });
+});
+
+describe("makeRelationFields", () => {
+  it("joins fields with comma", () => {
+    expect(
+      makeRelationFields([
+        { name: "posts", definition: "z.array(PostSchema)" },
+        { name: "profile", definition: "ProfileSchema" },
+      ]),
+    ).toBe("posts:z.array(PostSchema),profile:ProfileSchema");
+  });
+
+  it("returns empty string for empty array", () => {
+    expect(makeRelationFields([])).toBe("");
+  });
+
+  it("returns single field without trailing comma", () => {
+    expect(makeRelationFields([{ name: "user", definition: "UserSchema" }])).toBe(
+      "user:UserSchema",
+    );
   });
 });

@@ -14,6 +14,26 @@ export function makeCapitalized(str: string): string {
 }
 
 /**
+ * Resolve schema object wrapper type from objectType annotation.
+ */
+export function resolveWrapperType(
+  objectType: 'strict' | 'loose' | undefined,
+): 'strictObject' | 'looseObject' | 'object' {
+  if (objectType === 'strict') return 'strictObject'
+  if (objectType === 'loose') return 'looseObject'
+  return 'object'
+}
+
+/**
+ * Join relation schema fields into a comma-separated string.
+ */
+export function makeRelationFields(
+  fields: readonly { readonly name: string; readonly definition: string }[],
+): string {
+  return fields.map((f) => `${f.name}:${f.definition}`).join(',')
+}
+
+/**
  * Generates a Zod object wrapper.
  *
  * @param inner - The inner field definitions string.
@@ -461,7 +481,7 @@ export function fieldDefinitions(
  */
 export function inferArktype(name: string): `export type ${string} = typeof ${string}Schema.infer` {
   const capitalized = makeCapitalized(name);
-  return `export type ${capitalized} = typeof ${capitalized}Schema.infer` as const;
+  return `export type ${capitalized} = typeof ${capitalized}Schema.infer`;
 }
 
 /* ========================================================================== *
@@ -478,5 +498,5 @@ export function inferEffect(
   name: string,
 ): `export type ${string}Encoded = typeof ${string}Schema.Encoded` {
   const capitalized = makeCapitalized(name);
-  return `export type ${capitalized}Encoded = typeof ${capitalized}Schema.Encoded` as const;
+  return `export type ${capitalized}Encoded = typeof ${capitalized}Schema.Encoded`;
 }

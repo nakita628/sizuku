@@ -2,7 +2,14 @@ import path from "node:path";
 import { fmt } from "../../format/index.js";
 import { mkdir, writeFile } from "../../fsp/index.js";
 import { extractRelationSchemas, extractSchemas } from "../../helper/extract-schemas.js";
-import { fieldDefinitions, infer, makeCapitalized, makeZodObject } from "../../utils/index.js";
+import {
+  fieldDefinitions,
+  infer,
+  makeCapitalized,
+  makeRelationFields,
+  makeZodObject,
+  resolveWrapperType,
+} from "../../utils/index.js";
 
 function zod(
   schema: {
@@ -16,12 +23,7 @@ function zod(
   },
   comment: boolean,
 ): string {
-  const wrapperType =
-    schema.objectType === "strict"
-      ? "strictObject"
-      : schema.objectType === "loose"
-        ? "looseObject"
-        : "object";
+  const wrapperType = resolveWrapperType(schema.objectType);
   const inner = fieldDefinitions(schema, comment);
   const objectCode = makeZodObject(inner, wrapperType);
   return `export const ${makeCapitalized(schema.name)}Schema = ${objectCode}`;
@@ -61,16 +63,10 @@ export function relationZodCode(
   },
   withType: boolean,
 ): string {
-  const base = schema.baseName;
   const relName = `${schema.name}Schema`;
-  const baseSchema = `${makeCapitalized(base)}Schema`;
-  const fields = schema.fields.map((f) => `${f.name}:${f.definition}`).join(",");
-  const objectType =
-    schema.objectType === "strict"
-      ? "strictObject"
-      : schema.objectType === "loose"
-        ? "looseObject"
-        : "object";
+  const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
+  const fields = makeRelationFields(schema.fields);
+  const objectType = resolveWrapperType(schema.objectType);
   const obj = `\nexport const ${makeCapitalized(relName)} = z.${objectType}({...${baseSchema}.shape,${fields}})`;
   if (withType) return `${obj}\n\n${infer(schema.name)}\n`;
   return `${obj}`;
