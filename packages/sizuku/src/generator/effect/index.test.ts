@@ -184,9 +184,7 @@ export type UserEncoded = typeof UserSchema.Encoded
     const result = effectCode(
       {
         name: "user",
-        fields: [
-          { name: "id", definition: "Schema.UUID", description: "Primary key" },
-        ],
+        fields: [{ name: "id", definition: "Schema.UUID", description: "Primary key" }],
       },
       true,
       false,
