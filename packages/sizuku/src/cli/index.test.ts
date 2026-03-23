@@ -475,9 +475,7 @@ describe("sizuku argv parsing", () => {
     const result = await sizuku();
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(
-        "Specify --zod, --valibot, --arktype, or --effect for .ts output",
-      );
+      expect(result.error).toBe("Specify --zod, --valibot, --arktype, or --effect for .ts output");
     }
   });
 
@@ -489,6 +487,169 @@ describe("sizuku argv parsing", () => {
     if (!result.ok) {
       expect(result.error.startsWith("Failed to read input:")).toBe(true);
     }
+  });
+});
+
+// ============================================================================
+// sizuku() direct schema mode (process.argv mock + tmpfile)
+// ============================================================================
+
+const annotatedSchema = `import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
+
+export const user = mysqlTable('user', {
+  /// @z.string().uuid()
+  /// @v.pipe(v.string(), v.uuid())
+  /// @a."string.uuid"
+  /// @e.Schema.UUID
+  id: varchar('id', { length: 36 }).primaryKey(),
+  /// @z.string().min(1)
+  /// @v.pipe(v.string(), v.minLength(1))
+  /// @a."string>=1"
+  /// @e.Schema.String.pipe(Schema.minLength(1))
+  name: varchar('name', { length: 50 }).notNull(),
+})`;
+
+describe("sizuku() direct schema via process.argv", () => {
+  const originalArgv = process.argv;
+  let tmpdir: string;
+
+  beforeEach(() => {
+    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-direct-schema-"));
+    fs.writeFileSync(path.join(tmpdir, "schema.ts"), annotatedSchema, "utf-8");
+  });
+
+  afterEach(() => {
+    process.argv = originalArgv;
+    fs.rmSync(tmpdir, { recursive: true, force: true });
+  });
+
+  it("generates Zod schema via --zod", async () => {
+    const output = path.join(tmpdir, "out", "zod.ts");
+    process.argv = ["node", "sizuku", path.join(tmpdir, "schema.ts"), "-o", output, "--zod"];
+    const { sizuku } = await import("./index.js");
+    const result = await sizuku();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toBe(`💧 Generated Zod schema at: ${output}`);
+    }
+    const content = fs.readFileSync(output, "utf-8");
+    expect(content.includes("from 'zod'")).toBe(true);
+    expect(content.includes("UserSchema")).toBe(true);
+  });
+
+  it("generates Valibot schema via --valibot", async () => {
+    const output = path.join(tmpdir, "out", "valibot.ts");
+    process.argv = ["node", "sizuku", path.join(tmpdir, "schema.ts"), "-o", output, "--valibot"];
+    const { sizuku } = await import("./index.js");
+    const result = await sizuku();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toBe(`💧 Generated Valibot schema at: ${output}`);
+    }
+    const content = fs.readFileSync(output, "utf-8");
+    expect(content.includes("from 'valibot'")).toBe(true);
+    expect(content.includes("UserSchema")).toBe(true);
+  });
+
+  it("generates ArkType schema via --arktype", async () => {
+    const output = path.join(tmpdir, "out", "arktype.ts");
+    process.argv = ["node", "sizuku", path.join(tmpdir, "schema.ts"), "-o", output, "--arktype"];
+    const { sizuku } = await import("./index.js");
+    const result = await sizuku();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toBe(`💧 Generated ArkType schema at: ${output}`);
+    }
+    const content = fs.readFileSync(output, "utf-8");
+    expect(content.includes("from 'arktype'")).toBe(true);
+    expect(content.includes("UserSchema")).toBe(true);
+  });
+
+  it("generates Effect schema via --effect", async () => {
+    const output = path.join(tmpdir, "out", "effect.ts");
+    process.argv = ["node", "sizuku", path.join(tmpdir, "schema.ts"), "-o", output, "--effect"];
+    const { sizuku } = await import("./index.js");
+    const result = await sizuku();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toBe(`💧 Generated Effect schema at: ${output}`);
+    }
+    const content = fs.readFileSync(output, "utf-8");
+    expect(content.includes("from 'effect'")).toBe(true);
+    expect(content.includes("UserSchema")).toBe(true);
+  });
+
+  it("generates Zod schema without types via --no-export-types", async () => {
+    const output = path.join(tmpdir, "out", "no-types.ts");
+    process.argv = [
+      "node",
+      "sizuku",
+      path.join(tmpdir, "schema.ts"),
+      "-o",
+      output,
+      "--zod",
+      "--no-export-types",
+    ];
+    const { sizuku } = await import("./index.js");
+    const result = await sizuku();
+    expect(result.ok).toBe(true);
+    const content = fs.readFileSync(output, "utf-8");
+    expect(content.includes("UserSchema")).toBe(true);
+    expect(content.includes("export type User")).toBe(false);
+  });
+
+  it("generates Zod schema without comments via --no-with-comment", async () => {
+    const output = path.join(tmpdir, "out", "no-comment.ts");
+    process.argv = [
+      "node",
+      "sizuku",
+      path.join(tmpdir, "schema.ts"),
+      "-o",
+      output,
+      "--zod",
+      "--no-with-comment",
+    ];
+    const { sizuku } = await import("./index.js");
+    const result = await sizuku();
+    expect(result.ok).toBe(true);
+    const content = fs.readFileSync(output, "utf-8");
+    expect(content.includes("UserSchema")).toBe(true);
+  });
+
+  it("each library produces distinct output", async () => {
+    const zodOut = path.join(tmpdir, "out", "z.ts");
+    const valibotOut = path.join(tmpdir, "out", "v.ts");
+    const arktypeOut = path.join(tmpdir, "out", "a.ts");
+    const effectOut = path.join(tmpdir, "out", "e.ts");
+    const schemaPath = path.join(tmpdir, "schema.ts");
+
+    for (const [flag, out] of [
+      ["--zod", zodOut],
+      ["--valibot", valibotOut],
+      ["--arktype", arktypeOut],
+      ["--effect", effectOut],
+    ]) {
+      process.argv = ["node", "sizuku", schemaPath, "-o", out, flag];
+      const { sizuku } = await import("./index.js");
+      await sizuku();
+    }
+
+    const zodContent = fs.readFileSync(zodOut, "utf-8");
+    const valibotContent = fs.readFileSync(valibotOut, "utf-8");
+    const arktypeContent = fs.readFileSync(arktypeOut, "utf-8");
+    const effectContent = fs.readFileSync(effectOut, "utf-8");
+
+    // Each has distinct import
+    expect(zodContent.includes("from 'zod'")).toBe(true);
+    expect(valibotContent.includes("from 'valibot'")).toBe(true);
+    expect(arktypeContent.includes("from 'arktype'")).toBe(true);
+    expect(effectContent.includes("from 'effect'")).toBe(true);
+
+    // All different
+    expect(zodContent).not.toBe(valibotContent);
+    expect(zodContent).not.toBe(arktypeContent);
+    expect(zodContent).not.toBe(effectContent);
+    expect(valibotContent).not.toBe(arktypeContent);
   });
 });
 

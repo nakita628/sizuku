@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vitest";
-import { sizukuEffect } from "./index.js";
+import { effectCode, sizukuEffect } from "./index.js";
 
 // Test run
 // pnpm vitest run ./src/generator/effect/index.test.ts
@@ -124,5 +124,47 @@ export const UserRelationsSchema = Schema.Struct({
 export const PostRelationsSchema = Schema.Struct({ ...PostSchema.fields, user: UserSchema })
 `;
     expect(result).toBe(expected);
+  });
+});
+
+describe("effectCode strict/loose (Effect has no schema-level strict/loose API)", () => {
+  it.concurrent("strict objectType is ignored - still generates Schema.Struct", () => {
+    const result = effectCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "Schema.String" }],
+        objectType: "strict",
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const ConfigSchema = Schema.Struct({key:Schema.String})\n`);
+  });
+
+  it.concurrent("loose objectType is ignored - still generates Schema.Struct", () => {
+    const result = effectCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "Schema.String" }],
+        objectType: "loose",
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const ConfigSchema = Schema.Struct({key:Schema.String})\n`);
+  });
+
+  it.concurrent("undefined objectType generates Schema.Struct", () => {
+    const result = effectCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "Schema.String" }],
+      },
+      false,
+      true,
+    );
+    expect(result).toBe(
+      `export const ConfigSchema = Schema.Struct({key:Schema.String})\n\nexport type ConfigEncoded = typeof ConfigSchema.Encoded\n`,
+    );
   });
 });

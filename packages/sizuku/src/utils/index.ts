@@ -17,11 +17,25 @@ export function makeCapitalized(str: string): string {
  * Resolve schema object wrapper type from objectType annotation.
  */
 export function resolveWrapperType(
-  objectType: 'strict' | 'loose' | undefined,
-): 'strictObject' | 'looseObject' | 'object' {
-  if (objectType === 'strict') return 'strictObject'
-  if (objectType === 'loose') return 'looseObject'
-  return 'object'
+  objectType: "strict" | "loose" | undefined,
+): "strictObject" | "looseObject" | "object" {
+  if (objectType === "strict") return "strictObject";
+  if (objectType === "loose") return "looseObject";
+  return "object";
+}
+
+/**
+ * Resolve ArkType undeclared key handling prefix.
+ *
+ * ArkType uses `"+"` key to control unknown property behavior:
+ * - strict → `"+": "reject"` (reject unknown keys)
+ * - loose → `"+": "ignore"` (preserve unknown keys, which is ArkType's default)
+ * - undefined → no prefix (default behavior: preserve unknown keys)
+ */
+export function resolveArktypeUndeclared(objectType: "strict" | "loose" | undefined): string {
+  if (objectType === "strict") return '"+":"reject",';
+  if (objectType === "loose") return '"+":"ignore",';
+  return "";
 }
 
 /**
@@ -30,7 +44,7 @@ export function resolveWrapperType(
 export function makeRelationFields(
   fields: readonly { readonly name: string; readonly definition: string }[],
 ): string {
-  return fields.map((f) => `${f.name}:${f.definition}`).join(',')
+  return fields.map((f) => `${f.name}:${f.definition}`).join(",");
 }
 
 /**
@@ -481,7 +495,7 @@ export function fieldDefinitions(
  */
 export function inferArktype(name: string): `export type ${string} = typeof ${string}Schema.infer` {
   const capitalized = makeCapitalized(name);
-  return `export type ${capitalized} = typeof ${capitalized}Schema.infer`;
+  return `export type ${capitalized} = typeof ${capitalized}Schema.infer` as const;
 }
 
 /* ========================================================================== *
@@ -498,5 +512,5 @@ export function inferEffect(
   name: string,
 ): `export type ${string}Encoded = typeof ${string}Schema.Encoded` {
   const capitalized = makeCapitalized(name);
-  return `export type ${capitalized}Encoded = typeof ${capitalized}Schema.Encoded`;
+  return `export type ${capitalized}Encoded = typeof ${capitalized}Schema.Encoded` as const;
 }

@@ -664,9 +664,7 @@ describe("CLI binary: validation schema generation", () => {
     const result = await runCli([schemaPath, "-o", outputPath]);
 
     expect(result.stdout).toBe("");
-    expect(result.stderr).toBe(
-      "Specify --zod, --valibot, --arktype, or --effect for .ts output",
-    );
+    expect(result.stderr).toBe("Specify --zod, --valibot, --arktype, or --effect for .ts output");
   });
 
   it("generates distinct output per library (zod vs valibot vs arktype vs effect)", async () => {

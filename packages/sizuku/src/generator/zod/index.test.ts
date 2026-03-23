@@ -254,6 +254,47 @@ name:z.string().min(1).max(50)})
 `;
     expect(result).toBe(expected);
   });
+
+  it.concurrent("zodCode strictObject", () => {
+    const result = zodCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "z.string()" }],
+        objectType: "strict",
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const ConfigSchema = z.strictObject({key:z.string()})\n`);
+  });
+
+  it.concurrent("zodCode looseObject", () => {
+    const result = zodCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "z.string()" }],
+        objectType: "loose",
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const ConfigSchema = z.looseObject({key:z.string()})\n`);
+  });
+
+  it.concurrent("zodCode strictObject with type", () => {
+    const result = zodCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "z.string()" }],
+        objectType: "strict",
+      },
+      false,
+      true,
+    );
+    expect(result).toBe(
+      `export const ConfigSchema = z.strictObject({key:z.string()})\n\nexport type Config = z.infer<typeof ConfigSchema>\n`,
+    );
+  });
 });
 
 describe("relationZodCode", () => {

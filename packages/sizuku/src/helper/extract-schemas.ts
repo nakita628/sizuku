@@ -667,9 +667,7 @@ export function extractRelations(code: string[]): {
   toField: string;
   type: string;
 }[] {
-  return code
-    .map(parseRelationLine)
-    .filter((r): r is NonNullable<typeof r> => r !== null);
+  return code.map(parseRelationLine).filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
 /**

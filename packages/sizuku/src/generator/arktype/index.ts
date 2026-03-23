@@ -7,6 +7,7 @@ import {
   inferArktype,
   makeCapitalized,
   makeRelationFields,
+  resolveArktypeUndeclared,
 } from "../../utils/index.js";
 
 /**
@@ -27,7 +28,8 @@ function arktype(
   comment: boolean,
 ): string {
   const inner = fieldDefinitions(schema, comment);
-  return `export const ${makeCapitalized(schema.name)}Schema = type({${inner}})`;
+  const undeclared = resolveArktypeUndeclared(schema.objectType);
+  return `export const ${makeCapitalized(schema.name)}Schema = type({${undeclared}${inner}})`;
 }
 
 /**
@@ -78,7 +80,8 @@ export function makeRelationArktypeCode(
   const relName = `${schema.name}Schema`;
   const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
   const fields = makeRelationFields(schema.fields);
-  const obj = `\nexport const ${makeCapitalized(relName)} = type({...${baseSchema}.t,${fields}})`;
+  const undeclared = resolveArktypeUndeclared(schema.objectType);
+  const obj = `\nexport const ${makeCapitalized(relName)} = type({${undeclared}...${baseSchema}.t,${fields}})`;
   if (withType) return `${obj}\n\n${inferArktype(schema.name)}\n`;
   return `${obj}`;
 }

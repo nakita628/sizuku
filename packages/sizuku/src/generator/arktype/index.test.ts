@@ -557,3 +557,58 @@ export const PostRelationsSchema = type({ ...PostSchema.t, user: UserSchema })
     expect(result).toBe(expected);
   });
 });
+
+describe("arktypeCode strict/loose object", () => {
+  it.concurrent("generates strict object with reject undeclared keys", () => {
+    const result = arktypeCode(
+      {
+        name: "user",
+        fields: [{ name: "id", definition: "'string.uuid'" }],
+        objectType: "strict",
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const UserSchema = type({"+":"reject",id:'string.uuid'})\n`);
+  });
+
+  it.concurrent("generates loose object with ignore undeclared keys", () => {
+    const result = arktypeCode(
+      {
+        name: "user",
+        fields: [{ name: "id", definition: "'string.uuid'" }],
+        objectType: "loose",
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const UserSchema = type({"+":"ignore",id:'string.uuid'})\n`);
+  });
+
+  it.concurrent("generates default object without undeclared key config", () => {
+    const result = arktypeCode(
+      {
+        name: "user",
+        fields: [{ name: "id", definition: "'string.uuid'" }],
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const UserSchema = type({id:'string.uuid'})\n`);
+  });
+
+  it.concurrent("generates strict object with type inference", () => {
+    const result = arktypeCode(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "'string'" }],
+        objectType: "strict",
+      },
+      false,
+      true,
+    );
+    expect(result).toBe(
+      `export const ConfigSchema = type({"+":"reject",key:'string'})\n\nexport type Config = typeof ConfigSchema.infer\n`,
+    );
+  });
+});

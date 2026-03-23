@@ -26,6 +26,7 @@ import {
   splitByWhitespace,
   startsWith,
   makeRelationFields,
+  resolveArktypeUndeclared,
   resolveWrapperType,
   trimString,
 } from "./index";
@@ -726,5 +727,19 @@ describe("makeRelationFields", () => {
     expect(makeRelationFields([{ name: "user", definition: "UserSchema" }])).toBe(
       "user:UserSchema",
     );
+  });
+});
+
+describe("resolveArktypeUndeclared", () => {
+  it('returns "+":"reject", for strict', () => {
+    expect(resolveArktypeUndeclared("strict")).toBe('"+":"reject",');
+  });
+
+  it('returns "+":"ignore", for loose', () => {
+    expect(resolveArktypeUndeclared("loose")).toBe('"+":"ignore",');
+  });
+
+  it("returns empty string for undefined", () => {
+    expect(resolveArktypeUndeclared(undefined)).toBe("");
   });
 });
