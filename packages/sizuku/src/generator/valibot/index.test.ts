@@ -346,19 +346,136 @@ export type UserRelations = v.InferOutput<typeof UserRelationsSchema>
   });
 });
 
+// ============================================================================
+// Auth pattern - valibotCode
+// ============================================================================
+
+describe("valibotCode Auth pattern", () => {
+  it.concurrent("generates User schema with comments and type", () => {
+    const result = valibotCode(
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: "v.pipe(v.string(), v.uuid())", description: "Primary key" },
+          { name: "email", definition: "v.pipe(v.string(), v.email())", description: "User email" },
+          {
+            name: "createdAt",
+            definition: "v.pipe(v.string(), v.isoTimestamp())",
+            description: "Account creation timestamp",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const UserSchema = v.object({/**
+ * Primary key
+ */
+id:v.pipe(v.string(), v.uuid()),
+/**
+ * User email
+ */
+email:v.pipe(v.string(), v.email()),
+/**
+ * Account creation timestamp
+ */
+createdAt:v.pipe(v.string(), v.isoTimestamp())})
+
+export type User = v.InferOutput<typeof UserSchema>
+`);
+  });
+
+  it.concurrent("generates Session schema with comments and type", () => {
+    const result = valibotCode(
+      {
+        name: "session",
+        fields: [
+          {
+            name: "id",
+            definition: "v.pipe(v.string(), v.uuid())",
+            description: "Session identifier",
+          },
+          {
+            name: "userId",
+            definition: "v.pipe(v.string(), v.uuid())",
+            description: "Foreign key to User",
+          },
+          {
+            name: "expiresAt",
+            definition: "v.pipe(v.string(), v.isoTimestamp())",
+            description: "Session expiry",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const SessionSchema = v.object({/**
+ * Session identifier
+ */
+id:v.pipe(v.string(), v.uuid()),
+/**
+ * Foreign key to User
+ */
+userId:v.pipe(v.string(), v.uuid()),
+/**
+ * Session expiry
+ */
+expiresAt:v.pipe(v.string(), v.isoTimestamp())})
+
+export type Session = v.InferOutput<typeof SessionSchema>
+`);
+  });
+
+  it.concurrent("generates RBAC Role schema without comments", () => {
+    const result = valibotCode(
+      {
+        name: "role",
+        fields: [
+          { name: "id", definition: "v.pipe(v.string(), v.uuid())" },
+          { name: "name", definition: "v.string()" },
+        ],
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const RoleSchema = v.object({id:v.pipe(v.string(), v.uuid()),
+name:v.string()})
+`);
+  });
+});
+
+describe("relationValibotCode Auth pattern", () => {
+  it.concurrent("generates Session relation with user field", () => {
+    const result = relationValibotCode(
+      {
+        name: "sessionRelations",
+        baseName: "session",
+        fields: [{ name: "user", definition: "UserSchema", description: undefined }],
+      },
+      true,
+    );
+    expect(result).toBe(`
+export const SessionRelationsSchema = v.object({...SessionSchema.entries,user:UserSchema})
+
+export type SessionRelations = v.InferOutput<typeof SessionRelationsSchema>
+`);
+  });
+});
+
 describe("sizukuValibot", () => {
   afterEach(() => {
-    if (fs.existsSync("tmp/valibot-test.ts")) {
-      fs.unlinkSync("tmp/valibot-test.ts");
+    if (fs.existsSync("tmp-valibot/valibot-test.ts")) {
+      fs.unlinkSync("tmp-valibot/valibot-test.ts");
     }
-    if (fs.existsSync("tmp")) {
-      fs.rmdirSync("tmp", { recursive: true });
+    if (fs.existsSync("tmp-valibot")) {
+      fs.rmdirSync("tmp-valibot", { recursive: true });
     }
   });
 
   it("sizukuValibot", async () => {
-    await sizukuValibot(TEST_CODE, "tmp/valibot-test.ts");
-    const result = await fsp.readFile("tmp/valibot-test.ts", "utf-8");
+    await sizukuValibot(TEST_CODE, "tmp-valibot/valibot-test.ts");
+    const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 
 export const UserSchema = v.object({
@@ -377,8 +494,8 @@ export const PostSchema = v.object({
   });
 
   it("sizukuValibot comment true", async () => {
-    await sizukuValibot(TEST_CODE, "tmp/valibot-test.ts", true);
-    const result = await fsp.readFile("tmp/valibot-test.ts", "utf-8");
+    await sizukuValibot(TEST_CODE, "tmp-valibot/valibot-test.ts", true);
+    const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 
 export const UserSchema = v.object({
@@ -415,8 +532,8 @@ export const PostSchema = v.object({
   });
 
   it("sizukuValibot type true", async () => {
-    await sizukuValibot(TEST_CODE, "tmp/valibot-test.ts", false, true);
-    const result = await fsp.readFile("tmp/valibot-test.ts", "utf-8");
+    await sizukuValibot(TEST_CODE, "tmp-valibot/valibot-test.ts", false, true);
+    const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 
 export const UserSchema = v.object({
@@ -439,8 +556,8 @@ export type Post = v.InferOutput<typeof PostSchema>
   });
 
   it("sizukuValibot with strictObject and looseObject", async () => {
-    await sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, "tmp/valibot-test.ts");
-    const result = await fsp.readFile("tmp/valibot-test.ts", "utf-8");
+    await sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, "tmp-valibot/valibot-test.ts");
+    const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 
 export const UserSchema = v.strictObject({
@@ -459,8 +576,14 @@ export const PostSchema = v.looseObject({
   });
 
   it("sizukuValibot with strictObject and looseObject with relation", async () => {
-    await sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, "tmp/valibot-test.ts", false, false, true);
-    const result = await fsp.readFile("tmp/valibot-test.ts", "utf-8");
+    await sizukuValibot(
+      TEST_CODE_WITH_OBJECT_TYPES,
+      "tmp-valibot/valibot-test.ts",
+      false,
+      false,
+      true,
+    );
+    const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 
 export const UserSchema = v.strictObject({

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   extractArktypeSchemas,
   extractEffectSchemas,
+  extractRelationSchemas,
+  extractRelations,
   extractSchemas,
   extractValibotSchemas,
   extractZodSchemas,
@@ -264,5 +266,316 @@ describe("extractEffectSchemas", () => {
     const result = extractEffectSchemas(code);
     expect(result.length).toBe(1);
     expect(result[0].fields[0].definition).toBe("");
+  });
+});
+
+describe("extractSchemas - multi-table SNS pattern", () => {
+  const SNS_SCHEMA = [
+    "export const user = pgTable('user', {",
+    "  /// @z.uuid()",
+    "  id: uuid('id').primaryKey(),",
+    "  /// @z.string().min(1).max(100)",
+    "  name: varchar('name', { length: 100 }).notNull(),",
+    "})",
+    "",
+    "export const post = pgTable('post', {",
+    "  /// @z.uuid()",
+    "  id: uuid('id').primaryKey(),",
+    "  /// @z.string().min(1)",
+    "  body: text('body').notNull(),",
+    "  /// @z.uuid()",
+    "  userId: uuid('user_id').notNull().references(() => user.id),",
+    "})",
+    "",
+    "export const comment = pgTable('comment', {",
+    "  /// @z.uuid()",
+    "  id: uuid('id').primaryKey(),",
+    "  /// @z.string().min(1).max(500)",
+    "  content: text('content').notNull(),",
+    "  /// @z.uuid()",
+    "  postId: uuid('post_id').notNull().references(() => post.id),",
+    "  /// @z.uuid()",
+    "  userId: uuid('user_id').notNull().references(() => user.id),",
+    "})",
+    "",
+  ];
+
+  it("extracts 3 schemas with correct names and field counts", () => {
+    const result = extractSchemas(SNS_SCHEMA, "zod");
+    expect(result).toStrictEqual([
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: "z.uuid()", description: undefined },
+          { name: "name", definition: "z.string().min(1).max(100)", description: undefined },
+        ],
+        objectType: undefined,
+      },
+      {
+        name: "post",
+        fields: [
+          { name: "id", definition: "z.uuid()", description: undefined },
+          { name: "body", definition: "z.string().min(1)", description: undefined },
+          { name: "userId", definition: "z.uuid()", description: undefined },
+        ],
+        objectType: undefined,
+      },
+      {
+        name: "comment",
+        fields: [
+          { name: "id", definition: "z.uuid()", description: undefined },
+          { name: "content", definition: "z.string().min(1).max(500)", description: undefined },
+          { name: "postId", definition: "z.uuid()", description: undefined },
+          { name: "userId", definition: "z.uuid()", description: undefined },
+        ],
+        objectType: undefined,
+      },
+    ]);
+  });
+});
+
+describe("extractSchemas - PostgreSQL dialect", () => {
+  const PG_SCHEMA = [
+    "export const product = pgTable('product', {",
+    "  /// @z.number().int()",
+    "  id: serial('id').primaryKey(),",
+    "  /// @z.string()",
+    "  name: varchar('name', { length: 255 }).notNull(),",
+    "  /// @z.number()",
+    "  price: doublePrecision('price').notNull(),",
+    "})",
+    "",
+  ];
+
+  it("extracts pgTable schema with PostgreSQL-specific types", () => {
+    const result = extractSchemas(PG_SCHEMA, "zod");
+    expect(result).toStrictEqual([
+      {
+        name: "product",
+        fields: [
+          { name: "id", definition: "z.number().int()", description: undefined },
+          { name: "name", definition: "z.string()", description: undefined },
+          { name: "price", definition: "z.number()", description: undefined },
+        ],
+        objectType: undefined,
+      },
+    ]);
+  });
+});
+
+describe("extractSchemas - SQLite dialect", () => {
+  const SQLITE_SCHEMA = [
+    "export const task = sqliteTable('task', {",
+    "  /// @z.number().int()",
+    "  id: integer('id').primaryKey(),",
+    "  /// @z.string()",
+    "  title: text('title').notNull(),",
+    "})",
+    "",
+  ];
+
+  it("extracts sqliteTable schema", () => {
+    const result = extractSchemas(SQLITE_SCHEMA, "zod");
+    expect(result).toStrictEqual([
+      {
+        name: "task",
+        fields: [
+          { name: "id", definition: "z.number().int()", description: undefined },
+          { name: "title", definition: "z.string()", description: undefined },
+        ],
+        objectType: undefined,
+      },
+    ]);
+  });
+});
+
+describe("extractSchemas - MySQL dialect", () => {
+  const MYSQL_SCHEMA = [
+    "export const category = mysqlTable('category', {",
+    "  /// @z.number().int()",
+    "  id: int('id').autoincrement().primaryKey(),",
+    "  /// @z.string().min(1)",
+    "  name: varchar('name', { length: 100 }).notNull(),",
+    "})",
+    "",
+  ];
+
+  it("extracts mysqlTable schema with field definitions", () => {
+    const result = extractSchemas(MYSQL_SCHEMA, "zod");
+    expect(result).toStrictEqual([
+      {
+        name: "category",
+        fields: [
+          { name: "id", definition: "z.number().int()", description: undefined },
+          { name: "name", definition: "z.string().min(1)", description: undefined },
+        ],
+        objectType: undefined,
+      },
+    ]);
+  });
+});
+
+describe("extractSchemas - no annotations", () => {
+  const NO_ANNOTATION_SCHEMA = [
+    "export const config = pgTable('config', {",
+    "  key: text('key').primaryKey(),",
+    "  value: text('value').notNull(),",
+    "})",
+    "",
+  ];
+
+  it("extracts fields with empty definitions when no annotations present", () => {
+    const result = extractSchemas(NO_ANNOTATION_SCHEMA, "zod");
+    expect(result).toStrictEqual([
+      {
+        name: "config",
+        fields: [
+          { name: "key", definition: "", description: undefined },
+          { name: "value", definition: "", description: undefined },
+        ],
+        objectType: undefined,
+      },
+    ]);
+  });
+});
+
+describe("extractRelationSchemas", () => {
+  const RELATION_SCHEMA = [
+    "export const user = pgTable('user', {",
+    "  /// @z.uuid()",
+    "  id: uuid('id').primaryKey(),",
+    "  /// @z.string()",
+    "  name: text('name').notNull(),",
+    "})",
+    "",
+    "export const post = pgTable('post', {",
+    "  /// @z.uuid()",
+    "  id: uuid('id').primaryKey(),",
+    "  /// @z.uuid()",
+    "  userId: uuid('user_id').notNull(),",
+    "})",
+    "",
+    "export const userRelations = relations(user, ({ many }) => ({",
+    "  posts: many(post),",
+    "}))",
+    "",
+    "export const postRelations = relations(post, ({ one }) => ({",
+    "  user: one(user, {",
+    "    fields: [post.userId],",
+    "    references: [user.id],",
+    "  }),",
+    "}))",
+    "",
+  ];
+
+  it("extracts relation schemas with correct field definitions for zod", () => {
+    const result = extractRelationSchemas(RELATION_SCHEMA, "zod");
+    expect(result).toStrictEqual([
+      {
+        name: "userRelations",
+        baseName: "user",
+        fields: [{ name: "posts", definition: "z.array(PostSchema)", description: undefined }],
+        objectType: undefined,
+      },
+      {
+        name: "postRelations",
+        baseName: "post",
+        fields: [{ name: "user", definition: "UserSchema", description: undefined }],
+        objectType: undefined,
+      },
+    ]);
+  });
+});
+
+describe("extractSchemas - ArkType extraction", () => {
+  const ARKTYPE_SCHEMA = [
+    "export const user = pgTable('user', {",
+    '  /// @a."string.uuid"',
+    "  id: uuid('id').primaryKey(),",
+    '  /// @a."string.email"',
+    "  email: text('email').notNull(),",
+    "})",
+    "",
+  ];
+
+  it("extracts ArkType-specific definitions", () => {
+    const result = extractSchemas(ARKTYPE_SCHEMA, "arktype");
+    expect(result).toStrictEqual([
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: '"string.uuid"', description: undefined },
+          { name: "email", definition: '"string.email"', description: undefined },
+        ],
+        objectType: undefined,
+      },
+    ]);
+  });
+});
+
+describe("extractSchemas - Effect extraction", () => {
+  const EFFECT_SCHEMA = [
+    "export const user = pgTable('user', {",
+    "  /// @e.Schema.UUID",
+    "  id: uuid('id').primaryKey(),",
+    "  /// @e.Schema.String",
+    "  name: text('name').notNull(),",
+    "})",
+    "",
+  ];
+
+  it("extracts Effect-specific definitions", () => {
+    const result = extractSchemas(EFFECT_SCHEMA, "effect");
+    expect(result).toStrictEqual([
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: "Schema.UUID", description: undefined },
+          { name: "name", definition: "Schema.String", description: undefined },
+        ],
+        objectType: undefined,
+      },
+    ]);
+  });
+});
+
+describe("extractSchemas - empty schema", () => {
+  it("returns empty array when no tables present", () => {
+    const result = extractSchemas([""], "zod");
+    expect(result).toStrictEqual([]);
+  });
+});
+
+describe("extractRelations", () => {
+  it("extracts relations from @relation annotation lines", () => {
+    const lines = [
+      "/// @relation user.id post.userId one-to-many",
+      "/// @relation user.id comment.userId one-to-many",
+      "/// @relation post.id comment.postId one-to-many",
+    ];
+    const result = extractRelations(lines);
+    expect(result).toStrictEqual([
+      {
+        fromModel: "user",
+        fromField: "id",
+        toModel: "post",
+        toField: "userId",
+        type: "one-to-many",
+      },
+      {
+        fromModel: "user",
+        fromField: "id",
+        toModel: "comment",
+        toField: "userId",
+        type: "one-to-many",
+      },
+      {
+        fromModel: "post",
+        fromField: "id",
+        toModel: "comment",
+        toField: "postId",
+        type: "one-to-many",
+      },
+    ]);
   });
 });
