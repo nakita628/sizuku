@@ -12,18 +12,12 @@ const FIXTURES_DIR = path.resolve("fixtures/better-auth");
 const TMP_DIR = "tmp/better-auth-mermaid";
 
 function readFixtureCode(pattern: string): string[] {
-  const content = fs.readFileSync(
-    path.join(FIXTURES_DIR, pattern, "db/schema.ts"),
-    "utf-8",
-  );
+  const content = fs.readFileSync(path.join(FIXTURES_DIR, pattern, "db/schema.ts"), "utf-8");
   return stripImports(content);
 }
 
 function readFixtureExpected(pattern: string): string {
-  return fs.readFileSync(
-    path.join(FIXTURES_DIR, pattern, "mermaid-er/ER.md"),
-    "utf-8",
-  );
+  return fs.readFileSync(path.join(FIXTURES_DIR, pattern, "mermaid-er/ER.md"), "utf-8");
 }
 
 describe("better-auth mermaid-er", () => {
