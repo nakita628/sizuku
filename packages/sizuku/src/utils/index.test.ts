@@ -804,12 +804,7 @@ describe("removeOptionalSuffix edge cases", () => {
 
 describe("parseFieldComments with @a. (ArkType) tag", () => {
   it.concurrent("parses ArkType email annotation", () => {
-    expect(
-      parseFieldComments(
-        ['/// User email', '/// @a."string.email"'],
-        "@a.",
-      ),
-    ).toStrictEqual({
+    expect(parseFieldComments(["/// User email", '/// @a."string.email"'], "@a.")).toStrictEqual({
       definition: '"string.email"',
       description: "User email",
       objectType: undefined,
@@ -819,12 +814,7 @@ describe("parseFieldComments with @a. (ArkType) tag", () => {
 
 describe("parseFieldComments with @e. (Effect) tag", () => {
   it.concurrent("parses Effect Schema.UUID annotation", () => {
-    expect(
-      parseFieldComments(
-        ["/// User ID", "/// @e.Schema.UUID"],
-        "@e.",
-      ),
-    ).toStrictEqual({
+    expect(parseFieldComments(["/// User ID", "/// @e.Schema.UUID"], "@e.")).toStrictEqual({
       definition: "Schema.UUID",
       description: "User ID",
       objectType: undefined,
@@ -834,12 +824,7 @@ describe("parseFieldComments with @e. (Effect) tag", () => {
 
 describe("parseFieldComments with no matching annotation", () => {
   it.concurrent("returns empty definition when tag not found", () => {
-    expect(
-      parseFieldComments(
-        ["/// Just a description"],
-        "@z.",
-      ),
-    ).toStrictEqual({
+    expect(parseFieldComments(["/// Just a description"], "@z.")).toStrictEqual({
       definition: "",
       description: "Just a description",
       objectType: undefined,
@@ -849,9 +834,7 @@ describe("parseFieldComments with no matching annotation", () => {
 
 describe("parseFieldComments with empty array", () => {
   it.concurrent("returns empty definition and undefined description", () => {
-    expect(
-      parseFieldComments([], "@z."),
-    ).toStrictEqual({
+    expect(parseFieldComments([], "@z.")).toStrictEqual({
       definition: "",
       description: undefined,
       objectType: undefined,
@@ -919,10 +902,7 @@ describe("fieldDefinitions edge cases", () => {
 describe("SNS Pattern (User/Post/Comment/Like) - parseFieldComments", () => {
   it.concurrent("Comment likes count with @z. annotation", () => {
     expect(
-      parseFieldComments(
-        ["/// Number of likes", "/// @z.number().int().nonnegative()"],
-        "@z.",
-      ),
+      parseFieldComments(["/// Number of likes", "/// @z.number().int().nonnegative()"], "@z."),
     ).toStrictEqual({
       definition: "z.number().int().nonnegative()",
       description: "Number of likes",
@@ -931,12 +911,7 @@ describe("SNS Pattern (User/Post/Comment/Like) - parseFieldComments", () => {
   });
 
   it.concurrent("Like userId with @z.uuid() annotation", () => {
-    expect(
-      parseFieldComments(
-        ["/// User who liked", "/// @z.uuid()"],
-        "@z.",
-      ),
-    ).toStrictEqual({
+    expect(parseFieldComments(["/// User who liked", "/// @z.uuid()"], "@z.")).toStrictEqual({
       definition: "z.uuid()",
       description: "User who liked",
       objectType: undefined,

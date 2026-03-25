@@ -576,7 +576,13 @@ export const PostSchema = v.looseObject({
   });
 
   it("sizukuValibot with strictObject and looseObject with relation", async () => {
-    await sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, "tmp-valibot/valibot-test.ts", false, false, true);
+    await sizukuValibot(
+      TEST_CODE_WITH_OBJECT_TYPES,
+      "tmp-valibot/valibot-test.ts",
+      false,
+      false,
+      true,
+    );
     const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 

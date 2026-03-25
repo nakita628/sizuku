@@ -474,17 +474,13 @@ describe("extractRelationSchemas", () => {
       {
         name: "userRelations",
         baseName: "user",
-        fields: [
-          { name: "posts", definition: "z.array(PostSchema)", description: undefined },
-        ],
+        fields: [{ name: "posts", definition: "z.array(PostSchema)", description: undefined }],
         objectType: undefined,
       },
       {
         name: "postRelations",
         baseName: "post",
-        fields: [
-          { name: "user", definition: "UserSchema", description: undefined },
-        ],
+        fields: [{ name: "user", definition: "UserSchema", description: undefined }],
         objectType: undefined,
       },
     ]);
