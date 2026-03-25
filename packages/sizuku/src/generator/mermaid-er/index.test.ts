@@ -144,16 +144,16 @@ const TEST_CODE_WITHOUT_IMPORTS = [
 
 describe("sizukuMermaidER", () => {
   afterEach(() => {
-    if (!fs.existsSync("tmp")) {
-      fs.rmdirSync("tmp", { recursive: true });
+    if (fs.existsSync("tmp-mermaid/mermaid-er-test.md")) {
+      fs.unlinkSync("tmp-mermaid/mermaid-er-test.md");
     }
-    if (fs.existsSync("tmp/mermaid-er-test.md")) {
-      fs.unlinkSync("tmp/mermaid-er-test.md");
+    if (fs.existsSync("tmp-mermaid")) {
+      fs.rmdirSync("tmp-mermaid", { recursive: true });
     }
   });
   it("sizukuMermaidER", async () => {
-    await sizukuMermaidER(TEST_CODE, "tmp/mermaid-er-test.md");
-    const result = await fsp.readFile("tmp/mermaid-er-test.md", "utf-8");
+    await sizukuMermaidER(TEST_CODE, "tmp-mermaid/mermaid-er-test.md");
+    const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
     user ||--}| post : "(id) - (userId)"
@@ -172,8 +172,8 @@ erDiagram
   });
 
   it("sizukuMermaidER without comments", async () => {
-    await sizukuMermaidER(TEST_CODE_WITHOUT_COMMENTS, "tmp/mermaid-er-test.md");
-    const result = await fsp.readFile("tmp/mermaid-er-test.md", "utf-8");
+    await sizukuMermaidER(TEST_CODE_WITHOUT_COMMENTS, "tmp-mermaid/mermaid-er-test.md");
+    const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
     user ||--}| post : "(id) - (userId)"
@@ -192,26 +192,59 @@ erDiagram
   });
 
   it("detects relations from foreignKey() constraints", async () => {
-    await sizukuMermaidER(TEST_CODE_WITH_FOREIGN_KEY, "tmp/mermaid-er-test.md");
-    const result = await fsp.readFile("tmp/mermaid-er-test.md", "utf-8");
-    // Check that relation is detected
-    expect(result).toContain("User ||--}| Post");
-    expect(result).toContain("(id) - (userId)");
+    await sizukuMermaidER(TEST_CODE_WITH_FOREIGN_KEY, "tmp-mermaid/mermaid-er-test.md");
+    const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
+    const expected = `\`\`\`mermaid
+erDiagram
+    User ||--}| Post : "(id) - (userId)"
+    User {
+        text id PK
+        text name
+    }
+    Post {
+        text id PK
+        text body
+        text userId
+    }
+\`\`\``;
+    expect(result).toBe(expected);
   });
 
   it("detects relations from relations() blocks", async () => {
-    await sizukuMermaidER(TEST_CODE_WITH_RELATIONS_BLOCK, "tmp/mermaid-er-test.md");
-    const result = await fsp.readFile("tmp/mermaid-er-test.md", "utf-8");
-    // Check that relation is detected
-    expect(result).toContain("User ||--}| Post");
-    expect(result).toContain("(id) - (userId)");
+    await sizukuMermaidER(TEST_CODE_WITH_RELATIONS_BLOCK, "tmp-mermaid/mermaid-er-test.md");
+    const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
+    const expected = `\`\`\`mermaid
+erDiagram
+    User ||--}| Post : "(id) - (userId)"
+    User {
+        text id PK
+        text name
+    }
+    Post {
+        text id PK
+        text body
+        text userId
+    }
+\`\`\``;
+    expect(result).toBe(expected);
   });
 
   it("detects relations without imports (simulates real usage)", async () => {
-    await sizukuMermaidER(TEST_CODE_WITHOUT_IMPORTS, "tmp/mermaid-er-test.md");
-    const result = await fsp.readFile("tmp/mermaid-er-test.md", "utf-8");
-    // Check that relation is detected from both foreignKey() and relations()
-    expect(result).toContain("User ||--}| Post");
-    expect(result).toContain("(id) - (userId)");
+    await sizukuMermaidER(TEST_CODE_WITHOUT_IMPORTS, "tmp-mermaid/mermaid-er-test.md");
+    const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
+    const expected = `\`\`\`mermaid
+erDiagram
+    User ||--}| Post : "(id) - (userId)"
+    User {
+        text id PK
+        text name
+    }
+    Post {
+        text id PK
+        text body
+        text userId
+    }
+\`\`\``;
+    expect(result).toBe(expected);
   });
 });

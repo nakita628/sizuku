@@ -405,22 +405,131 @@ isActive:'boolean'})
 });
 
 // ============================================================================
+// Auth pattern - arktypeCode
+// ============================================================================
+
+describe("arktypeCode Auth pattern", () => {
+  it.concurrent("generates User schema with comments and type", () => {
+    const result = arktypeCode(
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: "'string.uuid'", description: "Primary key" },
+          { name: "email", definition: "'string.email'", description: "User email" },
+          {
+            name: "createdAt",
+            definition: "'string.date.iso'",
+            description: "Account creation timestamp",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const UserSchema = type({/**
+ * Primary key
+ */
+id:'string.uuid',
+/**
+ * User email
+ */
+email:'string.email',
+/**
+ * Account creation timestamp
+ */
+createdAt:'string.date.iso'})
+
+export type User = typeof UserSchema.infer
+`);
+  });
+
+  it.concurrent("generates Session schema with comments and type", () => {
+    const result = arktypeCode(
+      {
+        name: "session",
+        fields: [
+          { name: "id", definition: "'string.uuid'", description: "Session identifier" },
+          { name: "userId", definition: "'string.uuid'", description: "Foreign key to User" },
+          {
+            name: "expiresAt",
+            definition: "'string.date.iso'",
+            description: "Session expiry",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const SessionSchema = type({/**
+ * Session identifier
+ */
+id:'string.uuid',
+/**
+ * Foreign key to User
+ */
+userId:'string.uuid',
+/**
+ * Session expiry
+ */
+expiresAt:'string.date.iso'})
+
+export type Session = typeof SessionSchema.infer
+`);
+  });
+
+  it.concurrent("generates RBAC Role schema without comments", () => {
+    const result = arktypeCode(
+      {
+        name: "role",
+        fields: [
+          { name: "id", definition: "'string.uuid'" },
+          { name: "name", definition: "'string'" },
+        ],
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const RoleSchema = type({id:'string.uuid',
+name:'string'})
+`);
+  });
+});
+
+describe("makeRelationArktypeCode Auth pattern", () => {
+  it.concurrent("generates Session relation with user field", () => {
+    const result = makeRelationArktypeCode(
+      {
+        name: "sessionRelations",
+        baseName: "session",
+        fields: [{ name: "user", definition: "UserSchema" }],
+      },
+      true,
+    );
+    expect(result).toBe(`
+export const SessionRelationsSchema = type({...SessionSchema.t,user:UserSchema})
+
+export type SessionRelations = typeof SessionRelationsSchema.infer
+`);
+  });
+});
+
+// ============================================================================
 // Integration tests (I/O)
 // ============================================================================
 
 describe("sizukuArktype", () => {
   afterEach(() => {
-    if (fs.existsSync("tmp/arktype-test.ts")) {
-      fs.unlinkSync("tmp/arktype-test.ts");
+    if (fs.existsSync("tmp-arktype/arktype-test.ts")) {
+      fs.unlinkSync("tmp-arktype/arktype-test.ts");
     }
-    if (fs.existsSync("tmp")) {
-      fs.rmdirSync("tmp", { recursive: true });
+    if (fs.existsSync("tmp-arktype")) {
+      fs.rmdirSync("tmp-arktype", { recursive: true });
     }
   });
 
   it("sizukuArktype", async () => {
-    await sizukuArktype(TEST_CODE, "tmp/arktype-test.ts");
-    const result = await fsp.readFile("tmp/arktype-test.ts", "utf-8");
+    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts");
+    const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 
 export const UserSchema = type({ id: 'string.uuid', name: 'string' })
@@ -436,8 +545,8 @@ export const PostSchema = type({
   });
 
   it("sizukuArktype type true", async () => {
-    await sizukuArktype(TEST_CODE, "tmp/arktype-test.ts", false, true);
-    const result = await fsp.readFile("tmp/arktype-test.ts", "utf-8");
+    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", false, true);
+    const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 
 export const UserSchema = type({ id: 'string.uuid', name: 'string' })
@@ -457,8 +566,8 @@ export type Post = typeof PostSchema.infer
   });
 
   it("sizukuArktype with comment", async () => {
-    await sizukuArktype(TEST_CODE, "tmp/arktype-test.ts", true);
-    const result = await fsp.readFile("tmp/arktype-test.ts", "utf-8");
+    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", true);
+    const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 
 export const UserSchema = type({
@@ -495,8 +604,8 @@ export const PostSchema = type({
   });
 
   it("sizukuArktype with comment and type", async () => {
-    await sizukuArktype(TEST_CODE, "tmp/arktype-test.ts", true, true);
-    const result = await fsp.readFile("tmp/arktype-test.ts", "utf-8");
+    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", true, true);
+    const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 
 export const UserSchema = type({
@@ -537,8 +646,8 @@ export type Post = typeof PostSchema.infer
   });
 
   it("sizukuArktype with relation", async () => {
-    await sizukuArktype(TEST_CODE, "tmp/arktype-test.ts", false, false, true);
-    const result = await fsp.readFile("tmp/arktype-test.ts", "utf-8");
+    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", false, false, true);
+    const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 
 export const UserSchema = type({ id: 'string.uuid', name: 'string' })

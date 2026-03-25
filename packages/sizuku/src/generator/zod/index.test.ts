@@ -346,19 +346,128 @@ export type UserRelations = z.infer<typeof UserRelationsSchema>
   });
 });
 
+// ============================================================================
+// Auth pattern - zodCode
+// ============================================================================
+
+describe("zodCode Auth pattern", () => {
+  it.concurrent("generates User schema with comments and type", () => {
+    const result = zodCode(
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: "z.uuid()", description: "Primary key" },
+          { name: "email", definition: "z.string().email()", description: "User email" },
+          {
+            name: "createdAt",
+            definition: "z.string().datetime()",
+            description: "Account creation timestamp",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const UserSchema = z.object({/**
+ * Primary key
+ */
+id:z.uuid(),
+/**
+ * User email
+ */
+email:z.string().email(),
+/**
+ * Account creation timestamp
+ */
+createdAt:z.string().datetime()})
+
+export type User = z.infer<typeof UserSchema>
+`);
+  });
+
+  it.concurrent("generates Session schema with comments and type", () => {
+    const result = zodCode(
+      {
+        name: "session",
+        fields: [
+          { name: "id", definition: "z.uuid()", description: "Session identifier" },
+          { name: "userId", definition: "z.uuid()", description: "Foreign key to User" },
+          {
+            name: "expiresAt",
+            definition: "z.string().datetime()",
+            description: "Session expiry",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const SessionSchema = z.object({/**
+ * Session identifier
+ */
+id:z.uuid(),
+/**
+ * Foreign key to User
+ */
+userId:z.uuid(),
+/**
+ * Session expiry
+ */
+expiresAt:z.string().datetime()})
+
+export type Session = z.infer<typeof SessionSchema>
+`);
+  });
+
+  it.concurrent("generates RBAC Role schema without comments", () => {
+    const result = zodCode(
+      {
+        name: "role",
+        fields: [
+          { name: "id", definition: "z.uuid()" },
+          { name: "name", definition: "z.string()" },
+        ],
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const RoleSchema = z.object({id:z.uuid(),
+name:z.string()})
+`);
+  });
+});
+
+describe("relationZodCode Auth pattern", () => {
+  it.concurrent("generates Session relation with user field", () => {
+    const result = relationZodCode(
+      {
+        name: "sessionRelations",
+        baseName: "session",
+        fields: [{ name: "user", definition: "UserSchema", description: undefined }],
+      },
+      true,
+    );
+    expect(result).toBe(`
+export const SessionRelationsSchema = z.object({...SessionSchema.shape,user:UserSchema})
+
+export type SessionRelations = z.infer<typeof SessionRelationsSchema>
+`);
+  });
+});
+
 describe("sizukuZod", () => {
   afterEach(() => {
-    if (fs.existsSync("tmp/zod-test.ts")) {
-      fs.unlinkSync("tmp/zod-test.ts");
+    if (fs.existsSync("tmp-zod/zod-test.ts")) {
+      fs.unlinkSync("tmp-zod/zod-test.ts");
     }
-    if (fs.existsSync("tmp")) {
-      fs.rmdirSync("tmp", { recursive: true });
+    if (fs.existsSync("tmp-zod")) {
+      fs.rmdirSync("tmp-zod", { recursive: true });
     }
   });
 
   it("sizukuZod", async () => {
-    await sizukuZod(TEST_CODE, "tmp/zod-test.ts");
-    const result = await fsp.readFile("tmp/zod-test.ts", "utf-8");
+    await sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts");
+    const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import * as z from 'zod'
 
 export const UserSchema = z.object({ id: z.uuid(), name: z.string().min(1).max(50) })
@@ -374,8 +483,8 @@ export const PostSchema = z.object({
   });
 
   it("sizukuZod comment true", async () => {
-    await sizukuZod(TEST_CODE, "tmp/zod-test.ts", true);
-    const result = await fsp.readFile("tmp/zod-test.ts", "utf-8");
+    await sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts", true);
+    const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
 
     const expected = `import * as z from 'zod'
 
@@ -413,8 +522,8 @@ export const PostSchema = z.object({
   });
 
   it("sizukuZod type true", async () => {
-    await sizukuZod(TEST_CODE, "tmp/zod-test.ts", false, true);
-    const result = await fsp.readFile("tmp/zod-test.ts", "utf-8");
+    await sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts", false, true);
+    const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import * as z from 'zod'
 
 export const UserSchema = z.object({ id: z.uuid(), name: z.string().min(1).max(50) })
@@ -434,8 +543,8 @@ export type Post = z.infer<typeof PostSchema>
   });
 
   it("sizukuZod zod @hono/zod-openapi", async () => {
-    await sizukuZod(TEST_CODE, "tmp/zod-test.ts", false, false, "@hono/zod-openapi");
-    const result = await fsp.readFile("tmp/zod-test.ts", "utf-8");
+    await sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts", false, false, "@hono/zod-openapi");
+    const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import { z } from '@hono/zod-openapi'
 
 export const UserSchema = z.object({ id: z.uuid(), name: z.string().min(1).max(50) })
@@ -451,8 +560,8 @@ export const PostSchema = z.object({
   });
 
   it("sizukuZod with strictObject and looseObject", async () => {
-    await sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, "tmp/zod-test.ts");
-    const result = await fsp.readFile("tmp/zod-test.ts", "utf-8");
+    await sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, "tmp-zod/zod-test.ts");
+    const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import * as z from 'zod'
 
 export const UserSchema = z.strictObject({ id: z.uuid(), name: z.string().min(1).max(50) })
@@ -468,8 +577,8 @@ export const PostSchema = z.looseObject({
   });
 
   it("sizukuZod with strictObject and looseObject with relation", async () => {
-    await sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, "tmp/zod-test.ts", false, false, undefined, true);
-    const result = await fsp.readFile("tmp/zod-test.ts", "utf-8");
+    await sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, "tmp-zod/zod-test.ts", false, false, undefined, true);
+    const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import * as z from 'zod'
 
 export const UserSchema = z.strictObject({ id: z.uuid(), name: z.string().min(1).max(50) })

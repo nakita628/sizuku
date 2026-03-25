@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vitest";
-import { effectCode, sizukuEffect } from "./index.js";
+import { effectCode, makeRelationEffectCode, sizukuEffect } from "./index.js";
 
 // Test run
 // pnpm vitest run ./src/generator/effect/index.test.ts
@@ -47,17 +47,17 @@ const TEST_CODE = [
 
 describe("sizukuEffect", () => {
   afterEach(() => {
-    if (fs.existsSync("tmp/effect-test.ts")) {
-      fs.unlinkSync("tmp/effect-test.ts");
+    if (fs.existsSync("tmp-effect/effect-test.ts")) {
+      fs.unlinkSync("tmp-effect/effect-test.ts");
     }
-    if (fs.existsSync("tmp")) {
-      fs.rmdirSync("tmp", { recursive: true });
+    if (fs.existsSync("tmp-effect")) {
+      fs.rmdirSync("tmp-effect", { recursive: true });
     }
   });
 
   it("sizukuEffect", async () => {
-    await sizukuEffect(TEST_CODE, "tmp/effect-test.ts");
-    const result = await fsp.readFile("tmp/effect-test.ts", "utf-8");
+    await sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts");
+    const result = await fsp.readFile("tmp-effect/effect-test.ts", "utf-8");
     const expected = `import { Schema } from 'effect'
 
 export const UserSchema = Schema.Struct({
@@ -76,8 +76,8 @@ export const PostSchema = Schema.Struct({
   });
 
   it("sizukuEffect type true", async () => {
-    await sizukuEffect(TEST_CODE, "tmp/effect-test.ts", false, true);
-    const result = await fsp.readFile("tmp/effect-test.ts", "utf-8");
+    await sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts", false, true);
+    const result = await fsp.readFile("tmp-effect/effect-test.ts", "utf-8");
     const expected = `import { Schema } from 'effect'
 
 export const UserSchema = Schema.Struct({
@@ -100,8 +100,8 @@ export type PostEncoded = typeof PostSchema.Encoded
   });
 
   it("sizukuEffect with relation", async () => {
-    await sizukuEffect(TEST_CODE, "tmp/effect-test.ts", false, false, true);
-    const result = await fsp.readFile("tmp/effect-test.ts", "utf-8");
+    await sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts", false, false, true);
+    const result = await fsp.readFile("tmp-effect/effect-test.ts", "utf-8");
     const expected = `import { Schema } from 'effect'
 
 export const UserSchema = Schema.Struct({
@@ -250,5 +250,118 @@ describe("effectCode strict/loose (Effect has no schema-level strict/loose API)"
     expect(result).toBe(
       `export const ConfigSchema = Schema.Struct({key:Schema.String})\n\nexport type ConfigEncoded = typeof ConfigSchema.Encoded\n`,
     );
+  });
+});
+
+// ============================================================================
+// Auth pattern - effectCode
+// ============================================================================
+
+describe("effectCode Auth pattern", () => {
+  it.concurrent("generates User schema with comments and type", () => {
+    const result = effectCode(
+      {
+        name: "user",
+        fields: [
+          { name: "id", definition: "Schema.UUID", description: "Primary key" },
+          {
+            name: "email",
+            definition: "Schema.String.pipe(Schema.pattern(/^[^@]+@[^@]+$/))",
+            description: "User email",
+          },
+          {
+            name: "createdAt",
+            definition: "Schema.DateFromString",
+            description: "Account creation timestamp",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const UserSchema = Schema.Struct({/**
+ * Primary key
+ */
+id:Schema.UUID,
+/**
+ * User email
+ */
+email:Schema.String.pipe(Schema.pattern(/^[^@]+@[^@]+$/)),
+/**
+ * Account creation timestamp
+ */
+createdAt:Schema.DateFromString})
+
+export type UserEncoded = typeof UserSchema.Encoded
+`);
+  });
+
+  it.concurrent("generates Session schema with comments and type", () => {
+    const result = effectCode(
+      {
+        name: "session",
+        fields: [
+          { name: "id", definition: "Schema.UUID", description: "Session identifier" },
+          { name: "userId", definition: "Schema.UUID", description: "Foreign key to User" },
+          {
+            name: "expiresAt",
+            definition: "Schema.DateFromString",
+            description: "Session expiry",
+          },
+        ],
+      },
+      true,
+      true,
+    );
+    expect(result).toBe(`export const SessionSchema = Schema.Struct({/**
+ * Session identifier
+ */
+id:Schema.UUID,
+/**
+ * Foreign key to User
+ */
+userId:Schema.UUID,
+/**
+ * Session expiry
+ */
+expiresAt:Schema.DateFromString})
+
+export type SessionEncoded = typeof SessionSchema.Encoded
+`);
+  });
+
+  it.concurrent("generates RBAC Role schema without comments", () => {
+    const result = effectCode(
+      {
+        name: "role",
+        fields: [
+          { name: "id", definition: "Schema.UUID" },
+          { name: "name", definition: "Schema.String" },
+        ],
+      },
+      false,
+      false,
+    );
+    expect(result).toBe(`export const RoleSchema = Schema.Struct({id:Schema.UUID,
+name:Schema.String})
+`);
+  });
+});
+
+describe("makeRelationEffectCode Auth pattern", () => {
+  it.concurrent("generates Session relation with user field", () => {
+    const result = makeRelationEffectCode(
+      {
+        name: "sessionRelations",
+        baseName: "session",
+        fields: [{ name: "user", definition: "UserSchema" }],
+      },
+      true,
+    );
+    expect(result).toBe(`
+export const SessionRelationsSchema = Schema.Struct({...SessionSchema.fields,user:UserSchema})
+
+export type SessionRelationsEncoded = typeof SessionRelationsSchema.Encoded
+`);
   });
 });

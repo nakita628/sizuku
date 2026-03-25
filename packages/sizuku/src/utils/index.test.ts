@@ -743,3 +743,221 @@ describe("resolveArktypeUndeclared", () => {
     expect(resolveArktypeUndeclared(undefined)).toBe("");
   });
 });
+
+// ============================================================================
+// Edge case tests
+// ============================================================================
+
+describe("makeCapitalized edge cases", () => {
+  it.concurrent("empty string", () => {
+    expect(makeCapitalized("")).toBe("");
+  });
+
+  it.concurrent("single char lowercase", () => {
+    expect(makeCapitalized("a")).toBe("A");
+  });
+
+  it.concurrent("already capitalized", () => {
+    expect(makeCapitalized("User")).toBe("User");
+  });
+
+  it.concurrent("numeric start", () => {
+    expect(makeCapitalized("123abc")).toBe("123abc");
+  });
+});
+
+describe("splitByTo edge cases", () => {
+  it.concurrent("compound left side: zero-one-to-many-optional", () => {
+    expect(splitByTo("zero-one-to-many-optional")).toStrictEqual(["zero-one", "many-optional"]);
+  });
+
+  it.concurrent("-to- at start", () => {
+    expect(splitByTo("-to-test")).toStrictEqual(["", "test"]);
+  });
+
+  it.concurrent("-to- at end", () => {
+    expect(splitByTo("test-to-")).toStrictEqual(["test", ""]);
+  });
+
+  it.concurrent("multiple -to- occurrences returns first match", () => {
+    expect(splitByTo("a-to-b-to-c")).toStrictEqual(["a", "b-to-c"]);
+  });
+});
+
+describe("removeOptionalSuffix edge cases", () => {
+  it.concurrent("many-optional", () => {
+    expect(removeOptionalSuffix("many-optional")).toBe("many");
+  });
+
+  it.concurrent("zero-many-optional", () => {
+    expect(removeOptionalSuffix("zero-many-optional")).toBe("zero-many");
+  });
+
+  it.concurrent("optional without dash prefix", () => {
+    expect(removeOptionalSuffix("optional")).toBe("optional");
+  });
+
+  it.concurrent("-optional alone", () => {
+    expect(removeOptionalSuffix("-optional")).toBe("");
+  });
+});
+
+describe("parseFieldComments with @a. (ArkType) tag", () => {
+  it.concurrent("parses ArkType email annotation", () => {
+    expect(
+      parseFieldComments(
+        ['/// User email', '/// @a."string.email"'],
+        "@a.",
+      ),
+    ).toStrictEqual({
+      definition: '"string.email"',
+      description: "User email",
+      objectType: undefined,
+    });
+  });
+});
+
+describe("parseFieldComments with @e. (Effect) tag", () => {
+  it.concurrent("parses Effect Schema.UUID annotation", () => {
+    expect(
+      parseFieldComments(
+        ["/// User ID", "/// @e.Schema.UUID"],
+        "@e.",
+      ),
+    ).toStrictEqual({
+      definition: "Schema.UUID",
+      description: "User ID",
+      objectType: undefined,
+    });
+  });
+});
+
+describe("parseFieldComments with no matching annotation", () => {
+  it.concurrent("returns empty definition when tag not found", () => {
+    expect(
+      parseFieldComments(
+        ["/// Just a description"],
+        "@z.",
+      ),
+    ).toStrictEqual({
+      definition: "",
+      description: "Just a description",
+      objectType: undefined,
+    });
+  });
+});
+
+describe("parseFieldComments with empty array", () => {
+  it.concurrent("returns empty definition and undefined description", () => {
+    expect(
+      parseFieldComments([], "@z."),
+    ).toStrictEqual({
+      definition: "",
+      description: undefined,
+      objectType: undefined,
+    });
+  });
+});
+
+describe("extractFieldComments edge cases", () => {
+  it.concurrent("field at very beginning of source (no prior comments)", () => {
+    const sourceText = `id: varchar('id', { length: 36 }).primaryKey(),
+  name: varchar('name', { length: 50 }).notNull(),
+`;
+    const fieldStartPos = 0;
+    const result = extractFieldComments(sourceText, fieldStartPos);
+    expect(result).toStrictEqual([]);
+  });
+
+  it.concurrent("field with blank lines separating comments from field", () => {
+    const sourceText = `/// Primary key
+/// @z.uuid()
+
+  id: varchar('id', { length: 36 }).primaryKey(),
+`;
+    const fieldStartPos = sourceText.indexOf("id:");
+    const result = extractFieldComments(sourceText, fieldStartPos);
+    expect(result).toStrictEqual(["/// Primary key", "/// @z.uuid()"]);
+  });
+});
+
+describe("fieldDefinitions edge cases", () => {
+  it.concurrent("single field without comment", () => {
+    const result = fieldDefinitions(
+      {
+        name: "config",
+        fields: [{ name: "key", definition: "z.string()" }],
+      },
+      false,
+    );
+    expect(result).toBe("key:z.string()");
+  });
+
+  it.concurrent("empty fields array", () => {
+    const result = fieldDefinitions(
+      {
+        name: "empty",
+        fields: [],
+      },
+      false,
+    );
+    expect(result).toBe("");
+  });
+
+  it.concurrent("field with no description when comment=true outputs no JSDoc", () => {
+    const result = fieldDefinitions(
+      {
+        name: "session",
+        fields: [{ name: "token", definition: "z.string()" }],
+      },
+      true,
+    );
+    expect(result).toBe("token:z.string()");
+  });
+});
+
+describe("SNS Pattern (User/Post/Comment/Like) - parseFieldComments", () => {
+  it.concurrent("Comment likes count with @z. annotation", () => {
+    expect(
+      parseFieldComments(
+        ["/// Number of likes", "/// @z.number().int().nonnegative()"],
+        "@z.",
+      ),
+    ).toStrictEqual({
+      definition: "z.number().int().nonnegative()",
+      description: "Number of likes",
+      objectType: undefined,
+    });
+  });
+
+  it.concurrent("Like userId with @z.uuid() annotation", () => {
+    expect(
+      parseFieldComments(
+        ["/// User who liked", "/// @z.uuid()"],
+        "@z.",
+      ),
+    ).toStrictEqual({
+      definition: "z.uuid()",
+      description: "User who liked",
+      objectType: undefined,
+    });
+  });
+});
+
+describe("cleanCommentLines edge cases", () => {
+  it.concurrent("lines without /// prefix pass through trimmed", () => {
+    expect(cleanCommentLines(["no prefix line"])).toStrictEqual(["no prefix line"]);
+  });
+
+  it.concurrent("whitespace-only after cleaning is filtered out", () => {
+    expect(cleanCommentLines(["///   "])).toStrictEqual([]);
+  });
+});
+
+describe("makeCommentBlock edge cases", () => {
+  it.concurrent("description with special characters", () => {
+    expect(makeCommentBlock("User's email (required)")).toBe(
+      "/**\n * User's email (required)\n */\n",
+    );
+  });
+});
