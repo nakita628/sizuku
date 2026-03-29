@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import { sizukuMermaidER } from "./index.js";
 
 // Test run
