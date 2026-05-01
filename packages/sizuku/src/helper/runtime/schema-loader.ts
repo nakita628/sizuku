@@ -1,65 +1,21 @@
-import type { AnyColumn } from "drizzle-orm";
 import {
+  type AnyColumn,
   createMany,
   createOne,
   getTableColumns,
+  getTableName,
   is,
   One,
   Relations,
-  type Table,
 } from "drizzle-orm";
-import type { ForeignKey as MySqlForeignKey } from "drizzle-orm/mysql-core";
-import { MySqlTable } from "drizzle-orm/mysql-core";
-import type { ForeignKey as PgForeignKey } from "drizzle-orm/pg-core";
-import { isPgEnum, type PgEnum, PgTable } from "drizzle-orm/pg-core";
-import type { ForeignKey as SQLiteForeignKey } from "drizzle-orm/sqlite-core";
-import { SQLiteTable } from "drizzle-orm/sqlite-core";
+import { getTableConfig as getMySqlTableConfig, MySqlTable } from "drizzle-orm/mysql-core";
 import {
-  AnyInlineForeignKeys,
-  MySqlInlineForeignKeys,
-  PgInlineForeignKeys,
-  Schema,
-  SQLiteInlineForeignKeys,
-  TableName,
-} from "../../symbols.js";
-
-type AnyForeignKey = PgForeignKey | MySqlForeignKey | SQLiteForeignKey;
-
-interface AnyTable {
-  readonly [TableName]: string;
-  readonly [Schema]?: string;
-  readonly [AnyInlineForeignKeys]?: AnyForeignKey[];
-}
-
-// drizzle boundary: all type assertions to access internals are confined to the helpers below.
-function asAnyTable(value: unknown) {
-  return value as unknown as AnyTable;
-}
-
-function asAnyColumn(value: unknown) {
-  return value as AnyColumn;
-}
-
-function asTable(value: unknown) {
-  return value as Table;
-}
-
-function getAutoIncrementFlag(column: AnyColumn) {
-  return (column as unknown as { autoIncrement?: boolean }).autoIncrement === true;
-}
-
-function getInlineFks(table: AnyTable, dialect: "pg" | "mysql" | "sqlite") {
-  const sym =
-    dialect === "pg"
-      ? PgInlineForeignKeys
-      : dialect === "mysql"
-        ? MySqlInlineForeignKeys
-        : dialect === "sqlite"
-          ? SQLiteInlineForeignKeys
-          : AnyInlineForeignKeys;
-  return ((table as unknown as Record<symbol, AnyForeignKey[] | undefined>)[sym] ??
-    []) as readonly AnyForeignKey[];
-}
+  getTableConfig as getPgTableConfig,
+  isPgEnum,
+  type PgEnum,
+  PgTable,
+} from "drizzle-orm/pg-core";
+import { getTableConfig as getSQLiteTableConfig, SQLiteTable } from "drizzle-orm/sqlite-core";
 
 function detectDialect(table: unknown) {
   if (is(table, PgTable)) return "pg" as const;
@@ -68,19 +24,31 @@ function detectDialect(table: unknown) {
   return null;
 }
 
+function getTableInternals(table: PgTable | MySqlTable | SQLiteTable) {
+  if (is(table, PgTable)) {
+    const cfg = getPgTableConfig(table);
+    return { schema: cfg.schema, foreignKeys: cfg.foreignKeys };
+  }
+  if (is(table, MySqlTable)) {
+    const cfg = getMySqlTableConfig(table);
+    return { schema: cfg.schema, foreignKeys: cfg.foreignKeys };
+  }
+  const cfg = getSQLiteTableConfig(table);
+  return { schema: undefined, foreignKeys: cfg.foreignKeys };
+}
+
 function isAutoIncrement(column: AnyColumn, dialect: "pg" | "mysql" | "sqlite") {
   const sqlType = column.getSQLType().toLowerCase();
+  const flag = "autoIncrement" in column && column.autoIncrement === true;
 
   if (dialect === "pg") {
     return sqlType === "serial" || sqlType === "smallserial" || sqlType === "bigserial";
   }
   if (dialect === "mysql") {
-    return sqlType === "serial" || getAutoIncrementFlag(column);
+    return sqlType === "serial" || flag;
   }
-  if (dialect === "sqlite") {
-    return sqlType === "integer" && (column.primary || getAutoIncrementFlag(column));
-  }
-  return false;
+  // sqlite
+  return sqlType === "integer" && (column.primary || flag);
 }
 
 function extractColumnInfo(column: AnyColumn, dialect: "pg" | "mysql" | "sqlite") {
@@ -96,40 +64,39 @@ function extractColumnInfo(column: AnyColumn, dialect: "pg" | "mysql" | "sqlite"
   };
 }
 
-function extractForeignKeys(fks: readonly AnyForeignKey[], sourceTableName: string) {
-  return fks.map((fk) => {
-    const ref = fk.reference();
-    return {
-      sourceTable: sourceTableName,
-      sourceColumns: ref.columns.map((col) => col.name),
-      foreignTable: asAnyTable(ref.foreignTable)[TableName],
-      foreignColumns: ref.foreignColumns.map((col) => col.name),
-      onDelete: fk.onDelete,
-      onUpdate: fk.onUpdate,
-    };
-  });
-}
-
-function extractTableInfo(table: unknown, key: string, dialect: "pg" | "mysql" | "sqlite") {
-  const anyTable = asAnyTable(table);
-  const tableName = anyTable[TableName];
-  const columns = Object.values(getTableColumns(asTable(table))).map((column) =>
-    extractColumnInfo(asAnyColumn(column), dialect),
+function extractTableInfo(
+  table: PgTable | MySqlTable | SQLiteTable,
+  key: string,
+  dialect: "pg" | "mysql" | "sqlite",
+) {
+  const tableName = getTableName(table);
+  const { schema, foreignKeys } = getTableInternals(table);
+  const columns = Object.values(getTableColumns(table)).map((column) =>
+    extractColumnInfo(column, dialect),
   );
-  const foreignKeys = extractForeignKeys(getInlineFks(anyTable, dialect), tableName);
 
   return {
     name: key,
     tableName,
-    schema: anyTable[Schema],
+    schema,
     dialect,
     columns,
-    foreignKeys,
+    foreignKeys: foreignKeys.map((fk) => {
+      const ref = fk.reference();
+      return {
+        sourceTable: tableName,
+        sourceColumns: ref.columns.map((col) => col.name),
+        foreignTable: getTableName(ref.foreignTable),
+        foreignColumns: ref.foreignColumns.map((col) => col.name),
+        onDelete: fk.onDelete,
+        onUpdate: fk.onUpdate,
+      };
+    }),
   };
 }
 
 function extractRelationInfo(relationsObj: Relations) {
-  const sourceTableName = asAnyTable(relationsObj.table)[TableName];
+  const sourceTableName = getTableName(relationsObj.table);
 
   const config = relationsObj.config({
     one: createOne(relationsObj.table),
@@ -137,7 +104,7 @@ function extractRelationInfo(relationsObj: Relations) {
   });
 
   return Object.values(config).map((relation) => {
-    const referencedTableName = asAnyTable(relation.referencedTable)[TableName];
+    const referencedTableName = getTableName(relation.referencedTable);
     const base = {
       type: is(relation, One) ? ("one" as const) : ("many" as const),
       sourceTable: sourceTableName,
@@ -183,7 +150,11 @@ export function loadSchemaFromModule(schemaModule: Record<string, unknown>) {
   const tables = entries.flatMap(([key, value]) => {
     if (isPgEnum(value)) return [];
     const dialect = detectDialect(value);
-    return dialect ? [extractTableInfo(value, key, dialect)] : [];
+    if (!dialect) return [];
+    if (is(value, PgTable) || is(value, MySqlTable) || is(value, SQLiteTable)) {
+      return [extractTableInfo(value, key, dialect)];
+    }
+    return [];
   });
 
   const relations = entries.flatMap(([, value]) =>
