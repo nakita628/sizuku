@@ -1,6 +1,4 @@
 import path from "node:path";
-import { fmt } from "../../format/index.js";
-import { mkdir, writeFile } from "../../fsp/index.js";
 import { extractRelationSchemas, extractSchemas } from "../../helper/extract-schemas.js";
 import {
   fieldDefinitions,
@@ -8,22 +6,7 @@ import {
   makeCapitalized,
   makeRelationFields,
 } from "../../utils/index.js";
-
-function effect(
-  schema: {
-    readonly name: string;
-    readonly fields: {
-      readonly name: string;
-      readonly definition: string;
-      readonly description?: string;
-    }[];
-    readonly objectType?: "strict" | "loose";
-  },
-  comment: boolean,
-) {
-  const inner = fieldDefinitions(schema, comment);
-  return `export const ${makeCapitalized(schema.name)}Schema = Schema.Struct({${inner}})`;
-}
+import { emit } from "../emit.js";
 
 export function effectCode(
   schema: {
@@ -38,12 +21,9 @@ export function effectCode(
   comment: boolean,
   type: boolean,
 ) {
-  const effectSchema = effect(schema, comment);
-  if (type) {
-    const effectInfer = inferEffect(schema.name);
-    return `${effectSchema}\n\n${effectInfer}\n`;
-  }
-  return `${effectSchema}\n`;
+  const inner = fieldDefinitions(schema, comment);
+  const effectSchema = `export const ${makeCapitalized(schema.name)}Schema = Schema.Struct({${inner}})`;
+  return type ? `${effectSchema}\n\n${inferEffect(schema.name)}\n` : `${effectSchema}\n`;
 }
 
 export function makeRelationEffectCode(
@@ -63,8 +43,7 @@ export function makeRelationEffectCode(
   const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
   const fields = makeRelationFields(schema.fields);
   const obj = `\nexport const ${makeCapitalized(relName)} = Schema.Struct({...${baseSchema}.fields,${fields}})`;
-  if (withType) return `${obj}\n\n${inferEffect(schema.name)}\n`;
-  return `${obj}`;
+  return withType ? `${obj}\n\n${inferEffect(schema.name)}\n` : obj;
 }
 
 export async function sizukuEffect(
@@ -74,31 +53,19 @@ export async function sizukuEffect(
   type?: boolean,
   relation?: boolean,
 ) {
-  const importLine = `import { Schema } from 'effect'`;
+  const baseLines = extractSchemas(code, "effect").map((s) =>
+    effectCode(s, comment ?? false, type ?? false),
+  );
+  const relationLines = relation
+    ? extractRelationSchemas(code, "effect").map((s) => makeRelationEffectCode(s, type ?? false))
+    : [];
 
-  const baseSchemas = extractSchemas(code, "effect");
-  const relationSchemas = extractRelationSchemas(code, "effect");
-
-  const effectGeneratedCode = [
-    importLine,
+  const generatedCode = [
+    `import { Schema } from 'effect'`,
     "",
-    ...baseSchemas.map((schema) => effectCode(schema, comment ?? false, type ?? false)),
-    ...(relation
-      ? relationSchemas.map((schema) => makeRelationEffectCode(schema, type ?? false))
-      : []),
+    ...baseLines,
+    ...relationLines,
   ].join("\n");
 
-  const mkdirResult = await mkdir(path.dirname(output));
-  if (!mkdirResult.ok) {
-    return { ok: false, error: mkdirResult.error } as const;
-  }
-  const formatResult = await fmt(effectGeneratedCode);
-  if (!formatResult.ok) {
-    return { ok: false, error: formatResult.error } as const;
-  }
-  const writeFileResult = await writeFile(output, formatResult.value);
-  if (!writeFileResult.ok) {
-    return { ok: false, error: writeFileResult.error } as const;
-  }
-  return { ok: true, value: undefined } as const;
+  return emit(generatedCode, path.dirname(output), output);
 }

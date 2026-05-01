@@ -1,6 +1,4 @@
 import path from "node:path";
-import { fmt } from "../../format/index.js";
-import { mkdir, writeFile } from "../../fsp/index.js";
 import { extractRelationSchemas, extractSchemas } from "../../helper/extract-schemas.js";
 import {
   fieldDefinitions,
@@ -9,23 +7,7 @@ import {
   makeRelationFields,
   resolveArktypeUndeclared,
 } from "../../utils/index.js";
-
-function arktype(
-  schema: {
-    readonly name: string;
-    readonly fields: {
-      readonly name: string;
-      readonly definition: string;
-      readonly description?: string;
-    }[];
-    readonly objectType?: "strict" | "loose";
-  },
-  comment: boolean,
-) {
-  const inner = fieldDefinitions(schema, comment);
-  const undeclared = resolveArktypeUndeclared(schema.objectType);
-  return `export const ${makeCapitalized(schema.name)}Schema = type({${undeclared}${inner}})`;
-}
+import { emit } from "../emit.js";
 
 export function arktypeCode(
   schema: {
@@ -40,12 +22,10 @@ export function arktypeCode(
   comment: boolean,
   type: boolean,
 ) {
-  const arktypeSchema = arktype(schema, comment);
-  if (type) {
-    const arktypeInfer = inferArktype(schema.name);
-    return `${arktypeSchema}\n\n${arktypeInfer}\n`;
-  }
-  return `${arktypeSchema}\n`;
+  const inner = fieldDefinitions(schema, comment);
+  const undeclared = resolveArktypeUndeclared(schema.objectType);
+  const arktypeSchema = `export const ${makeCapitalized(schema.name)}Schema = type({${undeclared}${inner}})`;
+  return type ? `${arktypeSchema}\n\n${inferArktype(schema.name)}\n` : `${arktypeSchema}\n`;
 }
 
 export function makeRelationArktypeCode(
@@ -66,8 +46,7 @@ export function makeRelationArktypeCode(
   const fields = makeRelationFields(schema.fields);
   const undeclared = resolveArktypeUndeclared(schema.objectType);
   const obj = `\nexport const ${makeCapitalized(relName)} = type({${undeclared}...${baseSchema}.t,${fields}})`;
-  if (withType) return `${obj}\n\n${inferArktype(schema.name)}\n`;
-  return `${obj}`;
+  return withType ? `${obj}\n\n${inferArktype(schema.name)}\n` : obj;
 }
 
 export async function sizukuArktype(
@@ -77,31 +56,16 @@ export async function sizukuArktype(
   type?: boolean,
   relation?: boolean,
 ) {
-  const importLine = `import { type } from 'arktype'`;
+  const baseLines = extractSchemas(code, "arktype").map((s) =>
+    arktypeCode(s, comment ?? false, type ?? false),
+  );
+  const relationLines = relation
+    ? extractRelationSchemas(code, "arktype").map((s) => makeRelationArktypeCode(s, type ?? false))
+    : [];
 
-  const baseSchemas = extractSchemas(code, "arktype");
-  const relationSchemas = extractRelationSchemas(code, "arktype");
+  const generatedCode = [`import { type } from 'arktype'`, "", ...baseLines, ...relationLines].join(
+    "\n",
+  );
 
-  const arktypeGeneratedCode = [
-    importLine,
-    "",
-    ...baseSchemas.map((schema) => arktypeCode(schema, comment ?? false, type ?? false)),
-    ...(relation
-      ? relationSchemas.map((schema) => makeRelationArktypeCode(schema, type ?? false))
-      : []),
-  ].join("\n");
-
-  const mkdirResult = await mkdir(path.dirname(output));
-  if (!mkdirResult.ok) {
-    return { ok: false, error: mkdirResult.error } as const;
-  }
-  const formatResult = await fmt(arktypeGeneratedCode);
-  if (!formatResult.ok) {
-    return { ok: false, error: formatResult.error } as const;
-  }
-  const writeFileResult = await writeFile(output, formatResult.value);
-  if (!writeFileResult.ok) {
-    return { ok: false, error: writeFileResult.error } as const;
-  }
-  return { ok: true, value: undefined } as const;
+  return emit(generatedCode, path.dirname(output), output);
 }

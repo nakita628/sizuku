@@ -1,6 +1,5 @@
 import path from "node:path";
 import { mkdir, writeFile } from "../../fsp/index.js";
-import type { MergedSchema } from "../../helper/runtime/types.js";
 import { erContent, erContentFromMergedSchema } from "./generator/index.js";
 import { extractRelationsFromSchema, parseTableInfo } from "./validator/index.js";
 
@@ -20,7 +19,33 @@ export async function sizukuMermaidER(code: string[], output: string) {
   return { ok: true, value: undefined } as const;
 }
 
-export async function sizukuMermaidERFromMerged(schema: MergedSchema, output: string) {
+export async function sizukuMermaidERFromMerged(
+  schema: {
+    readonly tables: readonly {
+      readonly tableName: string;
+      readonly columns: readonly {
+        readonly name: string;
+        readonly sqlType: string;
+        readonly isPrimaryKey: boolean;
+        readonly isNotNull: boolean;
+        readonly annotations: readonly { readonly type: string; readonly value: string }[];
+      }[];
+      readonly foreignKeys: readonly {
+        readonly sourceColumns: readonly string[];
+        readonly foreignTable: string;
+        readonly foreignColumns: readonly string[];
+      }[];
+    }[];
+    readonly relations: readonly {
+      readonly type: "one" | "many";
+      readonly sourceTable: string;
+      readonly referencedTable: string;
+      readonly sourceColumns?: readonly string[];
+      readonly foreignColumns?: readonly string[];
+    }[];
+  },
+  output: string,
+) {
   const ERContent = erContentFromMergedSchema(schema);
 
   const mkdirResult = await mkdir(path.dirname(output));

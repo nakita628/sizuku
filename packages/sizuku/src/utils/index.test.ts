@@ -1,34 +1,24 @@
 import { describe, expect, it } from "vite-plus/test";
 import { makeRelationLine, extractRelations, toRelationSymbol } from "../helper/extract-schemas.js";
 import {
-  cleanCommentLines,
-  containsSubstring,
   extractFieldComments,
   fieldDefinitions,
   infer,
   inferArktype,
   inferEffect,
   inferOutput,
-  isNonEmpty,
-  joinWithSpace,
   makeCapitalized,
   makeCommentBlock,
   makeValibotObject,
   makeZodObject,
   parseFieldComments,
   parseRelationLine,
-  removeAtSign,
   removeOptionalSuffix,
-  removeTripleSlash,
-  splitByDot,
-  splitByNewline,
   splitByTo,
   splitByWhitespace,
-  startsWith,
   makeRelationFields,
   resolveArktypeUndeclared,
   resolveWrapperType,
-  trimString,
 } from "./index";
 
 // Test run
@@ -284,72 +274,6 @@ export const postRelations = relations(post, ({ one }) => ({
     });
   });
 
-  describe("removeTripleSlash", () => {
-    it.concurrent("removes /// prefix", () => {
-      expect(removeTripleSlash("/// comment")).toBe(" comment");
-    });
-    it.concurrent("returns unchanged if no prefix", () => {
-      expect(removeTripleSlash("comment")).toBe("comment");
-    });
-  });
-
-  describe("isNonEmpty", () => {
-    it.concurrent("true for non-empty", () => {
-      expect(isNonEmpty("hello")).toBe(true);
-    });
-    it.concurrent("false for empty", () => {
-      expect(isNonEmpty("")).toBe(false);
-    });
-  });
-
-  describe("containsSubstring", () => {
-    it.concurrent("true when found", () => {
-      expect(containsSubstring("hello world", "world")).toBe(true);
-    });
-    it.concurrent("false when not found", () => {
-      expect(containsSubstring("hello", "world")).toBe(false);
-    });
-  });
-
-  describe("startsWith", () => {
-    it.concurrent("true when starts with prefix", () => {
-      expect(startsWith("@z.uuid()", "@z.")).toBe(true);
-    });
-    it.concurrent("false when not", () => {
-      expect(startsWith("hello", "@z.")).toBe(false);
-    });
-  });
-
-  describe("removeAtSign", () => {
-    it.concurrent("removes @ prefix", () => {
-      expect(removeAtSign("@z.uuid()")).toBe("z.uuid()");
-    });
-    it.concurrent("returns unchanged if no @", () => {
-      expect(removeAtSign("z.uuid()")).toBe("z.uuid()");
-    });
-  });
-
-  describe("joinWithSpace", () => {
-    it.concurrent("joins with space", () => {
-      expect(joinWithSpace(["a", "b", "c"])).toBe("a b c");
-    });
-    it.concurrent("empty array", () => {
-      expect(joinWithSpace([])).toBe("");
-    });
-  });
-
-  describe("splitByNewline", () => {
-    it.concurrent("splits by newline", () => {
-      expect(splitByNewline("a\nb\nc")).toStrictEqual(["a", "b", "c"]);
-    });
-  });
-
-  describe("trimString", () => {
-    it.concurrent("trims whitespace", () => {
-      expect(trimString("  hello  ")).toBe("hello");
-    });
-  });
-
   describe("parseRelationLine", () => {
     it.concurrent("parses valid relation", () => {
       expect(parseRelationLine("@relation user.id post.userId one-to-many")).toStrictEqual({
@@ -395,27 +319,6 @@ export const postRelations = relations(post, ({ one }) => ({
     });
     it.concurrent("empty string", () => {
       expect(splitByWhitespace("")).toStrictEqual([]);
-    });
-  });
-
-  describe("splitByDot", () => {
-    it.concurrent("splits by dot", () => {
-      expect(splitByDot("user.id")).toStrictEqual(["user", "id"]);
-    });
-  });
-
-  describe("cleanCommentLines", () => {
-    it.concurrent("cleans triple slash prefix", () => {
-      expect(cleanCommentLines(["/// Primary key", "/// @z.uuid()"])).toStrictEqual([
-        "Primary key",
-        "@z.uuid()",
-      ]);
-    });
-    it.concurrent("filters empty lines", () => {
-      expect(cleanCommentLines(["///", "/// hello"])).toStrictEqual(["hello"]);
-    });
-    it.concurrent("empty array", () => {
-      expect(cleanCommentLines([])).toStrictEqual([]);
     });
   });
 
@@ -916,16 +819,6 @@ describe("SNS Pattern (User/Post/Comment/Like) - parseFieldComments", () => {
       description: "User who liked",
       objectType: undefined,
     });
-  });
-});
-
-describe("cleanCommentLines edge cases", () => {
-  it.concurrent("lines without /// prefix pass through trimmed", () => {
-    expect(cleanCommentLines(["no prefix line"])).toStrictEqual(["no prefix line"]);
-  });
-
-  it.concurrent("whitespace-only after cleaning is filtered out", () => {
-    expect(cleanCommentLines(["///   "])).toStrictEqual([]);
   });
 });
 

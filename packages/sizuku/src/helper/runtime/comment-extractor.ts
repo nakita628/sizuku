@@ -1,16 +1,8 @@
-import type { ColumnCommentMap, CommentAnnotation, CommentInfo, TableCommentMap } from "./types.js";
-
-const ANNOTATION_PATTERNS = {
-  zod: /@z\.([^\n@]+)/g,
-  valibot: /@v\.([^\n@]+)/g,
-  arktype: /@a\.([^\n@]+)/g,
-  effect: /@e\.([^\n@]+)/g,
-  description: /@description\s+["']([^"']+)["']/g,
-  relation: /@relation\s+([^\n]+)/g,
-  custom: /@(\w+)\.(\w+)\s+([^\n@]+)/g,
-};
-
-function parseAnnotation(type: CommentAnnotation["type"], key: string, value: string) {
+function parseAnnotation(
+  type: "zod" | "valibot" | "arktype" | "effect" | "description" | "relation" | "custom",
+  key: string,
+  value: string,
+) {
   return {
     type,
     key: key.trim(),
@@ -21,25 +13,20 @@ function parseAnnotation(type: CommentAnnotation["type"], key: string, value: st
 function extractAnnotationsFromComment(comment: string) {
   const matches = (
     [
-      ["zod", "schema"],
-      ["valibot", "schema"],
-      ["arktype", "schema"],
-      ["effect", "schema"],
-      ["description", "description"],
-      ["relation", "relation"],
+      ["zod", "schema", /@z\.([^\n@]+)/g],
+      ["valibot", "schema", /@v\.([^\n@]+)/g],
+      ["arktype", "schema", /@a\.([^\n@]+)/g],
+      ["effect", "schema", /@e\.([^\n@]+)/g],
+      ["description", "description", /@description\s+["']([^"']+)["']/g],
+      ["relation", "relation", /@relation\s+([^\n]+)/g],
     ] as const
-  ).flatMap(([type, key]) =>
-    [...comment.matchAll(new RegExp(ANNOTATION_PATTERNS[type].source, "g"))].map((m) =>
-      parseAnnotation(type, key, m[1]),
-    ),
+  ).flatMap(([type, key, regex]) =>
+    [...comment.matchAll(regex)].map((m) => parseAnnotation(type, key, m[1])),
   );
 
-  const knownNamespaces = new Set(["z", "v", "a", "e", "description", "relation"]);
-  const customMatches = [
-    ...comment.matchAll(new RegExp(ANNOTATION_PATTERNS.custom.source, "g")),
-  ].flatMap((m) => {
+  const customMatches = [...comment.matchAll(/@(\w+)\.(\w+)\s+([^\n@]+)/g)].flatMap((m) => {
     const [, namespace, key, value] = m;
-    if (knownNamespaces.has(namespace)) return [];
+    if (["z", "v", "a", "e", "description", "relation"].includes(namespace)) return [];
     return [parseAnnotation("custom", `${namespace}.${key}`, value)];
   });
 
@@ -51,72 +38,85 @@ function extractTableContent(source: string, startIndex: number) {
   if (firstOpen === -1) return null;
   const start = firstOpen + 1;
 
-  const closeIndex = (() => {
-    let depth = 1;
-    for (let j = start; j < source.length; j++) {
-      if (source[j] === "{") depth++;
-      else if (source[j] === "}") {
-        depth--;
-        if (depth === 0) return j;
-      }
-    }
-    return -1;
-  })();
+  // Walk forward computing running brace depth; stop at the first index where depth hits 0.
+  const closeIndex = source
+    .substring(start)
+    .split("")
+    .reduce<{ readonly depth: number; readonly closeAt: number | null }>(
+      (state, ch, i) => {
+        if (state.closeAt !== null) return state;
+        if (ch === "{") return { depth: state.depth + 1, closeAt: null };
+        if (ch === "}") {
+          const nextDepth = state.depth - 1;
+          return nextDepth === 0
+            ? { depth: nextDepth, closeAt: start + i }
+            : { depth: nextDepth, closeAt: null };
+        }
+        return state;
+      },
+      { depth: 1, closeAt: null },
+    ).closeAt;
 
-  return closeIndex === -1 ? null : source.substring(start, closeIndex);
+  return closeIndex === null ? null : source.substring(start, closeIndex);
 }
 
 function extractColumnAnnotations(tableContent: string, tableName: string) {
   const columnPattern =
     /(?:\/\*\*?([\s\S]*?)\*\/|\/\/\/([^\n]*(?:\n\s*\/\/\/[^\n]*)*))\s*(\w+)\s*:/g;
-
-  return [...tableContent.matchAll(columnPattern)].reduce<ColumnCommentMap>((acc, match) => {
+  return [...tableContent.matchAll(columnPattern)].flatMap((match) => {
     const blockComment = match[1] || "";
     const lineComment = match[2] || "";
     const columnName = match[3];
     const comment = blockComment || lineComment.replace(/\n\s*\/\/\//g, "\n");
     const annotations = extractAnnotationsFromComment(comment);
-    if (annotations.length > 0) acc.set(`${tableName}.${columnName}`, annotations);
-    return acc;
-  }, new Map());
+    return annotations.length > 0 ? [[`${tableName}.${columnName}`, annotations] as const] : [];
+  });
 }
 
 export function extractCommentsFromSource(sourceCode: string) {
   const tablePattern =
     /(?:\/\*\*?([\s\S]*?)\*\/|\/\/\/([^\n]*(?:\n\/\/\/[^\n]*)*))\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:\w+\.table|pgTable|mysqlTable|sqliteTable)\s*\(\s*["'](\w+)["']/g;
+  const matches = [...sourceCode.matchAll(tablePattern)];
 
-  const tableComments: TableCommentMap = new Map();
-  const columnComments: ColumnCommentMap = new Map();
-
-  for (const tableMatch of sourceCode.matchAll(tablePattern)) {
-    const blockComment = tableMatch[1] || "";
-    const lineComment = tableMatch[2] || "";
-    const tableName = tableMatch[4];
-    const comment = blockComment || lineComment.replace(/\n\/\/\//g, "\n");
-
+  const tableEntries = matches.flatMap((m) => {
+    const tableName = m[4];
+    const comment = m[1] || (m[2] || "").replace(/\n\/\/\//g, "\n");
     const annotations = extractAnnotationsFromComment(comment);
-    if (annotations.length > 0) tableComments.set(tableName, annotations);
+    return annotations.length > 0 ? [[tableName, annotations] as const] : [];
+  });
 
-    const tableStart = (tableMatch.index ?? 0) + tableMatch[0].length;
-    const tableContent = extractTableContent(sourceCode, tableStart);
+  const columnEntries = matches.flatMap((m) => {
+    const tableContent = extractTableContent(sourceCode, (m.index ?? 0) + m[0].length);
+    return tableContent ? extractColumnAnnotations(tableContent, m[4]) : [];
+  });
 
-    if (tableContent) {
-      for (const [key, value] of extractColumnAnnotations(tableContent, tableName)) {
-        columnComments.set(key, value);
-      }
-    }
-  }
-
-  return { tableComments, columnComments };
+  return {
+    tableComments: new Map(tableEntries),
+    columnComments: new Map(columnEntries),
+  };
 }
 
 export function parseAnnotations(comment: string) {
   return extractAnnotationsFromComment(comment);
 }
 
-export function createEmptyCommentInfo(): CommentInfo {
+export function createEmptyCommentInfo() {
   return {
-    tableComments: new Map(),
-    columnComments: new Map(),
+    tableComments: new Map<
+      string,
+      {
+        type: "zod" | "valibot" | "arktype" | "effect" | "description" | "relation" | "custom";
+        key: string;
+        value: string;
+      }[]
+    >(),
+    columnComments: new Map<
+      string,
+      {
+        type: "zod" | "valibot" | "arktype" | "effect" | "description" | "relation" | "custom";
+        key: string;
+        value: string;
+      }[]
+    >(),
   };
 }

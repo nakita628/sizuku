@@ -22,12 +22,6 @@ import {
   SQLiteInlineForeignKeys,
   TableName,
 } from "../../symbols.js";
-import type {
-  DrizzleDialect,
-  RuntimeRelationInfo,
-  RuntimeSchemaInfo,
-  RuntimeTableInfo,
-} from "./types.js";
 
 type AnyForeignKey = PgForeignKey | MySqlForeignKey | SQLiteForeignKey;
 
@@ -44,7 +38,7 @@ function detectDialect(table: unknown) {
   return null;
 }
 
-function getInlineForeignKeysSymbol(dialect: DrizzleDialect) {
+function getInlineForeignKeysSymbol(dialect: "pg" | "mysql" | "sqlite") {
   switch (dialect) {
     case "pg":
       return PgInlineForeignKeys;
@@ -57,7 +51,7 @@ function getInlineForeignKeysSymbol(dialect: DrizzleDialect) {
   }
 }
 
-function isAutoIncrement(column: AnyColumn, dialect: DrizzleDialect) {
+function isAutoIncrement(column: AnyColumn, dialect: "pg" | "mysql" | "sqlite") {
   const sqlType = column.getSQLType().toLowerCase();
 
   if (dialect === "pg") {
@@ -78,7 +72,7 @@ function isAutoIncrement(column: AnyColumn, dialect: DrizzleDialect) {
   return false;
 }
 
-function extractColumnInfo(column: AnyColumn, dialect: DrizzleDialect) {
+function extractColumnInfo(column: AnyColumn, dialect: "pg" | "mysql" | "sqlite") {
   return {
     name: column.name,
     sqlType: column.getSQLType(),
@@ -107,7 +101,7 @@ function extractForeignKeys(fks: AnyForeignKey[], sourceTableName: string) {
   });
 }
 
-function extractTableInfo(table: unknown, key: string, dialect: DrizzleDialect) {
+function extractTableInfo(table: unknown, key: string, dialect: "pg" | "mysql" | "sqlite") {
   const anyTable = table as unknown as AnyTable;
   const tableName = anyTable[TableName];
   const schemaName = anyTable[Schema];
@@ -131,7 +125,7 @@ function extractTableInfo(table: unknown, key: string, dialect: DrizzleDialect) 
   };
 }
 
-function extractRelationInfo(relationsObj: Relations, _allTables: Map<string, RuntimeTableInfo>) {
+function extractRelationInfo(relationsObj: Relations) {
   const sourceTable = relationsObj.table as unknown as AnyTable;
   const sourceTableName = sourceTable[TableName];
 
@@ -140,7 +134,7 @@ function extractRelationInfo(relationsObj: Relations, _allTables: Map<string, Ru
     many: createMany(relationsObj.table),
   });
 
-  return Object.values(config).map((relation): RuntimeRelationInfo => {
+  return Object.values(config).map((relation) => {
     const referencedTable = relation.referencedTable as unknown as AnyTable;
     const referencedTableName = referencedTable[TableName];
 
@@ -172,10 +166,10 @@ function extractEnumInfo(enumObj: PgEnum<[string, ...string[]]>) {
   };
 }
 
-export function loadSchemaFromModule(schemaModule: Record<string, unknown>): RuntimeSchemaInfo {
+export function loadSchemaFromModule(schemaModule: Record<string, unknown>) {
   const entries = Object.entries(schemaModule);
 
-  const detectedDialect = entries.reduce<DrizzleDialect | null>((found, [, value]) => {
+  const detectedDialect = entries.reduce<"pg" | "mysql" | "sqlite" | null>((found, [, value]) => {
     if (found) return found;
     if (isPgEnum(value)) return "pg";
     return detectDialect(value);
@@ -192,14 +186,12 @@ export function loadSchemaFromModule(schemaModule: Record<string, unknown>): Run
     return dialect ? [extractTableInfo(value, key, dialect)] : [];
   });
 
-  const tableMap = new Map(tables.map((table) => [table.tableName, table]));
-
   const relations = entries.flatMap(([, value]) =>
-    is(value, Relations) ? extractRelationInfo(value, tableMap) : [],
+    is(value, Relations) ? extractRelationInfo(value) : [],
   );
 
   return {
-    dialect: detectedDialect || "pg",
+    dialect: detectedDialect || ("pg" as const),
     tables,
     relations,
     enums,

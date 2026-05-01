@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vite-plus/test";
-import type { MergedSchema } from "../../../helper/runtime/types.js";
 import {
   erContent,
   erContentFromMergedSchema,
@@ -320,7 +319,7 @@ describe("erContent", () => {
 
 describe("erContentFromMergedSchema", () => {
   it("generates ER content from MergedSchema with FK relations (toBe strict)", () => {
-    const schema: MergedSchema = {
+    const schema = {
       dialect: "pg",
       tables: [
         {
@@ -410,7 +409,7 @@ describe("erContentFromMergedSchema", () => {
   });
 
   it("generates ER content with relations() function relations", () => {
-    const schema: MergedSchema = {
+    const schema = {
       dialect: "pg",
       tables: [
         {
@@ -492,7 +491,7 @@ describe("erContentFromMergedSchema", () => {
   });
 
   it("generates ER with optional FK (nullable column)", () => {
-    const schema: MergedSchema = {
+    const schema = {
       dialect: "pg",
       tables: [
         {

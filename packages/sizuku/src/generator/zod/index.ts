@@ -1,6 +1,4 @@
 import path from "node:path";
-import { fmt } from "../../format/index.js";
-import { mkdir, writeFile } from "../../fsp/index.js";
 import { extractRelationSchemas, extractSchemas } from "../../helper/extract-schemas.js";
 import {
   fieldDefinitions,
@@ -10,24 +8,7 @@ import {
   makeZodObject,
   resolveWrapperType,
 } from "../../utils/index.js";
-
-function zod(
-  schema: {
-    readonly name: string;
-    readonly fields: {
-      readonly name: string;
-      readonly definition: string;
-      readonly description?: string;
-    }[];
-    readonly objectType?: "strict" | "loose";
-  },
-  comment: boolean,
-) {
-  const wrapperType = resolveWrapperType(schema.objectType);
-  const inner = fieldDefinitions(schema, comment);
-  const objectCode = makeZodObject(inner, wrapperType);
-  return `export const ${makeCapitalized(schema.name)}Schema = ${objectCode}`;
-}
+import { emit } from "../emit.js";
 
 export function zodCode(
   schema: {
@@ -42,12 +23,10 @@ export function zodCode(
   comment: boolean,
   type: boolean,
 ) {
-  const zodSchema = zod(schema, comment);
-  if (type) {
-    const zInfer = infer(schema.name);
-    return `${zodSchema}\n\n${zInfer}\n`;
-  }
-  return `${zodSchema}\n`;
+  const inner = fieldDefinitions(schema, comment);
+  const objectCode = makeZodObject(inner, resolveWrapperType(schema.objectType));
+  const zodSchema = `export const ${makeCapitalized(schema.name)}Schema = ${objectCode}`;
+  return type ? `${zodSchema}\n\n${infer(schema.name)}\n` : `${zodSchema}\n`;
 }
 
 export function relationZodCode(
@@ -68,8 +47,7 @@ export function relationZodCode(
   const fields = makeRelationFields(schema.fields);
   const objectType = resolveWrapperType(schema.objectType);
   const obj = `\nexport const ${makeCapitalized(relName)} = z.${objectType}({...${baseSchema}.shape,${fields}})`;
-  if (withType) return `${obj}\n\n${infer(schema.name)}\n`;
-  return `${obj}`;
+  return withType ? `${obj}\n\n${infer(schema.name)}\n` : obj;
 }
 
 export async function sizukuZod(
@@ -87,27 +65,14 @@ export async function sizukuZod(
         ? `import { z } from '@hono/zod-openapi'`
         : `import * as z from 'zod'`;
 
-  const baseSchemas = extractSchemas(code, "zod");
-  const relationSchemas = extractRelationSchemas(code, "zod");
+  const baseLines = extractSchemas(code, "zod").map((s) =>
+    zodCode(s, comment ?? false, type ?? false),
+  );
+  const relationLines = relation
+    ? extractRelationSchemas(code, "zod").map((s) => relationZodCode(s, type ?? false))
+    : [];
 
-  const zodGeneratedCode = [
-    importLine,
-    "",
-    ...baseSchemas.map((schema) => zodCode(schema, comment ?? false, type ?? false)),
-    ...(relation ? relationSchemas.map((schema) => relationZodCode(schema, type ?? false)) : []),
-  ].join("\n");
+  const generatedCode = [importLine, "", ...baseLines, ...relationLines].join("\n");
 
-  const mkdirResult = await mkdir(path.dirname(output));
-  if (!mkdirResult.ok) {
-    return { ok: false, error: mkdirResult.error } as const;
-  }
-  const formatResult = await fmt(zodGeneratedCode);
-  if (!formatResult.ok) {
-    return { ok: false, error: formatResult.error } as const;
-  }
-  const writeFileResult = await writeFile(output, formatResult.value);
-  if (!writeFileResult.ok) {
-    return { ok: false, error: writeFileResult.error } as const;
-  }
-  return { ok: true, value: undefined } as const;
+  return emit(generatedCode, path.dirname(output), output);
 }

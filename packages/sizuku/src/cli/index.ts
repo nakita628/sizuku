@@ -32,28 +32,26 @@ export function detectOutputType(output: string) {
 }
 
 export function parseFlags(argv: readonly string[]) {
-  const has = (flag: string) => argv.includes(flag);
-
   const ZOD_VERSIONS = ["v4", "mini", "@hono/zod-openapi"] as const;
   const zodVersionIndex = argv.findIndex(
     (a) => a === "--zod-version" || a.startsWith("--zod-version="),
   );
-  const zodVersion = (() => {
-    if (zodVersionIndex === -1) return undefined;
-    const arg = argv[zodVersionIndex];
-    const value = arg.includes("=") ? arg.split("=")[1] : argv[zodVersionIndex + 1];
-    return ZOD_VERSIONS.find((v) => v === value);
-  })();
+  const zodVersionValue =
+    zodVersionIndex === -1
+      ? undefined
+      : argv[zodVersionIndex].includes("=")
+        ? argv[zodVersionIndex].split("=")[1]
+        : argv[zodVersionIndex + 1];
 
   return {
-    zod: has("--zod"),
-    valibot: has("--valibot"),
-    arktype: has("--arktype"),
-    effect: has("--effect"),
-    zodVersion,
-    exportTypes: !has("--no-export-types"),
-    withComment: !has("--no-with-comment"),
-    withRelation: !has("--no-with-relation"),
+    zod: argv.includes("--zod"),
+    valibot: argv.includes("--valibot"),
+    arktype: argv.includes("--arktype"),
+    effect: argv.includes("--effect"),
+    zodVersion: ZOD_VERSIONS.find((v) => v === zodVersionValue),
+    exportTypes: !argv.includes("--no-export-types"),
+    withComment: !argv.includes("--no-with-comment"),
+    withRelation: !argv.includes("--no-with-relation"),
   };
 }
 
@@ -63,6 +61,19 @@ export function stripImports(content: string) {
     (line) => !line.trim().startsWith("import") && line.trim() !== "",
   );
   return lines.slice(codeStart);
+}
+
+export function resolveSchemaLibrary(flags: {
+  readonly zod: boolean;
+  readonly valibot: boolean;
+  readonly arktype: boolean;
+  readonly effect: boolean;
+}) {
+  if (flags.zod) return { name: "zod", label: "Zod" } as const;
+  if (flags.valibot) return { name: "valibot", label: "Valibot" } as const;
+  if (flags.arktype) return { name: "arktype", label: "ArkType" } as const;
+  if (flags.effect) return { name: "effect", label: "Effect" } as const;
+  return null;
 }
 
 async function sizukuDirectDiagram(
@@ -89,18 +100,19 @@ async function sizukuDirectDiagram(
   return { ok: true, value: `💧 Generated Mermaid ER at: ${output}` } as const;
 }
 
-export function resolveSchemaLibrary(flags: ReturnType<typeof parseFlags>) {
-  if (flags.zod) return { name: "zod", label: "Zod" } as const;
-  if (flags.valibot) return { name: "valibot", label: "Valibot" } as const;
-  if (flags.arktype) return { name: "arktype", label: "ArkType" } as const;
-  if (flags.effect) return { name: "effect", label: "Effect" } as const;
-  return null;
-}
-
 async function sizukuDirectSchema(
   input: string,
   output: string,
-  flags: ReturnType<typeof parseFlags>,
+  flags: {
+    readonly zod: boolean;
+    readonly valibot: boolean;
+    readonly arktype: boolean;
+    readonly effect: boolean;
+    readonly zodVersion: "v4" | "mini" | "@hono/zod-openapi" | undefined;
+    readonly exportTypes: boolean;
+    readonly withComment: boolean;
+    readonly withRelation: boolean;
+  },
 ) {
   const lib = resolveSchemaLibrary(flags);
   if (!lib) {
@@ -117,25 +129,26 @@ async function sizukuDirectSchema(
 
   const code = stripImports(contentResult.value);
 
-  const generators = {
-    zod: () =>
-      sizukuZod(
+  const result = await (() => {
+    if (lib.name === "zod") {
+      return sizukuZod(
         code,
         output,
         flags.withComment,
         flags.exportTypes,
         flags.zodVersion,
         flags.withRelation,
-      ),
-    valibot: () =>
-      sizukuValibot(code, output, flags.withComment, flags.exportTypes, flags.withRelation),
-    arktype: () =>
-      sizukuArktype(code, output, flags.withComment, flags.exportTypes, flags.withRelation),
-    effect: () =>
-      sizukuEffect(code, output, flags.withComment, flags.exportTypes, flags.withRelation),
-  };
+      );
+    }
+    if (lib.name === "valibot") {
+      return sizukuValibot(code, output, flags.withComment, flags.exportTypes, flags.withRelation);
+    }
+    if (lib.name === "arktype") {
+      return sizukuArktype(code, output, flags.withComment, flags.exportTypes, flags.withRelation);
+    }
+    return sizukuEffect(code, output, flags.withComment, flags.exportTypes, flags.withRelation);
+  })();
 
-  const result = await generators[lib.name]();
   if (!result.ok) return result;
   return { ok: true, value: `💧 Generated ${lib.label} schema at: ${output}` } as const;
 }
