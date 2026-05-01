@@ -20,7 +20,7 @@ function effect(
     readonly objectType?: "strict" | "loose";
   },
   comment: boolean,
-): string {
+) {
   const inner = fieldDefinitions(schema, comment);
   return `export const ${makeCapitalized(schema.name)}Schema = Schema.Struct({${inner}})`;
 }
@@ -37,7 +37,7 @@ export function effectCode(
   },
   comment: boolean,
   type: boolean,
-): string {
+) {
   const effectSchema = effect(schema, comment);
   if (type) {
     const effectInfer = inferEffect(schema.name);
@@ -58,7 +58,7 @@ export function makeRelationEffectCode(
     readonly objectType?: "strict" | "loose";
   },
   withType: boolean,
-): string {
+) {
   const relName = `${schema.name}Schema`;
   const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
   const fields = makeRelationFields(schema.fields);
@@ -67,30 +67,13 @@ export function makeRelationEffectCode(
   return `${obj}`;
 }
 
-/**
- * Generate Effect schema
- * @param code - The code to generate Effect schema from
- * @param output - The output file path
- * @param comment - Whether to include comments in the generated code
- * @param type - Whether to include type information in the generated code
- * @param relation - Whether to include relation schemas in the generated code
- */
 export async function sizukuEffect(
   code: string[],
-  output: `${string}.ts`,
+  output: string,
   comment?: boolean,
   type?: boolean,
   relation?: boolean,
-): Promise<
-  | {
-      readonly ok: true;
-      readonly value: undefined;
-    }
-  | {
-      readonly ok: false;
-      readonly error: string;
-    }
-> {
+) {
   const importLine = `import { Schema } from 'effect'`;
 
   const baseSchemas = extractSchemas(code, "effect");
@@ -107,21 +90,15 @@ export async function sizukuEffect(
 
   const mkdirResult = await mkdir(path.dirname(output));
   if (!mkdirResult.ok) {
-    return {
-      ok: false,
-      error: mkdirResult.error,
-    };
+    return { ok: false, error: mkdirResult.error } as const;
   }
-  const formatted = await fmt(effectGeneratedCode);
-  const writeFileResult = await writeFile(output, formatted);
+  const formatResult = await fmt(effectGeneratedCode);
+  if (!formatResult.ok) {
+    return { ok: false, error: formatResult.error } as const;
+  }
+  const writeFileResult = await writeFile(output, formatResult.value);
   if (!writeFileResult.ok) {
-    return {
-      ok: false,
-      error: writeFileResult.error,
-    };
+    return { ok: false, error: writeFileResult.error } as const;
   }
-  return {
-    ok: true,
-    value: undefined,
-  };
+  return { ok: true, value: undefined } as const;
 }

@@ -1,63 +1,33 @@
-/**
- * Tag type for validation library prefixes.
- */
 export type ValidationTag = "@z." | "@v." | "@a." | "@e.";
 
-/**
- * Capitalize the first character of a string.
- *
- * @param str - The input string.
- * @returns String with first character capitalized.
- */
-export function makeCapitalized(str: string): string {
+export function makeCapitalized(str: string) {
   return `${str.charAt(0).toUpperCase()}${str.slice(1)}`;
 }
 
-/**
- * Resolve schema object wrapper type from objectType annotation.
- */
-export function resolveWrapperType(
-  objectType: "strict" | "loose" | undefined,
-): "strictObject" | "looseObject" | "object" {
-  if (objectType === "strict") return "strictObject";
-  if (objectType === "loose") return "looseObject";
-  return "object";
+export function resolveWrapperType(objectType: "strict" | "loose" | undefined) {
+  if (objectType === "strict") return "strictObject" as const;
+  if (objectType === "loose") return "looseObject" as const;
+  return "object" as const;
 }
 
-/**
- * Resolve ArkType undeclared key handling prefix.
- *
- * ArkType uses `"+"` key to control unknown property behavior:
- * - strict → `"+": "reject"` (reject unknown keys)
- * - loose → `"+": "ignore"` (preserve unknown keys, which is ArkType's default)
- * - undefined → no prefix (default behavior: preserve unknown keys)
- */
-export function resolveArktypeUndeclared(objectType: "strict" | "loose" | undefined): string {
+// ArkType uses `"+"` to control unknown property behavior:
+// strict → reject unknown keys, loose → preserve them (default), undefined → omit
+export function resolveArktypeUndeclared(objectType: "strict" | "loose" | undefined) {
   if (objectType === "strict") return '"+":"reject",';
   if (objectType === "loose") return '"+":"ignore",';
   return "";
 }
 
-/**
- * Join relation schema fields into a comma-separated string.
- */
 export function makeRelationFields(
   fields: readonly { readonly name: string; readonly definition: string }[],
-): string {
+) {
   return fields.map((f) => `${f.name}:${f.definition}`).join(",");
 }
 
-/**
- * Generates a Zod object wrapper.
- *
- * @param inner - The inner field definitions string.
- * @param wrapperType - The object wrapper type.
- * @returns The generated Zod object string.
- */
 export function makeZodObject(
   inner: string,
   wrapperType: "object" | "strictObject" | "looseObject" = "object",
-): string {
+) {
   switch (wrapperType) {
     case "strictObject":
       return `z.strictObject({${inner}})`;
@@ -68,17 +38,10 @@ export function makeZodObject(
   }
 }
 
-/**
- * Generates a Valibot object wrapper.
- *
- * @param inner - The inner field definitions string.
- * @param wrapperType - The object wrapper type.
- * @returns The generated Valibot object string.
- */
 export function makeValibotObject(
   inner: string,
   wrapperType: "object" | "strictObject" | "looseObject" = "object",
-): string {
+) {
   switch (wrapperType) {
     case "strictObject":
       return `v.strictObject({${inner}})`;
@@ -89,113 +52,45 @@ export function makeValibotObject(
   }
 }
 
-/* ========================================================================== *
- *  text
- * ========================================================================== */
-
-/**
- * Remove triple slash prefix from a string.
- *
- * @param str - The input string.
- * @returns String with triple slash prefix removed.
- */
-export function removeTripleSlash(str: string): string {
-  // Remove "///" prefix (3 chars)
+export function removeTripleSlash(str: string) {
   return str.startsWith("///") ? str.substring(3) : str;
 }
 
-/**
- * Check if a string is non-empty.
- *
- * @param str - The input string.
- * @returns True if string is non-empty.
- */
-export function isNonEmpty(str: string): boolean {
+export function isNonEmpty(str: string) {
   return str.length > 0;
 }
 
-/**
- * Check if a string contains a substring.
- *
- * @param str - The input string.
- * @param substr - The substring to search for.
- * @returns True if string contains substring.
- */
-export function containsSubstring(str: string, substr: string): boolean {
+export function containsSubstring(str: string, substr: string) {
   return str.indexOf(substr) !== -1;
 }
 
-/**
- * Check if a string starts with a prefix.
- *
- * @param str - The input string.
- * @param prefix - The prefix to check.
- * @returns True if string starts with prefix.
- */
-export function startsWith(str: string, prefix: string): boolean {
+export function startsWith(str: string, prefix: string) {
   return str.indexOf(prefix) === 0;
 }
 
-/**
- * Remove @ sign from the beginning of a string.
- *
- * @param str - The input string.
- * @returns String with @ sign removed.
- */
-export function removeAtSign(str: string): string {
+export function removeAtSign(str: string) {
   return str.startsWith("@") ? str.substring(1) : str;
 }
 
-/**
- * Join array of strings with space separator.
- *
- * @param arr - Array of strings to join.
- * @returns Joined string with spaces.
- */
-export function joinWithSpace(arr: readonly string[]): string {
+export function joinWithSpace(arr: readonly string[]) {
   return arr.join(" ");
 }
 
-/**
- * Split string by newline character.
- *
- * @param str - The input string.
- * @returns Array of strings split by newline.
- */
-export function splitByNewline(str: string): readonly string[] {
+export function splitByNewline(str: string) {
   return str.split("\n");
 }
 
-/**
- * Trim whitespace from string.
- *
- * @param str - The input string.
- * @returns Trimmed string.
- */
-export function trimString(str: string): string {
+export function trimString(str: string) {
   return str.trim();
 }
 
-/**
- * Parse relation line and extract components.
- *
- * @param line - The line to parse.
- * @returns Parsed relation or null if not a relation line.
- */
-export function parseRelationLine(line: string): {
-  fromModel: string;
-  toModel: string;
-  fromField: string;
-  toField: string;
-  type: string;
-} | null {
+// "@relation <from.field> <to.field> <type>" → 4 parts minimum
+export function parseRelationLine(line: string) {
   if (!line.startsWith("@relation")) return null;
 
-  // Format: "@relation <from.field> <to.field> <type>" → 4 parts minimum
   const parts = line.trim().split(/\s+/);
   if (parts.length < 4) return null;
 
-  // parts[1] = "User.id", parts[2] = "Post.userId" → split by "." into [model, field]
   const fromParts = parts[1].split(".");
   const toParts = parts[2].split(".");
 
@@ -206,126 +101,65 @@ export function parseRelationLine(line: string): {
     fromField: fromParts[1],
     toModel: toParts[0],
     toField: toParts[1],
-    type: parts[3], // e.g. "one-to-many"
+    type: parts[3],
   };
 }
 
-/**
- * Split string by '-to-' delimiter.
- *
- * @param str - The input string.
- * @returns Array with two parts or null if not found.
- */
-export function splitByTo(str: string): [string, string] | null {
+export function splitByTo(str: string) {
   const index = str.indexOf("-to-");
   if (index === -1) return null;
-  // Skip past "-to-" (4 chars) to get the right-hand side
-  return [str.substring(0, index), str.substring(index + 4)];
+  return [str.substring(0, index), str.substring(index + 4)] as const;
 }
 
-/**
- * Remove optional suffix from string.
- *
- * @param str - The input string.
- * @returns String with optional suffix removed.
- */
-export function removeOptionalSuffix(str: string): string {
+export function removeOptionalSuffix(str: string) {
   const index = str.indexOf("-optional");
   return index !== -1 ? str.substring(0, index) : str;
 }
 
-/**
- * Split string by whitespace.
- *
- * @param str - The input string.
- * @returns Array of strings split by whitespace.
- */
-export function splitByWhitespace(str: string): readonly string[] {
+export function splitByWhitespace(str: string) {
   return str
     .trim()
     .split(/\s+/)
     .filter((s) => s.length > 0);
 }
 
-/**
- * Split string by dot character.
- *
- * @param str - The input string.
- * @returns Array of strings split by dot.
- */
-export function splitByDot(str: string): readonly string[] {
+export function splitByDot(str: string) {
   return str.split(".");
 }
 
-/* ========================================================================== *
- *  parse
- * ========================================================================== */
-
-/**
- * Clean comment lines by removing triple slash prefix and trimming.
- *
- * @param commentLines - Raw comment lines
- * @returns Cleaned comment lines
- */
-export function cleanCommentLines(commentLines: readonly string[]): readonly string[] {
+export function cleanCommentLines(commentLines: readonly string[]) {
   return commentLines.map((line) => line.replace(/^\/\/\/\s*/, "").trim()).filter(Boolean);
 }
 
-/**
- * Extract object type from comment lines.
- *
- * @param cleaned - Cleaned comment lines
- * @param tag - The tag to look for
- * @returns The object type if found
- */
-function extractObjectType(
-  cleaned: readonly string[],
-  tag: ValidationTag,
-): "strict" | "loose" | undefined {
-  // Remove leading "@" → e.g. "@z." becomes "z."
+function extractObjectType(cleaned: readonly string[], tag: ValidationTag) {
   const tagWithoutAt = tag.slice(1);
   const objectTypeLine = cleaned.find(
     (line) =>
       line.includes(`${tagWithoutAt}strictObject`) || line.includes(`${tagWithoutAt}looseObject`),
   );
   if (!objectTypeLine) return undefined;
-  if (objectTypeLine.includes("strictObject")) return "strict";
-  if (objectTypeLine.includes("looseObject")) return "loose";
+  if (objectTypeLine.includes("strictObject")) return "strict" as const;
+  if (objectTypeLine.includes("looseObject")) return "loose" as const;
   return undefined;
 }
 
-/**
- * Extract definition from comment lines.
- *
- * @param cleaned - Cleaned comment lines
- * @param tag - The tag to look for
- * @returns The definition string
- */
-function extractDefinition(cleaned: readonly string[], tag: ValidationTag): string {
+// For arktype/effect, drop the library prefix from the raw definition
+// For zod/valibot, keep the library prefix
+function extractDefinition(cleaned: readonly string[], tag: ValidationTag) {
   const definitionLine = cleaned.find(
     (line) =>
       line.startsWith(tag) && !line.includes("strictObject") && !line.includes("looseObject"),
   );
   if (!definitionLine) return "";
-  // Remove the leading "@" sign → e.g. "@z.uuid()" becomes "z.uuid()"
   const withoutAt = definitionLine.startsWith("@") ? definitionLine.substring(1) : definitionLine;
-  // For arktype (@a.) and effect (@e.), remove the library prefix to get the raw definition
-  // For zod (@z.) and valibot (@v.), keep the library prefix
   if (tag === "@a." || tag === "@e.") {
-    // Remove the library prefix → e.g. "a.'string.uuid'" becomes "'string.uuid'"
-    const prefix = tag.substring(1); // "@a." → "a.", "@e." → "e."
+    const prefix = tag.substring(1);
     return withoutAt.startsWith(prefix) ? withoutAt.substring(prefix.length) : withoutAt;
   }
   return withoutAt;
 }
 
-/**
- * Extract description from comment lines.
- *
- * @param cleaned - Cleaned comment lines
- * @returns The description if found
- */
-function extractDescription(cleaned: readonly string[]): string | undefined {
+function extractDescription(cleaned: readonly string[]) {
   const descriptionLines = cleaned.filter(
     (line) =>
       !(
@@ -339,131 +173,54 @@ function extractDescription(cleaned: readonly string[]): string | undefined {
   return descriptionLines.length > 0 ? descriptionLines.join(" ") : undefined;
 }
 
-/**
- * Parse field comments and extract definition line and description.
- *
- * @param commentLines - Raw comment lines (e.g., from source text)
- * @param tag - The tag to look for (e.g., '@v.', '@z.', '@a.', or '@e.')
- * @returns Parsed definition and description
- */
-export function parseFieldComments(
-  commentLines: readonly string[],
-  tag: ValidationTag,
-): {
-  readonly definition: string;
-  readonly description?: string;
-  readonly objectType?: "strict" | "loose";
-} {
+export function parseFieldComments(commentLines: readonly string[], tag: ValidationTag) {
   const cleaned = cleanCommentLines(commentLines);
-  const objectType = extractObjectType(cleaned, tag);
-  const definition = extractDefinition(cleaned, tag);
-  const description = extractDescription(cleaned);
-
-  return { definition, description, objectType };
+  return {
+    definition: extractDefinition(cleaned, tag),
+    description: extractDescription(cleaned),
+    objectType: extractObjectType(cleaned, tag),
+  };
 }
 
-/* ========================================================================== *
- *  extractFieldComments
- * ========================================================================== */
-
-/**
- * Process a single line during comment extraction.
- *
- * @param acc - The accumulator
- * @param line - The line to process
- * @returns Updated accumulator
- */
 function processCommentLine(
   acc: { readonly commentLines: readonly string[]; readonly shouldStop: boolean },
   line: string,
-): { readonly commentLines: readonly string[]; readonly shouldStop: boolean } {
+) {
   if (acc.shouldStop) return acc;
-
   if (line.startsWith("///")) {
-    return {
-      commentLines: [line, ...acc.commentLines],
-      shouldStop: false,
-    };
+    return { commentLines: [line, ...acc.commentLines], shouldStop: false };
   }
-
-  if (line === "") {
-    return acc;
-  }
-
+  if (line === "") return acc;
   return { commentLines: acc.commentLines, shouldStop: true };
 }
 
-/**
- * Extract field comments from source text.
- *
- * @param sourceText - The source text to extract comments from.
- * @param fieldStartPos - The position of the field in the source text.
- * @returns An array of comment lines.
- */
-export function extractFieldComments(sourceText: string, fieldStartPos: number): readonly string[] {
+export function extractFieldComments(sourceText: string, fieldStartPos: number) {
   const beforeField = sourceText.substring(0, fieldStartPos);
   const lines = beforeField.split("\n");
-  const reverseIndex = lines
-    .map((line, index) => ({ line: line.trim(), index }))
+  return lines
+    .map((line) => line.trim())
     .reverse()
     .reduce<{ readonly commentLines: readonly string[]; readonly shouldStop: boolean }>(
-      (acc, { line }) => processCommentLine(acc, line),
+      processCommentLine,
       { commentLines: [], shouldStop: false },
-    );
-  return reverseIndex.commentLines;
+    ).commentLines;
 }
 
-/* ========================================================================== *
- *  zod
- * ========================================================================== */
-
-/**
- * Creates `z.infer` type for the specified model.
- *
- * @param name - The model name
- * @returns The generated TypeScript type definition line using Zod.
- */
-export function infer(name: string): `export type ${string} = z.infer<typeof ${string}Schema>` {
+export function infer(name: string) {
   const modelName = makeCapitalized(name);
   return `export type ${modelName} = z.infer<typeof ${modelName}Schema>`;
 }
 
-/* ========================================================================== *
- *  valibot
- * ========================================================================== */
-
-/**
- * Creates `v.InferOutput` type for the specified model.
- *
- * @param name - The model name
- * @returns The generated TypeScript type definition line using Valibot.
- */
-export function inferOutput(
-  name: string,
-): `export type ${string} = v.InferOutput<typeof ${string}Schema>` {
+export function inferOutput(name: string) {
   const modelName = makeCapitalized(name);
   return `export type ${modelName} = v.InferOutput<typeof ${modelName}Schema>`;
 }
 
-/* ========================================================================== *
- *  schema
- * ========================================================================== */
-
-/**
- * Generate a JSDoc comment block from a description
- * @param description - The description text
- * @returns The formatted JSDoc comment block
- */
-export function makeCommentBlock(description: string): string {
+export function makeCommentBlock(description: string) {
   if (!description) return "";
   return `/**\n * ${description}\n */\n`;
 }
 
-/**
- * Generate field definitions with optional JSDoc comments
- * @param schema - The schema with fields to generate definitions for
- * @param comment - Whether to include JSDoc comments
- */
 export function fieldDefinitions(
   schema: {
     readonly name: string;
@@ -474,7 +231,7 @@ export function fieldDefinitions(
     }[];
   },
   comment: boolean,
-): string {
+) {
   return schema.fields
     .map(({ name, definition, description }) => {
       const commentCode = description && comment ? makeCommentBlock(description) : "";
@@ -483,34 +240,12 @@ export function fieldDefinitions(
     .join(",\n");
 }
 
-/* ========================================================================== *
- *  arktype
- * ========================================================================== */
-
-/**
- * Creates ArkType infer type for the specified model.
- *
- * @param name - The model name
- * @returns The generated TypeScript type definition line using ArkType.
- */
-export function inferArktype(name: string): `export type ${string} = typeof ${string}Schema.infer` {
+export function inferArktype(name: string) {
   const capitalized = makeCapitalized(name);
-  return `export type ${capitalized} = typeof ${capitalized}Schema.infer` as const;
+  return `export type ${capitalized} = typeof ${capitalized}Schema.infer`;
 }
 
-/* ========================================================================== *
- *  effect
- * ========================================================================== */
-
-/**
- * Creates Effect Schema infer type for the specified model.
- *
- * @param name - The model name
- * @returns The generated TypeScript type definition line using Effect Schema.
- */
-export function inferEffect(
-  name: string,
-): `export type ${string}Encoded = typeof ${string}Schema.Encoded` {
+export function inferEffect(name: string) {
   const capitalized = makeCapitalized(name);
-  return `export type ${capitalized}Encoded = typeof ${capitalized}Schema.Encoded` as const;
+  return `export type ${capitalized}Encoded = typeof ${capitalized}Schema.Encoded`;
 }

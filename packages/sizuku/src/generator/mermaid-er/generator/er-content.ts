@@ -10,44 +10,22 @@ const RELATIONSHIPS = {
   many: "}|",
 } as const;
 
-/**
- * Generate relation line from relation info.
- *
- * @param relation - The relation info
- * @returns The Mermaid ER relation line
- */
 export function makeRelationLine(relation: {
   readonly fromModel: string;
   readonly toModel: string;
   readonly fromField: string;
   readonly toField: string;
   readonly isRequired: boolean;
-}): string {
-  // From side is always "one" (the referenced/parent side)
+}) {
   const fromSymbol = RELATIONSHIPS.one;
-  // To side: if required then "many", else "zero-many"
   const toSymbol = relation.isRequired ? RELATIONSHIPS.many : RELATIONSHIPS["zero-many"];
-  const connector = "--";
-
-  return `    ${relation.fromModel} ${fromSymbol}${connector}${toSymbol} ${relation.toModel} : "(${relation.fromField}) - (${relation.toField})"`;
+  return `    ${relation.fromModel} ${fromSymbol}--${toSymbol} ${relation.toModel} : "(${relation.fromField}) - (${relation.toField})"`;
 }
 
-/**
- * Remove duplicate relations.
- *
- * @param relations - The relations to deduplicate
- * @returns The deduplicated relations
- */
-export function removeDuplicateRelations(relations: readonly string[]): readonly string[] {
+export function removeDuplicateRelations(relations: readonly string[]) {
   return [...new Set(relations)];
 }
 
-/**
- * Generate ER content
- * @param relations - The relations extracted from .references() calls
- * @param tables - The tables to generate the ER content from
- * @returns The generated ER content
- */
 export function erContent(
   relations: readonly {
     readonly fromModel: string;
@@ -65,7 +43,7 @@ export function erContent(
       readonly description: string | null;
     }[];
   }[],
-): string {
+) {
   // Generate relation lines
   const relationLines = removeDuplicateRelations(relations.map(makeRelationLine));
 
@@ -85,10 +63,7 @@ export function erContent(
   return content.join("\n");
 }
 
-/**
- * Convert SQL type to a simplified Mermaid type
- */
-export function simplifyType(sqlType: string): string {
+export function simplifyType(sqlType: string) {
   const lower = sqlType.toLowerCase();
   if (lower.includes("int") || lower.includes("serial")) return "int";
   if (lower.includes("varchar") || lower.includes("text") || lower.includes("char"))
@@ -103,17 +78,8 @@ export function simplifyType(sqlType: string): string {
   return sqlType;
 }
 
-/**
- * Generate ER content from MergedSchema (runtime-based)
- *
- * This function uses runtime schema information extracted from Drizzle ORM
- * to generate Mermaid ER diagrams. It automatically detects relations from
- * foreign keys and relations() without requiring @relation annotations.
- *
- * @param schema - The merged schema containing runtime and comment information
- * @returns The generated Mermaid ER content
- */
-export function erContentFromMergedSchema(schema: MergedSchema): string {
+// Auto-detects relations from foreign keys and relations() without requiring @relation
+export function erContentFromMergedSchema(schema: MergedSchema) {
   // Build relation lines from foreign keys
   const relationLines: string[] = [];
   const seenRelations = new Set<string>();

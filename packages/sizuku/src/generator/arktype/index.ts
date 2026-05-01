@@ -10,11 +10,6 @@ import {
   resolveArktypeUndeclared,
 } from "../../utils/index.js";
 
-/**
- * Generate ArkType type() definition from a schema
- * @param schema - The schema to generate ArkType definition from
- * @param comment - Whether to include JSDoc comments in the generated code
- */
 function arktype(
   schema: {
     readonly name: string;
@@ -26,18 +21,12 @@ function arktype(
     readonly objectType?: "strict" | "loose";
   },
   comment: boolean,
-): string {
+) {
   const inner = fieldDefinitions(schema, comment);
   const undeclared = resolveArktypeUndeclared(schema.objectType);
   return `export const ${makeCapitalized(schema.name)}Schema = type({${undeclared}${inner}})`;
 }
 
-/**
- * Generate ArkType schema code with optional type inference
- * @param schema - The schema to generate code from
- * @param comment - Whether to include JSDoc comments in the generated code
- * @param type - Whether to include type inference
- */
 export function arktypeCode(
   schema: {
     readonly name: string;
@@ -50,7 +39,7 @@ export function arktypeCode(
   },
   comment: boolean,
   type: boolean,
-): string {
+) {
   const arktypeSchema = arktype(schema, comment);
   if (type) {
     const arktypeInfer = inferArktype(schema.name);
@@ -59,11 +48,6 @@ export function arktypeCode(
   return `${arktypeSchema}\n`;
 }
 
-/**
- * Generate ArkType relation schema code with spread base schema
- * @param schema - The relation schema with base model reference
- * @param withType - Whether to include type inference
- */
 export function makeRelationArktypeCode(
   schema: {
     readonly name: string;
@@ -76,7 +60,7 @@ export function makeRelationArktypeCode(
     readonly objectType?: "strict" | "loose";
   },
   withType: boolean,
-): string {
+) {
   const relName = `${schema.name}Schema`;
   const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
   const fields = makeRelationFields(schema.fields);
@@ -86,30 +70,13 @@ export function makeRelationArktypeCode(
   return `${obj}`;
 }
 
-/**
- * Generate ArkType schema
- * @param code - The code to generate ArkType schema from
- * @param output - The output file path
- * @param comment - Whether to include comments in the generated code
- * @param type - Whether to include type information in the generated code
- * @param relation - Whether to include relation schemas in the generated code
- */
 export async function sizukuArktype(
   code: string[],
-  output: `${string}.ts`,
+  output: string,
   comment?: boolean,
   type?: boolean,
   relation?: boolean,
-): Promise<
-  | {
-      readonly ok: true;
-      readonly value: undefined;
-    }
-  | {
-      readonly ok: false;
-      readonly error: string;
-    }
-> {
+) {
   const importLine = `import { type } from 'arktype'`;
 
   const baseSchemas = extractSchemas(code, "arktype");
@@ -126,21 +93,15 @@ export async function sizukuArktype(
 
   const mkdirResult = await mkdir(path.dirname(output));
   if (!mkdirResult.ok) {
-    return {
-      ok: false,
-      error: mkdirResult.error,
-    };
+    return { ok: false, error: mkdirResult.error } as const;
   }
-  const formatted = await fmt(arktypeGeneratedCode);
-  const writeFileResult = await writeFile(output, formatted);
+  const formatResult = await fmt(arktypeGeneratedCode);
+  if (!formatResult.ok) {
+    return { ok: false, error: formatResult.error } as const;
+  }
+  const writeFileResult = await writeFile(output, formatResult.value);
   if (!writeFileResult.ok) {
-    return {
-      ok: false,
-      error: writeFileResult.error,
-    };
+    return { ok: false, error: writeFileResult.error } as const;
   }
-  return {
-    ok: true,
-    value: undefined,
-  };
+  return { ok: true, value: undefined } as const;
 }

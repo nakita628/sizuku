@@ -22,7 +22,7 @@ function zod(
     readonly objectType?: "strict" | "loose";
   },
   comment: boolean,
-): string {
+) {
   const wrapperType = resolveWrapperType(schema.objectType);
   const inner = fieldDefinitions(schema, comment);
   const objectCode = makeZodObject(inner, wrapperType);
@@ -41,7 +41,7 @@ export function zodCode(
   },
   comment: boolean,
   type: boolean,
-): string {
+) {
   const zodSchema = zod(schema, comment);
   if (type) {
     const zInfer = infer(schema.name);
@@ -62,7 +62,7 @@ export function relationZodCode(
     readonly objectType?: "strict" | "loose";
   },
   withType: boolean,
-): string {
+) {
   const relName = `${schema.name}Schema`;
   const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
   const fields = makeRelationFields(schema.fields);
@@ -72,31 +72,14 @@ export function relationZodCode(
   return `${obj}`;
 }
 
-/**
- * Generate Zod schema
- * @param code - The code to generate Zod schema from
- * @param output - The output file path
- * @param comment - Whether to include comments in the generated code
- * @param type - Whether to include type information in the generated code
- * @param zod - The Zod version to use
- */
 export async function sizukuZod(
   code: string[],
-  output: `${string}.ts`,
+  output: string,
   comment?: boolean,
   type?: boolean,
   zod?: "v4" | "mini" | "@hono/zod-openapi",
   relation?: boolean,
-): Promise<
-  | {
-      readonly ok: true;
-      readonly value: undefined;
-    }
-  | {
-      readonly ok: false;
-      readonly error: string;
-    }
-> {
+) {
   const importLine =
     zod === "mini"
       ? `import * as z from 'zod/mini'`
@@ -116,21 +99,15 @@ export async function sizukuZod(
 
   const mkdirResult = await mkdir(path.dirname(output));
   if (!mkdirResult.ok) {
-    return {
-      ok: false,
-      error: mkdirResult.error,
-    };
+    return { ok: false, error: mkdirResult.error } as const;
   }
-  const formatted = await fmt(zodGeneratedCode);
-  const writeFileResult = await writeFile(output, formatted);
+  const formatResult = await fmt(zodGeneratedCode);
+  if (!formatResult.ok) {
+    return { ok: false, error: formatResult.error } as const;
+  }
+  const writeFileResult = await writeFile(output, formatResult.value);
   if (!writeFileResult.ok) {
-    return {
-      ok: false,
-      error: writeFileResult.error,
-    };
+    return { ok: false, error: writeFileResult.error } as const;
   }
-  return {
-    ok: true,
-    value: undefined,
-  };
+  return { ok: true, value: undefined } as const;
 }

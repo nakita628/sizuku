@@ -1,7 +1,3 @@
-/**
- * Schema loader that extracts runtime information from Drizzle ORM schemas
- */
-
 import type { AnyColumn } from "drizzle-orm";
 import {
   createMany,
@@ -28,9 +24,6 @@ import {
 } from "../../symbols.js";
 import type {
   DrizzleDialect,
-  RuntimeColumnInfo,
-  RuntimeEnumInfo,
-  RuntimeForeignKey,
   RuntimeRelationInfo,
   RuntimeSchemaInfo,
   RuntimeTableInfo,
@@ -44,20 +37,14 @@ interface AnyTable {
   readonly [AnyInlineForeignKeys]?: AnyForeignKey[];
 }
 
-/**
- * Detect the dialect of a Drizzle table
- */
-function detectDialect(table: unknown): DrizzleDialect | null {
-  if (is(table, PgTable)) return "pg";
-  if (is(table, MySqlTable)) return "mysql";
-  if (is(table, SQLiteTable)) return "sqlite";
+function detectDialect(table: unknown) {
+  if (is(table, PgTable)) return "pg" as const;
+  if (is(table, MySqlTable)) return "mysql" as const;
+  if (is(table, SQLiteTable)) return "sqlite" as const;
   return null;
 }
 
-/**
- * Get the inline foreign keys symbol for a given dialect
- */
-function getInlineForeignKeysSymbol(dialect: DrizzleDialect): symbol {
+function getInlineForeignKeysSymbol(dialect: DrizzleDialect) {
   switch (dialect) {
     case "pg":
       return PgInlineForeignKeys;
@@ -70,10 +57,7 @@ function getInlineForeignKeysSymbol(dialect: DrizzleDialect): symbol {
   }
 }
 
-/**
- * Check if a column is auto-incrementing
- */
-function isAutoIncrement(column: AnyColumn, dialect: DrizzleDialect): boolean {
+function isAutoIncrement(column: AnyColumn, dialect: DrizzleDialect) {
   const sqlType = column.getSQLType().toLowerCase();
 
   if (dialect === "pg") {
@@ -94,10 +78,7 @@ function isAutoIncrement(column: AnyColumn, dialect: DrizzleDialect): boolean {
   return false;
 }
 
-/**
- * Extract column information from a Drizzle column
- */
-function extractColumnInfo(column: AnyColumn, dialect: DrizzleDialect): RuntimeColumnInfo {
+function extractColumnInfo(column: AnyColumn, dialect: DrizzleDialect) {
   return {
     name: column.name,
     sqlType: column.getSQLType(),
@@ -110,10 +91,7 @@ function extractColumnInfo(column: AnyColumn, dialect: DrizzleDialect): RuntimeC
   };
 }
 
-/**
- * Extract foreign key information from inline foreign keys
- */
-function extractForeignKeys(fks: AnyForeignKey[], sourceTableName: string): RuntimeForeignKey[] {
+function extractForeignKeys(fks: AnyForeignKey[], sourceTableName: string) {
   return fks.map((fk) => {
     const ref = fk.reference();
     const foreignTable = ref.foreignTable as unknown as AnyTable;
@@ -129,22 +107,16 @@ function extractForeignKeys(fks: AnyForeignKey[], sourceTableName: string): Runt
   });
 }
 
-/**
- * Extract table information from a Drizzle table
- */
-function extractTableInfo(table: unknown, key: string, dialect: DrizzleDialect): RuntimeTableInfo {
+function extractTableInfo(table: unknown, key: string, dialect: DrizzleDialect) {
   const anyTable = table as unknown as AnyTable;
   const tableName = anyTable[TableName];
   const schemaName = anyTable[Schema];
   const fkSymbol = getInlineForeignKeysSymbol(dialect);
 
   const drizzleColumns = getTableColumns(table as Table);
-  const columns: RuntimeColumnInfo[] = [];
-
-  for (const columnName in drizzleColumns) {
-    const column = drizzleColumns[columnName];
-    columns.push(extractColumnInfo(column as AnyColumn, dialect));
-  }
+  const columns = Object.values(drizzleColumns).map((column) =>
+    extractColumnInfo(column as AnyColumn, dialect),
+  );
 
   const inlineFKs = (anyTable[fkSymbol as typeof AnyInlineForeignKeys] || []) as AnyForeignKey[];
   const foreignKeys = extractForeignKeys(inlineFKs, tableName);
@@ -159,14 +131,7 @@ function extractTableInfo(table: unknown, key: string, dialect: DrizzleDialect):
   };
 }
 
-/**
- * Extract relation information from Drizzle relations
- */
-function extractRelationInfo(
-  relationsObj: Relations,
-  _allTables: Map<string, RuntimeTableInfo>,
-): RuntimeRelationInfo[] {
-  const results: RuntimeRelationInfo[] = [];
+function extractRelationInfo(relationsObj: Relations, _allTables: Map<string, RuntimeTableInfo>) {
   const sourceTable = relationsObj.table as unknown as AnyTable;
   const sourceTableName = sourceTable[TableName];
 
@@ -175,92 +140,63 @@ function extractRelationInfo(
     many: createMany(relationsObj.table),
   });
 
-  for (const relationName in config) {
-    const relation = config[relationName];
+  return Object.values(config).map((relation): RuntimeRelationInfo => {
     const referencedTable = relation.referencedTable as unknown as AnyTable;
     const referencedTableName = referencedTable[TableName];
 
-    const info: RuntimeRelationInfo = {
-      type: is(relation, One) ? "one" : "many",
+    const base = {
+      type: is(relation, One) ? ("one" as const) : ("many" as const),
       sourceTable: sourceTableName,
       referencedTable: referencedTableName,
       relationName: relation.relationName,
     };
 
-    if (is(relation, One) && relation.config) {
-      const fields = relation.config.fields;
-      const references = relation.config.references;
+    if (!(is(relation, One) && relation.config)) return base;
 
-      if (fields && fields.length > 0) {
-        info.sourceColumns = fields.map((col) => col.name);
-      }
-      if (references && references.length > 0) {
-        info.foreignColumns = references.map((col) => col.name);
-      }
-    }
-
-    results.push(info);
-  }
-
-  return results;
+    const fields = relation.config.fields;
+    const references = relation.config.references;
+    return {
+      ...base,
+      ...(fields && fields.length > 0 ? { sourceColumns: fields.map((col) => col.name) } : {}),
+      ...(references && references.length > 0
+        ? { foreignColumns: references.map((col) => col.name) }
+        : {}),
+    };
+  });
 }
 
-/**
- * Extract enum information from PostgreSQL enums
- */
-function extractEnumInfo(enumObj: PgEnum<[string, ...string[]]>): RuntimeEnumInfo {
+function extractEnumInfo(enumObj: PgEnum<[string, ...string[]]>) {
   return {
     name: enumObj.enumName,
     values: [...enumObj.enumValues],
   };
 }
 
-/**
- * Load schema information from a Drizzle schema module
- *
- * @param schemaModule - The imported Drizzle schema module (e.g., import * as schema from './schema')
- * @returns RuntimeSchemaInfo containing all extracted schema information
- */
 export function loadSchemaFromModule(schemaModule: Record<string, unknown>): RuntimeSchemaInfo {
-  const tables: RuntimeTableInfo[] = [];
-  const relations: RuntimeRelationInfo[] = [];
-  const enums: RuntimeEnumInfo[] = [];
-  const tableMap = new Map<string, RuntimeTableInfo>();
+  const entries = Object.entries(schemaModule);
 
-  const detectedDialect: DrizzleDialect | null = (() => {
-    for (const key in schemaModule) {
-      const value = schemaModule[key];
-      if (isPgEnum(value)) return "pg";
-      const dialect = detectDialect(value);
-      if (dialect) return dialect;
-    }
-    return null;
-  })();
+  const detectedDialect = entries.reduce<DrizzleDialect | null>((found, [, value]) => {
+    if (found) return found;
+    if (isPgEnum(value)) return "pg";
+    return detectDialect(value);
+  }, null);
 
-  for (const key in schemaModule) {
-    const value = schemaModule[key];
+  const enums = entries
+    .map(([, value]) => value)
+    .filter(isPgEnum)
+    .map(extractEnumInfo);
 
-    if (isPgEnum(value)) {
-      enums.push(extractEnumInfo(value));
-      continue;
-    }
-
+  const tables = entries.flatMap(([key, value]) => {
+    if (isPgEnum(value)) return [];
     const dialect = detectDialect(value);
-    if (dialect) {
-      const tableInfo = extractTableInfo(value, key, dialect);
-      tables.push(tableInfo);
-      tableMap.set(tableInfo.tableName, tableInfo);
-    }
-  }
+    return dialect ? [extractTableInfo(value, key, dialect)] : [];
+  });
 
-  for (const key in schemaModule) {
-    const value = schemaModule[key];
+  const tableMap = new Map(tables.map((table) => [table.tableName, table]));
 
-    if (is(value, Relations)) {
-      const relationInfos = extractRelationInfo(value, tableMap);
-      relations.push(...relationInfos);
-    }
-  }
+  const relations = entries.flatMap(([, value]) =>
+    is(value, Relations) ? extractRelationInfo(value, tableMap) : [],
+  );
 
   return {
     dialect: detectedDialect || "pg",
@@ -270,13 +206,7 @@ export function loadSchemaFromModule(schemaModule: Record<string, unknown>): Run
   };
 }
 
-/**
- * Load schema from a file path by dynamically importing it
- *
- * @param schemaPath - Path to the schema file
- * @returns Promise<RuntimeSchemaInfo> containing all extracted schema information
- */
-export async function loadSchemaFromPath(schemaPath: string): Promise<RuntimeSchemaInfo> {
+export async function loadSchemaFromPath(schemaPath: string) {
   const schemaModule = await import(schemaPath);
   return loadSchemaFromModule(schemaModule);
 }

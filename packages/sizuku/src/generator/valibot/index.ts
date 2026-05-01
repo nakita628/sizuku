@@ -22,7 +22,7 @@ function valibot(
     readonly objectType?: "strict" | "loose";
   },
   comment: boolean,
-): string {
+) {
   const wrapperType = resolveWrapperType(schema.objectType);
   const inner = fieldDefinitions(schema, comment);
   const objectCode = makeValibotObject(inner, wrapperType);
@@ -41,7 +41,7 @@ export function valibotCode(
   },
   comment: boolean,
   type: boolean,
-): string {
+) {
   const valibotSchema = valibot(schema, comment);
 
   if (type) {
@@ -63,7 +63,7 @@ export function relationValibotCode(
     readonly objectType?: "strict" | "loose";
   },
   withType: boolean,
-): string {
+) {
   const relName = `${schema.name}Schema`;
   const baseSchema = `${makeCapitalized(schema.baseName)}Schema`;
   const fields = makeRelationFields(schema.fields);
@@ -73,29 +73,13 @@ export function relationValibotCode(
   return `${obj}`;
 }
 
-/**
- * Generate Valibot schema
- * @param code - The code to generate Valibot schema from
- * @param output - The output file path
- * @param comment - Whether to include comments in the generated code
- * @param type - Whether to include type information in the generated code
- */
 export async function sizukuValibot(
   code: string[],
-  output: `${string}.ts`,
+  output: string,
   comment?: boolean,
   type?: boolean,
   relation?: boolean,
-): Promise<
-  | {
-      ok: true;
-      value: undefined;
-    }
-  | {
-      ok: false;
-      error: string;
-    }
-> {
+) {
   const baseSchemas = extractSchemas(code, "valibot");
   const relationSchemas = extractRelationSchemas(code, "valibot");
 
@@ -110,21 +94,15 @@ export async function sizukuValibot(
 
   const mkdirResult = await mkdir(path.dirname(output));
   if (!mkdirResult.ok) {
-    return {
-      ok: false,
-      error: mkdirResult.error,
-    };
+    return { ok: false, error: mkdirResult.error } as const;
   }
-  const formatted = await fmt(valibotGeneratedCode);
-  const writeFileResult = await writeFile(output, formatted);
+  const formatResult = await fmt(valibotGeneratedCode);
+  if (!formatResult.ok) {
+    return { ok: false, error: formatResult.error } as const;
+  }
+  const writeFileResult = await writeFile(output, formatResult.value);
   if (!writeFileResult.ok) {
-    return {
-      ok: false,
-      error: writeFileResult.error,
-    };
+    return { ok: false, error: writeFileResult.error } as const;
   }
-  return {
-    ok: true,
-    value: undefined,
-  };
+  return { ok: true, value: undefined } as const;
 }

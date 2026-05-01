@@ -8,11 +8,6 @@ type FieldInfo = {
   readonly description: string | null;
 };
 
-type TableInfo = {
-  readonly name: string;
-  readonly fields: readonly FieldInfo[];
-};
-
 type RelationInfo = {
   readonly fromModel: string;
   readonly toModel: string;
@@ -21,19 +16,10 @@ type RelationInfo = {
   readonly isRequired: boolean;
 };
 
-/**
- * Create a unique key for relation deduplication.
- */
-function relationKey(r: RelationInfo): string {
+function relationKey(r: RelationInfo) {
   return `${r.fromModel}.${r.fromField}->${r.toModel}.${r.toField}`;
 }
 
-/**
- * Extract base builder name from expression.
- *
- * @param expr - The expression to extract name from
- * @returns The base builder name
- */
 function baseBuilderName(expr: Expression): string {
   if (Node.isIdentifier(expr)) return expr.getText();
   if (Node.isCallExpression(expr) || Node.isPropertyAccessExpression(expr))
@@ -41,36 +27,17 @@ function baseBuilderName(expr: Expression): string {
   return "";
 }
 
-/**
- * Type guard for FieldInfo.
- *
- * @param v - The value to check
- * @returns True if value is FieldInfo
- */
 function isFieldInfo(v: FieldInfo | null): v is FieldInfo {
   return v !== null;
 }
 
-/**
- * Extract key type based on field definition.
- *
- * @param initText - The initializer text
- * @returns The key type (PK, FK, or null)
- */
-function extractKeyType(initText: string): "PK" | "FK" | null {
-  if (initText.includes(".primaryKey()")) return "PK";
-  if (initText.includes(".references(")) return "FK";
+function extractKeyType(initText: string) {
+  if (initText.includes(".primaryKey()")) return "PK" as const;
+  if (initText.includes(".references(")) return "FK" as const;
   return null;
 }
 
-/**
- * Find immediate comment for a field.
- *
- * @param code - The source code lines
- * @param lineIdx - The line index of the field
- * @returns The immediate comment or empty string
- */
-function findImmediateComment(code: readonly string[], lineIdx: number): string {
+function findImmediateComment(code: readonly string[], lineIdx: number) {
   return (
     code
       .slice(0, lineIdx)
@@ -90,45 +57,21 @@ function findImmediateComment(code: readonly string[], lineIdx: number): string 
   );
 }
 
-/**
- * Extract reference info from a .references() call.
- *
- * @param initExpr - The call expression to analyze
- * @returns The reference info or null
- */
-function extractReferenceInfo(
-  initExpr: CallExpression,
-): { referencedTable: string; referencedField: string } | null {
+function extractReferenceInfo(initExpr: CallExpression) {
   const initText = initExpr.getText();
-  // Match .references(() => tableName.fieldName)
   const match = initText.match(/\.references\(\s*\(\)\s*=>\s*(\w+)\.(\w+)\s*\)/);
-  if (match) {
-    return {
-      referencedTable: match[1],
-      referencedField: match[2],
-    };
-  }
-  return null;
+  if (!match) return null;
+  return {
+    referencedTable: match[1],
+    referencedField: match[2],
+  };
 }
 
-/**
- * Check if field is required (notNull).
- *
- * @param initText - The initializer text
- * @returns True if field is required
- */
-function isFieldRequired(initText: string): boolean {
+function isFieldRequired(initText: string) {
   return initText.includes(".notNull()");
 }
 
-/**
- * Extract field info from property assignment.
- *
- * @param prop - The property assignment node
- * @param code - The source code lines
- * @returns Field info or null
- */
-function extractFieldInfo(prop: PropertyAssignment, code: readonly string[]): FieldInfo | null {
+function extractFieldInfo(prop: PropertyAssignment, code: readonly string[]) {
   const keyNode = prop.getNameNode();
   if (!Node.isIdentifier(keyNode)) return null;
   const fieldName = keyNode.getText();
@@ -151,17 +94,7 @@ function extractFieldInfo(prop: PropertyAssignment, code: readonly string[]): Fi
   };
 }
 
-/**
- * Extract relation info from a property assignment with .references().
- *
- * @param prop - The property assignment node
- * @param tableName - The name of the current table
- * @returns Relation info or null
- */
-function extractRelationFromField(
-  prop: PropertyAssignment,
-  tableName: string,
-): RelationInfo | null {
+function extractRelationFromField(prop: PropertyAssignment, tableName: string) {
   const keyNode = prop.getNameNode();
   if (!Node.isIdentifier(keyNode)) return null;
   const fieldName = keyNode.getText();
@@ -186,23 +119,8 @@ function extractRelationFromField(
   };
 }
 
-/**
- * Extract relations from foreignKey() constraints in the third argument.
- *
- * Pattern:
- * foreignKey({
- *   columns: [TableName.fieldName],
- *   foreignColumns: [OtherTable.fieldName],
- * })
- *
- * @param tableName - The name of the current table
- * @param constraintArg - The third argument (arrow function returning constraints object)
- * @returns Array of relation info
- */
-function extractRelationsFromForeignKeyConstraints(
-  tableName: string,
-  constraintArg: Expression,
-): RelationInfo[] {
+// Pattern: foreignKey({ columns: [Table.field], foreignColumns: [OtherTable.field] })
+function extractRelationsFromForeignKeyConstraints(tableName: string, constraintArg: Expression) {
   const relations: RelationInfo[] = [];
 
   // Handle arrow function: (Table) => ({ ... })
@@ -254,22 +172,8 @@ function extractRelationsFromForeignKeyConstraints(
   return relations;
 }
 
-/**
- * Extract relations from relations() helper blocks.
- *
- * Pattern:
- * relations(TableRef, ({ one, many }) => ({
- *   user: one(User, {
- *     fields: [Post.userId],
- *     references: [User.id],
- *   }),
- *   posts: many(Post),
- * }))
- *
- * @param file - The source file
- * @returns Array of relation info
- */
-function extractRelationsFromRelationBlocks(file: SourceFile): RelationInfo[] {
+// Pattern: relations(TableRef, ({ one, many }) => ({ ... }))
+function extractRelationsFromRelationBlocks(file: SourceFile) {
   const relations: RelationInfo[] = [];
 
   for (const stmt of file.getVariableStatements().filter((stmt) => stmt.isExported())) {
@@ -387,13 +291,7 @@ function extractRelationsFromRelationBlocks(file: SourceFile): RelationInfo[] {
   return relations;
 }
 
-/**
- * Parse table information from Drizzle schema code.
- *
- * @param code - Array of source code lines
- * @returns Array of table information
- */
-export function parseTableInfo(code: readonly string[]): readonly TableInfo[] {
+export function parseTableInfo(code: readonly string[]) {
   const source = code.join("\n");
   const file = new Project({ useInMemoryFileSystem: true }).createSourceFile("temp.ts", source);
 
@@ -426,16 +324,8 @@ export function parseTableInfo(code: readonly string[]): readonly TableInfo[] {
     });
 }
 
-/**
- * Extract relations from Drizzle schema code by analyzing:
- * 1. .references() calls on fields
- * 2. foreignKey() constraints in table definition
- * 3. relations() helper blocks
- *
- * @param code - Array of source code lines
- * @returns Array of relation information (deduplicated)
- */
-export function extractRelationsFromSchema(code: readonly string[]): readonly RelationInfo[] {
+// Sources scanned: .references() calls, foreignKey() constraints, relations() blocks
+export function extractRelationsFromSchema(code: readonly string[]) {
   const source = code.join("\n");
   const file = new Project({ useInMemoryFileSystem: true }).createSourceFile("temp.ts", source);
 

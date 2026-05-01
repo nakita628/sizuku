@@ -14,35 +14,19 @@ import {
   type ValidationTag,
 } from "../utils/index.js";
 
-/**
- * Supported validation library types.
- */
 export type ValidationLibrary = "zod" | "valibot" | "arktype" | "effect";
 
-/**
- * Schema extraction result type containing table name and field definitions.
- */
 export type SchemaExtractionResult = {
-  /** The name of the table/schema */
   name: string;
-  /** Optional base schema/table name (used for relations) */
   baseName?: string;
-  /** Array of field definitions with name, validation definition, and description */
   fields: {
-    /** Field name */
     name: string;
-    /** Validation definition (e.g., 'z.uuid()', 'v.pipe(v.string(), v.uuid())') */
     definition: string;
-    /** Optional field description from comments */
     description?: string;
   }[];
-  /** Object type for schema generation ('strict' | 'loose' | undefined) */
   objectType?: "strict" | "loose";
 };
 
-/**
- * Relation schema extraction result with required base name.
- */
 export type RelationSchemaExtractionResult = {
   name: string;
   baseName: string;
@@ -51,40 +35,18 @@ export type RelationSchemaExtractionResult = {
     definition: string;
     description?: string;
   }[];
-  /** Object type for schema generation ('strict' | 'loose' | undefined) */
   objectType?: "strict" | "loose";
 };
 
-/**
- * Field extraction result type containing field metadata.
- */
 type FieldExtractionResult = {
-  /** Field name */
   name: string;
-  /** Validation definition string */
   definition: string;
-  /** Optional field description */
   description?: string;
 };
 
-/**
- * Schema prefix type for validation libraries.
- */
 type SchemaPrefix = "z" | "v" | "type" | "Schema";
 
-/**
- * Generates relation definition based on function name and reference table.
- *
- * @param fnName - The relation function name ('many' or 'one')
- * @param refTable - The referenced table name
- * @param prefix - Schema prefix for validation library
- * @returns The generated relation definition string
- */
-function generateRelationDefinition(
-  fnName: string,
-  refTable: string,
-  prefix: SchemaPrefix,
-): string {
+function generateRelationDefinition(fnName: string, refTable: string, prefix: SchemaPrefix) {
   const schema = `${makeCapitalized(refTable)}Schema`;
   if (fnName === "many") {
     if (prefix === "type") {
@@ -101,13 +63,7 @@ function generateRelationDefinition(
   return "";
 }
 
-/**
- * Processes arrow function body to find object literal expression.
- *
- * @param body - The arrow function body node
- * @returns The found object literal expression, or null if not found
- */
-function processArrowFunctionBody(body: Node): ObjectLiteralExpression | null {
+function processArrowFunctionBody(body: Node) {
   if (Node.isObjectLiteralExpression(body)) return body;
 
   if (Node.isParenthesizedExpression(body)) {
@@ -125,12 +81,6 @@ function processArrowFunctionBody(body: Node): ObjectLiteralExpression | null {
   return null;
 }
 
-/**
- * Recursively extracts an `ObjectLiteralExpression` from a given AST node.
- *
- * @param expr - The root `Node` to search for object literals
- * @returns The found `ObjectLiteralExpression`, or `null` if not found
- */
 function findObjectLiteralExpression(expr: Node): ObjectLiteralExpression | null {
   if (Node.isObjectLiteralExpression(expr)) return expr;
 
@@ -145,17 +95,10 @@ function findObjectLiteralExpression(expr: Node): ObjectLiteralExpression | null
   return null;
 }
 
-/**
- * Finds an object literal expression in call expression arguments.
- *
- * @param call - The call expression to search for object literals in its arguments
- * @param finder - Function to find object literal in a node
- * @returns The found object literal, or `null` if not found in any argument
- */
 function findObjectLiteralInArgs(
   call: CallExpression,
   finder: (expr: Node) => ObjectLiteralExpression | null,
-): ObjectLiteralExpression | null {
+) {
   for (const arg of call.getArguments()) {
     const obj = finder(arg);
     if (obj) return obj;
@@ -163,13 +106,7 @@ function findObjectLiteralInArgs(
   return null;
 }
 
-/**
- * Determines whether a given `CallExpression` is a relation-related function call.
- *
- * @param callExpr - The call expression node to check for relation functions
- * @returns `true` if the function is a relation function; otherwise, `false`
- */
-function isRelationFunctionCall(callExpr: CallExpression): boolean {
+function isRelationFunctionCall(callExpr: CallExpression) {
   const expression = callExpr.getExpression();
   if (!Node.isIdentifier(expression)) return false;
 
@@ -177,12 +114,6 @@ function isRelationFunctionCall(callExpr: CallExpression): boolean {
   return functionName === "relations" || functionName.includes("relation");
 }
 
-/**
- * Creates a field extractor function using a custom parseFieldComments implementation.
- *
- * @param parseFieldComments - A function that parses comment lines into { definition, description, objectType }
- * @returns A property node extractor function
- */
 function createExtractFieldFromProperty(
   parseFieldComments: (commentLines: readonly string[]) => {
     readonly definition: string;
@@ -203,13 +134,6 @@ function createExtractFieldFromProperty(
   };
 }
 
-/**
- * Creates a relation field extractor function.
- *
- * @param parseFieldComments - Function to parse field comments
- * @param prefix - Schema prefix for validation library
- * @returns Function that extracts relation fields from property
- */
 function createExtractRelationFieldFromProperty(
   parseFieldComments: (lines: readonly string[]) => {
     readonly definition: string;
@@ -253,16 +177,6 @@ function createExtractRelationFieldFromProperty(
   };
 }
 
-/**
- * Extracts fields from object literal properties using appropriate extractor.
- *
- * @param properties - Array of object literal properties
- * @param isRelation - Whether this is a relation function call
- * @param extractFieldFromProperty - Function to extract regular fields
- * @param extractRelationFieldFromProperty - Function to extract relation fields
- * @param sourceText - The source text for comment extraction
- * @returns Array of extracted field results
- */
 function extractFieldsFromProperties(
   properties: Node[],
   isRelation: boolean,
@@ -272,7 +186,7 @@ function extractFieldsFromProperties(
     sourceText: string,
   ) => FieldExtractionResult | null,
   sourceText: string,
-): FieldExtractionResult[] {
+) {
   return properties
     .map((prop) =>
       isRelation
@@ -282,16 +196,6 @@ function extractFieldsFromProperties(
     .filter((field): field is FieldExtractionResult => field !== null);
 }
 
-/**
- * Creates a field extractor for call expressions with customizable strategies.
- *
- * @param extractFieldFromProperty - Function to extract field from property
- * @param extractRelationFieldFromProperty - Function to extract relation field from property
- * @param findObjectLiteralExpression - Function to find object literal expression
- * @param findObjectLiteralInArgs - Function to find object literal in call arguments
- * @param isRelationFunctionCall - Function to check if call is relation function
- * @returns Function that extracts fields from call expression
- */
 function createExtractFieldsFromCallExpression(
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
   extractRelationFieldFromProperty: (
@@ -322,15 +226,6 @@ function createExtractFieldsFromCallExpression(
   };
 }
 
-/**
- * Creates a schema extractor from customizable strategies.
- *
- * @param extractFieldsFromCall - Function to extract fields from a call expression
- * @param extractFieldFromProperty - Function to extract a single field from an object literal property
- * @param parseFieldComments - Function to parse field comments with object type support
- * @param commentPrefix - The comment prefix to use for parsing
- * @returns A function that extracts a schema from a variable declaration node
- */
 function makeSchemaExtractor(
   extractFieldsFromCall: (call: CallExpression, sourceText: string) => FieldExtractionResult[],
   extractFieldFromProperty: (prop: Node, sourceText: string) => FieldExtractionResult | null,
@@ -354,18 +249,14 @@ function makeSchemaExtractor(
     const declarations = variableStatement.getDeclarations();
     if (declarations.length === 0) return null;
 
-    // Take the first declaration (e.g. `export const user = mysqlTable(...)`)
     const declaration = declarations[0];
     const name = declaration.getName();
     if (!name) return null;
 
-    // Extract object type from table-level comments
-    // Since ts-morph doesn't capture all comments properly, we'll parse the original source
+    // ts-morph doesn't capture all comments properly; parse the original source
     const statementStart = variableStatement.getStart();
-    const originalSourceLines = originalSourceCode.split("\n"); // Use original source, not AST sourceText
-    const commentLines: string[] = [];
+    const originalSourceLines = originalSourceCode.split("\n");
 
-    // Find the line number where this statement starts
     const lineNumber = originalSourceLines.reduce(
       (state, line, i) =>
         state.found
@@ -376,19 +267,14 @@ function makeSchemaExtractor(
       { acc: 0, index: 0, found: false },
     ).index;
 
-    // Collect comments immediately before the statement
+    const commentLines: string[] = [];
     for (let i = lineNumber - 1; i >= 0; i--) {
       const line = originalSourceLines[i];
       const trimmedLine = trimString(line);
-
-      // Skip empty lines
       if (trimmedLine === "") continue;
-
-      // If it's a comment line, add it to our collection
       if (startsWith(trimmedLine, "///")) {
         commentLines.unshift(line);
       } else {
-        // If we hit a non-comment line, stop collecting
         break;
       }
     }
@@ -415,29 +301,7 @@ function makeSchemaExtractor(
   };
 }
 
-/**
- * Extracts schemas from TypeScript source code using AST analysis.
- *
- * This function processes exported variable declarations to extract table schemas
- * with their field definitions and comments. It supports both Zod and Valibot schema extraction.
- *
- * @param lines - Array of source code lines to process
- * @param library - The validation library to extract schemas for ('zod' or 'valibot')
- * @returns Array of extracted schemas with field definitions
- *
- * @example
- * ```typescript
- * // For Zod schemas
- * const zodSchemas = extractSchemas(sourceLines, 'zod')
- *
- * // For Valibot schemas
- * const valibotSchemas = extractSchemas(sourceLines, 'valibot')
- * ```
- */
-export function extractSchemas(
-  lines: string[],
-  library: ValidationLibrary,
-): SchemaExtractionResult[] {
+export function extractSchemas(lines: string[], library: ValidationLibrary) {
   const sourceCode = lines.join("\n");
 
   const project = new Project({
@@ -494,95 +358,23 @@ export function extractSchemas(
     .filter((schema): schema is NonNullable<typeof schema> => schema !== null);
 }
 
-/**
- * Extracts Zod schemas from TypeScript source code using AST analysis.
- *
- * This function processes exported variable declarations to extract table schemas
- * with their field definitions and comments. It automatically handles Zod schema extraction.
- *
- * @param lines - Array of source code lines to process
- * @returns Array of extracted schemas with field definitions
- *
- * @example
- * ```typescript
- * const schemas = extractZodSchemas(sourceLines)
- * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: 'z.uuid()', description: 'Primary key' }] }]
- * ```
- */
-export function extractZodSchemas(lines: string[]): SchemaExtractionResult[] {
+export function extractZodSchemas(lines: string[]) {
   return extractSchemas(lines, "zod");
 }
 
-/**
- * Extracts Valibot schemas from TypeScript source code using AST analysis.
- *
- * This function processes exported variable declarations to extract table schemas
- * with their field definitions and comments. It automatically handles Valibot schema extraction.
- *
- * @param lines - Array of source code lines to process
- * @returns Array of extracted schemas with field definitions
- *
- * @example
- * ```typescript
- * const schemas = extractValibotSchemas(sourceLines)
- * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: 'v.pipe(v.string(), v.uuid())', description: 'Primary key' }] }]
- * ```
- */
-export function extractValibotSchemas(lines: string[]): SchemaExtractionResult[] {
+export function extractValibotSchemas(lines: string[]) {
   return extractSchemas(lines, "valibot");
 }
 
-/**
- * Extracts ArkType schemas from TypeScript source code using AST analysis.
- *
- * This function processes exported variable declarations to extract table schemas
- * with their field definitions and comments. It automatically handles ArkType schema extraction.
- *
- * @param lines - Array of source code lines to process
- * @returns Array of extracted schemas with field definitions
- *
- * @example
- * ```typescript
- * const schemas = extractArktypeSchemas(sourceLines)
- * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: '"string.uuid"', description: 'Primary key' }] }]
- * ```
- */
-export function extractArktypeSchemas(lines: string[]): SchemaExtractionResult[] {
+export function extractArktypeSchemas(lines: string[]) {
   return extractSchemas(lines, "arktype");
 }
 
-/**
- * Extracts Effect schemas from TypeScript source code using AST analysis.
- *
- * This function processes exported variable declarations to extract table schemas
- * with their field definitions and comments. It automatically handles Effect schema extraction.
- *
- * @param lines - Array of source code lines to process
- * @returns Array of extracted schemas with field definitions
- *
- * @example
- * ```typescript
- * const schemas = extractEffectSchemas(sourceLines)
- * // Returns: [{ name: 'user', fields: [{ name: 'id', definition: 'Schema.UUID', description: 'Primary key' }] }]
- * ```
- */
-export function extractEffectSchemas(lines: string[]): SchemaExtractionResult[] {
+export function extractEffectSchemas(lines: string[]) {
   return extractSchemas(lines, "effect");
 }
 
-/**
- * Extracts relation schemas from `relations(...)` declarations using AST analysis.
- *
- * This returns entries like `userRelations` and `postRelations` with fields
- * resolved to either `z.array(OtherSchema)` / `v.array(OtherSchema)` or direct
- * `OtherSchema` based on `many`/`one`.
- *
- * Note: Base table schemas are not included here; use `extractSchemas` for those.
- */
-export function extractRelationSchemas(
-  lines: string[],
-  library: ValidationLibrary,
-): RelationSchemaExtractionResult[] {
+export function extractRelationSchemas(lines: string[], library: ValidationLibrary) {
   const sourceCode = lines.join("\n");
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -626,7 +418,7 @@ export function extractRelationSchemas(
     isRelationFunctionCall,
   );
 
-  function extract(declaration: Node): RelationSchemaExtractionResult | null {
+  function extract(declaration: Node) {
     if (!Node.isVariableDeclaration(declaration)) return null;
     const name = declaration.getName();
     if (!name) return null;
@@ -654,35 +446,11 @@ export function extractRelationSchemas(
     .filter((schema): schema is NonNullable<typeof schema> => schema !== null);
 }
 
-/**
- * Extracts relations from the given code.
- *
- * @param code - The code to extract relations from.
- * @returns The extracted relations.
- */
-export function extractRelations(code: string[]): {
-  fromModel: string;
-  toModel: string;
-  fromField: string;
-  toField: string;
-  type: string;
-}[] {
+export function extractRelations(code: string[]) {
   return code.map(parseRelationLine).filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
-/**
- * Parse relation line and extract components.
- *
- * @param line - The line to parse.
- * @returns Parsed relation or null if not a relation line.
- */
-export function parseRelationLine(line: string): {
-  fromModel: string;
-  toModel: string;
-  fromField: string;
-  toField: string;
-  type: string;
-} | null {
+export function parseRelationLine(line: string) {
   const trimmedLine = trimString(line);
   // Remove "///" prefix (3 chars) if present
   const cleanLine = startsWith(trimmedLine, "///") ? trimmedLine.substring(3) : trimmedLine;
@@ -709,7 +477,6 @@ export function parseRelationLine(line: string): {
   };
 }
 
-/** Valid relationship cardinality values */
 const RELATIONSHIP_SYMBOLS: Readonly<Record<string, string>> = {
   "zero-one": "|o",
   one: "||",
@@ -717,27 +484,13 @@ const RELATIONSHIP_SYMBOLS: Readonly<Record<string, string>> = {
   many: "}|",
 };
 
-/**
- * Convert a relationship cardinality string to its Mermaid ER symbol
- *
- * @param r - The relationship string (e.g., "one", "many", "zero-one", "zero-many")
- * @returns The symbol or null if invalid
- */
-export function toRelationSymbol(r: string): string | null {
+export function toRelationSymbol(r: string) {
   return RELATIONSHIP_SYMBOLS[r] ?? null;
 }
 
-/**
- * Build a relation line from a string.
- *
- * @param input - The input string (e.g., "one-to-many", "zero-one-to-many-optional")
- * @returns The built relation line, or null if the input is invalid
- */
-export function makeRelationLine(
-  input: string,
-): { readonly ok: true; readonly value: string } | { readonly ok: false; readonly error: string } {
+export function makeRelationLine(input: string) {
   const parts = splitByTo(input);
-  if (!parts) return { ok: false, error: `Invalid input format: ${input}` };
+  if (!parts) return { ok: false, error: `Invalid input format: ${input}` } as const;
 
   const [fromRaw, toRawWithOptional] = parts;
   const [toRaw, isOptional] = containsSubstring(toRawWithOptional, "-optional")
@@ -748,9 +501,9 @@ export function makeRelationLine(
   const toSymbolStr = toRelationSymbol(toRaw);
 
   if (!fromSymbol || !toSymbolStr) {
-    return { ok: false, error: `Invalid relationship string: ${input}` };
+    return { ok: false, error: `Invalid relationship string: ${input}` } as const;
   }
 
   const connector = isOptional ? ".." : "--";
-  return { ok: true, value: `${fromSymbol}${connector}${toSymbolStr}` };
+  return { ok: true, value: `${fromSymbol}${connector}${toSymbolStr}` } as const;
 }
