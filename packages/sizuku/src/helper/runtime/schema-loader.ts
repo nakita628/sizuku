@@ -31,24 +31,41 @@ interface AnyTable {
   readonly [AnyInlineForeignKeys]?: AnyForeignKey[];
 }
 
+// drizzle boundary: all type assertions to access internals are confined to the helpers below.
+function asAnyTable(value: unknown) {
+  return value as unknown as AnyTable;
+}
+
+function asAnyColumn(value: unknown) {
+  return value as AnyColumn;
+}
+
+function asTable(value: unknown) {
+  return value as Table;
+}
+
+function getAutoIncrementFlag(column: AnyColumn) {
+  return (column as unknown as { autoIncrement?: boolean }).autoIncrement === true;
+}
+
+function getInlineFks(table: AnyTable, dialect: "pg" | "mysql" | "sqlite") {
+  const sym =
+    dialect === "pg"
+      ? PgInlineForeignKeys
+      : dialect === "mysql"
+        ? MySqlInlineForeignKeys
+        : dialect === "sqlite"
+          ? SQLiteInlineForeignKeys
+          : AnyInlineForeignKeys;
+  return ((table as unknown as Record<symbol, AnyForeignKey[] | undefined>)[sym] ??
+    []) as readonly AnyForeignKey[];
+}
+
 function detectDialect(table: unknown) {
   if (is(table, PgTable)) return "pg" as const;
   if (is(table, MySqlTable)) return "mysql" as const;
   if (is(table, SQLiteTable)) return "sqlite" as const;
   return null;
-}
-
-function getInlineForeignKeysSymbol(dialect: "pg" | "mysql" | "sqlite") {
-  switch (dialect) {
-    case "pg":
-      return PgInlineForeignKeys;
-    case "mysql":
-      return MySqlInlineForeignKeys;
-    case "sqlite":
-      return SQLiteInlineForeignKeys;
-    default:
-      return AnyInlineForeignKeys;
-  }
 }
 
 function isAutoIncrement(column: AnyColumn, dialect: "pg" | "mysql" | "sqlite") {
@@ -57,18 +74,12 @@ function isAutoIncrement(column: AnyColumn, dialect: "pg" | "mysql" | "sqlite") 
   if (dialect === "pg") {
     return sqlType === "serial" || sqlType === "smallserial" || sqlType === "bigserial";
   }
-
   if (dialect === "mysql") {
-    if (sqlType === "serial") return true;
-    const col = column as unknown as { autoIncrement?: boolean };
-    return col.autoIncrement === true;
+    return sqlType === "serial" || getAutoIncrementFlag(column);
   }
-
   if (dialect === "sqlite") {
-    const col = column as unknown as { autoIncrement?: boolean };
-    return sqlType === "integer" && (column.primary || col.autoIncrement === true);
+    return sqlType === "integer" && (column.primary || getAutoIncrementFlag(column));
   }
-
   return false;
 }
 
@@ -85,15 +96,13 @@ function extractColumnInfo(column: AnyColumn, dialect: "pg" | "mysql" | "sqlite"
   };
 }
 
-function extractForeignKeys(fks: AnyForeignKey[], sourceTableName: string) {
+function extractForeignKeys(fks: readonly AnyForeignKey[], sourceTableName: string) {
   return fks.map((fk) => {
     const ref = fk.reference();
-    const foreignTable = ref.foreignTable as unknown as AnyTable;
-
     return {
       sourceTable: sourceTableName,
       sourceColumns: ref.columns.map((col) => col.name),
-      foreignTable: foreignTable[TableName],
+      foreignTable: asAnyTable(ref.foreignTable)[TableName],
       foreignColumns: ref.foreignColumns.map((col) => col.name),
       onDelete: fk.onDelete,
       onUpdate: fk.onUpdate,
@@ -102,23 +111,17 @@ function extractForeignKeys(fks: AnyForeignKey[], sourceTableName: string) {
 }
 
 function extractTableInfo(table: unknown, key: string, dialect: "pg" | "mysql" | "sqlite") {
-  const anyTable = table as unknown as AnyTable;
+  const anyTable = asAnyTable(table);
   const tableName = anyTable[TableName];
-  const schemaName = anyTable[Schema];
-  const fkSymbol = getInlineForeignKeysSymbol(dialect);
-
-  const drizzleColumns = getTableColumns(table as Table);
-  const columns = Object.values(drizzleColumns).map((column) =>
-    extractColumnInfo(column as AnyColumn, dialect),
+  const columns = Object.values(getTableColumns(asTable(table))).map((column) =>
+    extractColumnInfo(asAnyColumn(column), dialect),
   );
-
-  const inlineFKs = (anyTable[fkSymbol as typeof AnyInlineForeignKeys] || []) as AnyForeignKey[];
-  const foreignKeys = extractForeignKeys(inlineFKs, tableName);
+  const foreignKeys = extractForeignKeys(getInlineFks(anyTable, dialect), tableName);
 
   return {
     name: key,
     tableName,
-    schema: schemaName,
+    schema: anyTable[Schema],
     dialect,
     columns,
     foreignKeys,
@@ -126,8 +129,7 @@ function extractTableInfo(table: unknown, key: string, dialect: "pg" | "mysql" |
 }
 
 function extractRelationInfo(relationsObj: Relations) {
-  const sourceTable = relationsObj.table as unknown as AnyTable;
-  const sourceTableName = sourceTable[TableName];
+  const sourceTableName = asAnyTable(relationsObj.table)[TableName];
 
   const config = relationsObj.config({
     one: createOne(relationsObj.table),
@@ -135,9 +137,7 @@ function extractRelationInfo(relationsObj: Relations) {
   });
 
   return Object.values(config).map((relation) => {
-    const referencedTable = relation.referencedTable as unknown as AnyTable;
-    const referencedTableName = referencedTable[TableName];
-
+    const referencedTableName = asAnyTable(relation.referencedTable)[TableName];
     const base = {
       type: is(relation, One) ? ("one" as const) : ("many" as const),
       sourceTable: sourceTableName,
@@ -191,7 +191,7 @@ export function loadSchemaFromModule(schemaModule: Record<string, unknown>) {
   );
 
   return {
-    dialect: detectedDialect || ("pg" as const),
+    dialect: detectedDialect ?? "pg",
     tables,
     relations,
     enums,

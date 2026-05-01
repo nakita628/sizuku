@@ -22,19 +22,20 @@ export function mergeSchemaWithComments<
     readonly columnComments: ReadonlyMap<string, readonly Annotation[]>;
   },
 ) {
+  const empty: readonly Annotation[] = [];
   return {
     dialect: runtimeInfo.dialect,
     tables: runtimeInfo.tables.map((table) => ({
       ...table,
       columns: table.columns.map((column) => ({
         ...column,
-        annotations: comments.columnComments.get(`${table.tableName}.${column.name}`) || [],
+        annotations: comments.columnComments.get(`${table.tableName}.${column.name}`) || empty,
       })),
-      annotations: comments.tableComments.get(table.tableName) || [],
+      annotations: comments.tableComments.get(table.tableName) || empty,
     })),
     relations: runtimeInfo.relations.map((relation) => ({
       ...relation,
-      annotations: [] as readonly Annotation[],
+      annotations: empty,
     })),
     enums: runtimeInfo.enums,
   };
