@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import {
-  extractArktypeSchemas,
-  extractEffectSchemas,
-  extractRelationSchemas,
-  extractRelations,
-  extractSchemas,
-  extractValibotSchemas,
-  extractZodSchemas,
-} from "./extract-schemas.js";
+import { extractRelationSchemas, extractSchemas } from "./extract-schemas.js";
 
 // Test run
 // pnpm vitest run ./src/helper/extract-schemas.test.ts
@@ -158,16 +150,6 @@ describe("extractSchemas", () => {
     expect(result).toStrictEqual(expectedValibotSchemas);
   });
 
-  it.concurrent("extractZodSchemas (alias function)", () => {
-    const result = extractZodSchemas(sourceCode);
-    expect(result).toStrictEqual(expectedZodSchemas);
-  });
-
-  it.concurrent("extractValibotSchemas (alias function)", () => {
-    const result = extractValibotSchemas(sourceCode);
-    expect(result).toStrictEqual(expectedValibotSchemas);
-  });
-
   it.concurrent("extractSchemas with strictObject and looseObject", () => {
     const sourceCodeWithObjectTypes = [
       "/// @z.strictObject",
@@ -216,7 +198,7 @@ describe("extractSchemas", () => {
   });
 });
 
-describe("extractArktypeSchemas", () => {
+describe("extractSchemas (arktype)", () => {
   it("extracts arktype schema fields", () => {
     const code = [
       "export const user = mysqlTable('user', {",
@@ -226,7 +208,7 @@ describe("extractArktypeSchemas", () => {
       "  name: varchar('name', { length: 50 }).notNull(),",
       "})",
     ];
-    const result = extractArktypeSchemas(code);
+    const result = extractSchemas(code, "arktype");
     expect(result.length).toBe(1);
     expect(result[0].name).toBe("user");
     expect(result[0].fields.length).toBe(2);
@@ -237,7 +219,7 @@ describe("extractArktypeSchemas", () => {
   });
 });
 
-describe("extractEffectSchemas", () => {
+describe("extractSchemas (effect)", () => {
   it("extracts effect schema fields", () => {
     const code = [
       "export const user = mysqlTable('user', {",
@@ -247,7 +229,7 @@ describe("extractEffectSchemas", () => {
       "  name: varchar('name', { length: 50 }).notNull(),",
       "})",
     ];
-    const result = extractEffectSchemas(code);
+    const result = extractSchemas(code, "effect");
     expect(result.length).toBe(1);
     expect(result[0].name).toBe("user");
     expect(result[0].fields.length).toBe(2);
@@ -263,7 +245,7 @@ describe("extractEffectSchemas", () => {
       "  id: varchar('id', { length: 36 }).primaryKey(),",
       "})",
     ];
-    const result = extractEffectSchemas(code);
+    const result = extractSchemas(code, "effect");
     expect(result.length).toBe(1);
     expect(result[0].fields[0].definition).toBe("");
   });
@@ -543,39 +525,5 @@ describe("extractSchemas - empty schema", () => {
   it("returns empty array when no tables present", () => {
     const result = extractSchemas([""], "zod");
     expect(result).toStrictEqual([]);
-  });
-});
-
-describe("extractRelations", () => {
-  it("extracts relations from @relation annotation lines", () => {
-    const lines = [
-      "/// @relation user.id post.userId one-to-many",
-      "/// @relation user.id comment.userId one-to-many",
-      "/// @relation post.id comment.postId one-to-many",
-    ];
-    const result = extractRelations(lines);
-    expect(result).toStrictEqual([
-      {
-        fromModel: "user",
-        fromField: "id",
-        toModel: "post",
-        toField: "userId",
-        type: "one-to-many",
-      },
-      {
-        fromModel: "user",
-        fromField: "id",
-        toModel: "comment",
-        toField: "userId",
-        type: "one-to-many",
-      },
-      {
-        fromModel: "post",
-        fromField: "id",
-        toModel: "comment",
-        toField: "postId",
-        type: "one-to-many",
-      },
-    ]);
   });
 });

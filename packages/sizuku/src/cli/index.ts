@@ -1,10 +1,13 @@
+import {
+  sizukuArktype,
+  sizukuDbml,
+  sizukuEffect,
+  sizukuMermaidER,
+  sizukuValibot,
+  sizukuZod,
+} from "../core/index.js";
 import { readFileSync } from "../fsp/index.js";
-import { sizukuArktype } from "../generator/arktype/index.js";
-import { sizukuDbml } from "../generator/dbml/index.js";
-import { sizukuEffect } from "../generator/effect/index.js";
-import { sizukuMermaidER } from "../generator/mermaid-er/index.js";
-import { sizukuValibot } from "../generator/valibot/index.js";
-import { sizukuZod } from "../generator/zod/index.js";
+import { stripImports } from "../utils/index.js";
 
 const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
 
@@ -23,195 +26,131 @@ Options:
   --no-with-relation                Do not generate relation schemas
   -h, --help                        Display this help message`;
 
-/**
- * Detect output type from file extension
- */
-export function detectOutputType(output: string): "dbml" | "png" | "mermaid" | "typescript" | null {
-  if (output.endsWith(".dbml")) return "dbml";
-  if (output.endsWith(".png")) return "png";
-  if (output.endsWith(".md")) return "mermaid";
-  if (output.endsWith(".ts")) return "typescript";
-  return null;
-}
-
-/**
- * Parse CLI flags from argv (pure function)
- */
-export function parseFlags(argv: readonly string[]): {
-  readonly zod: boolean;
-  readonly valibot: boolean;
-  readonly arktype: boolean;
-  readonly effect: boolean;
-  readonly zodVersion: "v4" | "mini" | "@hono/zod-openapi" | undefined;
-  readonly exportTypes: boolean;
-  readonly withComment: boolean;
-  readonly withRelation: boolean;
-} {
-  const has = (flag: string) => argv.includes(flag);
-
+function parseFlags(argv: readonly string[]) {
+  const ZOD_VERSIONS = ["v4", "mini", "@hono/zod-openapi"] as const;
   const zodVersionIndex = argv.findIndex(
     (a) => a === "--zod-version" || a.startsWith("--zod-version="),
   );
-  const zodVersion = (() => {
-    if (zodVersionIndex === -1) return undefined;
-    const arg = argv[zodVersionIndex];
-    const value = arg.includes("=") ? arg.split("=")[1] : argv[zodVersionIndex + 1];
-    if (value === "v4" || value === "mini" || value === "@hono/zod-openapi") return value;
-    return undefined;
-  })();
+  const zodVersionValue =
+    zodVersionIndex === -1
+      ? undefined
+      : argv[zodVersionIndex].includes("=")
+        ? argv[zodVersionIndex].split("=")[1]
+        : argv[zodVersionIndex + 1];
 
   return {
-    zod: has("--zod"),
-    valibot: has("--valibot"),
-    arktype: has("--arktype"),
-    effect: has("--effect"),
-    zodVersion,
-    exportTypes: !has("--no-export-types"),
-    withComment: !has("--no-with-comment"),
-    withRelation: !has("--no-with-relation"),
+    zod: argv.includes("--zod"),
+    valibot: argv.includes("--valibot"),
+    arktype: argv.includes("--arktype"),
+    effect: argv.includes("--effect"),
+    zodVersion: ZOD_VERSIONS.find((v) => v === zodVersionValue),
+    exportTypes: !argv.includes("--no-export-types"),
+    withComment: !argv.includes("--no-with-comment"),
+    withRelation: !argv.includes("--no-with-relation"),
   };
 }
 
-/**
- * Strip import lines from source code and return only schema definition lines
- */
-export function stripImports(content: string): string[] {
-  const lines = content.split("\n");
-  const codeStart = lines.findIndex(
-    (line) => !line.trim().startsWith("import") && line.trim() !== "",
-  );
-  return lines.slice(codeStart);
-}
+export async function sizuku() {
+  const argv = process.argv.slice(2);
 
-/**
- * Run sizuku in direct CLI mode for diagram output
- */
-async function sizukuDirectDiagram(
-  input: string,
-  output: string,
-  outputType: "dbml" | "png" | "mermaid",
-): Promise<
-  { readonly ok: true; readonly value: string } | { readonly ok: false; readonly error: string }
-> {
-  const contentResult = readFileSync(input);
-  if (!contentResult.ok) {
-    return { ok: false, error: `Failed to read input: ${contentResult.error}` };
+  if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) {
+    return { ok: true, value: HELP_TEXT } as const;
   }
 
+  const input = argv[0];
+  if (!input || input.startsWith("-")) {
+    return { ok: false, error: HELP_TEXT } as const;
+  }
+
+  const oIndex = argv.indexOf("-o");
+  if (oIndex === -1) {
+    return { ok: false, error: "Missing -o flag. Usage: sizuku <input> -o <output>" } as const;
+  }
+
+  const output = argv[oIndex + 1];
+  if (!output) {
+    return { ok: false, error: "Missing output file path after -o" } as const;
+  }
+
+  const outputType = output.endsWith(".dbml")
+    ? ("dbml" as const)
+    : output.endsWith(".png")
+      ? ("png" as const)
+      : output.endsWith(".md")
+        ? ("mermaid" as const)
+        : output.endsWith(".ts")
+          ? ("typescript" as const)
+          : null;
+  if (!outputType) {
+    return {
+      ok: false,
+      error: `Unsupported output format: ${output}. Supported: .dbml, .png, .md, .ts`,
+    } as const;
+  }
+
+  const flags = outputType === "typescript" ? parseFlags(argv) : null;
+  const lib =
+    flags === null
+      ? null
+      : flags.zod
+        ? ({ name: "zod", label: "Zod" } as const)
+        : flags.valibot
+          ? ({ name: "valibot", label: "Valibot" } as const)
+          : flags.arktype
+            ? ({ name: "arktype", label: "ArkType" } as const)
+            : flags.effect
+              ? ({ name: "effect", label: "Effect" } as const)
+              : null;
+  if (outputType === "typescript" && !lib) {
+    return {
+      ok: false,
+      error: "Specify --zod, --valibot, --arktype, or --effect for .ts output",
+    } as const;
+  }
+
+  const contentResult = readFileSync(input);
+  if (!contentResult.ok) {
+    return { ok: false, error: `Failed to read input: ${contentResult.error}` } as const;
+  }
   const code = stripImports(contentResult.value);
 
   if (outputType === "dbml" || outputType === "png") {
     const result = await sizukuDbml(code, output);
     if (!result.ok) return result;
     const label = outputType === "png" ? "PNG" : "DBML";
-    return { ok: true, value: `💧 Generated ${label} at: ${output}` };
+    return { ok: true, value: `💧 Generated ${label} at: ${output}` } as const;
   }
 
-  const result = await sizukuMermaidER(code, output);
-  if (!result.ok) return result;
-  return { ok: true, value: `💧 Generated Mermaid ER at: ${output}` };
-}
-
-/**
- * Resolve which schema library to use from flags
- */
-export function resolveSchemaLibrary(flags: ReturnType<typeof parseFlags>): {
-  readonly name: "zod" | "valibot" | "arktype" | "effect";
-  readonly label: string;
-} | null {
-  if (flags.zod) return { name: "zod", label: "Zod" };
-  if (flags.valibot) return { name: "valibot", label: "Valibot" };
-  if (flags.arktype) return { name: "arktype", label: "ArkType" };
-  if (flags.effect) return { name: "effect", label: "Effect" };
-  return null;
-}
-
-/**
- * Run sizuku in direct CLI mode for validation schema output
- */
-async function sizukuDirectSchema(
-  input: string,
-  output: `${string}.ts`,
-  flags: ReturnType<typeof parseFlags>,
-): Promise<
-  { readonly ok: true; readonly value: string } | { readonly ok: false; readonly error: string }
-> {
-  const lib = resolveSchemaLibrary(flags);
-  if (!lib) {
-    return {
-      ok: false,
-      error: "Specify --zod, --valibot, --arktype, or --effect for .ts output",
-    };
+  if (outputType === "mermaid") {
+    const result = await sizukuMermaidER(code, output);
+    if (!result.ok) return result;
+    return { ok: true, value: `💧 Generated Mermaid ER at: ${output}` } as const;
   }
 
-  const contentResult = readFileSync(input);
-  if (!contentResult.ok) {
-    return { ok: false, error: `Failed to read input: ${contentResult.error}` };
+  // outputType === "typescript", lib and flags are non-null here
+  if (!lib || !flags) {
+    return { ok: false, error: "internal: missing lib/flags" } as const;
   }
 
-  const code = stripImports(contentResult.value);
-
-  const generators = {
-    zod: () =>
-      sizukuZod(
+  const result = await (() => {
+    if (lib.name === "zod") {
+      return sizukuZod(
         code,
         output,
         flags.withComment,
         flags.exportTypes,
         flags.zodVersion,
         flags.withRelation,
-      ),
-    valibot: () =>
-      sizukuValibot(code, output, flags.withComment, flags.exportTypes, flags.withRelation),
-    arktype: () =>
-      sizukuArktype(code, output, flags.withComment, flags.exportTypes, flags.withRelation),
-    effect: () =>
-      sizukuEffect(code, output, flags.withComment, flags.exportTypes, flags.withRelation),
-  };
-
-  const result = await generators[lib.name]();
+      );
+    }
+    if (lib.name === "valibot") {
+      return sizukuValibot(code, output, flags.withComment, flags.exportTypes, flags.withRelation);
+    }
+    if (lib.name === "arktype") {
+      return sizukuArktype(code, output, flags.withComment, flags.exportTypes, flags.withRelation);
+    }
+    return sizukuEffect(code, output, flags.withComment, flags.exportTypes, flags.withRelation);
+  })();
   if (!result.ok) return result;
-  return { ok: true, value: `💧 Generated ${lib.label} schema at: ${output}` };
-}
-
-/**
- * Main entry point
- */
-export async function sizuku(): Promise<
-  { readonly ok: true; readonly value: string } | { readonly ok: false; readonly error: string }
-> {
-  const argv = process.argv.slice(2);
-
-  if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) {
-    return { ok: true, value: HELP_TEXT };
-  }
-
-  const input = argv[0];
-  if (!input || input.startsWith("-")) {
-    return { ok: false, error: HELP_TEXT };
-  }
-
-  const oIndex = argv.indexOf("-o");
-  if (oIndex === -1) {
-    return { ok: false, error: "Missing -o flag. Usage: sizuku <input> -o <output>" };
-  }
-
-  const output = argv[oIndex + 1];
-  if (!output) {
-    return { ok: false, error: "Missing output file path after -o" };
-  }
-
-  const outputType = detectOutputType(output);
-  if (!outputType) {
-    return {
-      ok: false,
-      error: `Unsupported output format: ${output}. Supported: .dbml, .png, .md, .ts`,
-    };
-  }
-
-  if (outputType === "typescript") {
-    return sizukuDirectSchema(input, output as `${string}.ts`, parseFlags(argv));
-  }
-
-  return sizukuDirectDiagram(input, output, outputType);
+  return { ok: true, value: `💧 Generated ${lib.label} schema at: ${output}` } as const;
 }
