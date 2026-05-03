@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { extractRelationSchemas, extractRelations, extractSchemas } from "./extract-schemas.js";
+import { extractRelationSchemas, extractSchemas } from "./extract-schemas.js";
 
 // Test run
 // pnpm vitest run ./src/helper/extract-schemas.test.ts
@@ -525,39 +525,5 @@ describe("extractSchemas - empty schema", () => {
   it("returns empty array when no tables present", () => {
     const result = extractSchemas([""], "zod");
     expect(result).toStrictEqual([]);
-  });
-});
-
-describe("extractRelations", () => {
-  it("extracts relations from @relation annotation lines", () => {
-    const lines = [
-      "/// @relation user.id post.userId one-to-many",
-      "/// @relation user.id comment.userId one-to-many",
-      "/// @relation post.id comment.postId one-to-many",
-    ];
-    const result = extractRelations(lines);
-    expect(result).toStrictEqual([
-      {
-        fromModel: "user",
-        fromField: "id",
-        toModel: "post",
-        toField: "userId",
-        type: "one-to-many",
-      },
-      {
-        fromModel: "user",
-        fromField: "id",
-        toModel: "comment",
-        toField: "userId",
-        type: "one-to-many",
-      },
-      {
-        fromModel: "post",
-        fromField: "id",
-        toModel: "comment",
-        toField: "postId",
-        type: "one-to-many",
-      },
-    ]);
   });
 });

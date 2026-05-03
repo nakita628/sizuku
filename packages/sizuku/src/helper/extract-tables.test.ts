@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { extractRelationsFromSchema, parseTableInfo } from ".";
+import { extractRelationsFromSchema, parseTableInfo } from "./extract-tables.js";
 
 // Test run
 // pnpm vitest run ./src/generator/mermaid-er/validator/parse-table-info.test.ts

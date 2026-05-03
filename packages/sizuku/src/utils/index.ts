@@ -2,6 +2,14 @@ export function makeCapitalized(str: string) {
   return `${str.charAt(0).toUpperCase()}${str.slice(1)}`;
 }
 
+export function stripImports(content: string) {
+  const lines = content.split("\n");
+  const codeStart = lines.findIndex(
+    (line) => !line.trim().startsWith("import") && line.trim() !== "",
+  );
+  return lines.slice(codeStart);
+}
+
 export function resolveWrapperType(
   objectType: "strict" | "loose" | undefined,
 ): "strictObject" | "looseObject" | "object" {
@@ -10,70 +18,10 @@ export function resolveWrapperType(
   return "object";
 }
 
-// ArkType uses `"+"` to control unknown property behavior:
-// strict → reject unknown keys, loose → preserve them (default), undefined → omit
-export function resolveArktypeUndeclared(objectType: "strict" | "loose" | undefined) {
-  if (objectType === "strict") return '"+":"reject",';
-  if (objectType === "loose") return '"+":"ignore",';
-  return "";
-}
-
 export function makeRelationFields(
   fields: readonly { readonly name: string; readonly definition: string }[],
 ) {
   return fields.map((f) => `${f.name}:${f.definition}`).join(",");
-}
-
-export function makeZodObject(
-  inner: string,
-  wrapperType: "object" | "strictObject" | "looseObject" = "object",
-) {
-  return `z.${wrapperType}({${inner}})`;
-}
-
-export function makeValibotObject(
-  inner: string,
-  wrapperType: "object" | "strictObject" | "looseObject" = "object",
-) {
-  return `v.${wrapperType}({${inner}})`;
-}
-
-// "@relation <from.field> <to.field> <type>" → 4 parts minimum
-export function parseRelationLine(line: string) {
-  if (!line.startsWith("@relation")) return null;
-
-  const parts = line.trim().split(/\s+/);
-  if (parts.length < 4) return null;
-
-  const fromParts = parts[1].split(".");
-  const toParts = parts[2].split(".");
-  if (fromParts.length !== 2 || toParts.length !== 2) return null;
-
-  return {
-    fromModel: fromParts[0],
-    fromField: fromParts[1],
-    toModel: toParts[0],
-    toField: toParts[1],
-    type: parts[3],
-  };
-}
-
-export function splitByTo(str: string) {
-  const index = str.indexOf("-to-");
-  if (index === -1) return null;
-  return [str.substring(0, index), str.substring(index + 4)] as const;
-}
-
-export function removeOptionalSuffix(str: string) {
-  const index = str.indexOf("-optional");
-  return index !== -1 ? str.substring(0, index) : str;
-}
-
-export function splitByWhitespace(str: string) {
-  return str
-    .trim()
-    .split(/\s+/)
-    .filter((s) => s.length > 0);
 }
 
 function cleanCommentLines(commentLines: readonly string[]) {
@@ -137,21 +85,6 @@ export function extractFieldComments(sourceText: string, fieldStartPos: number) 
   return candidates.filter((l) => l.startsWith("///")).reverse();
 }
 
-export function infer(name: string) {
-  const modelName = makeCapitalized(name);
-  return `export type ${modelName} = z.infer<typeof ${modelName}Schema>`;
-}
-
-export function inferOutput(name: string) {
-  const modelName = makeCapitalized(name);
-  return `export type ${modelName} = v.InferOutput<typeof ${modelName}Schema>`;
-}
-
-export function makeCommentBlock(description: string) {
-  if (!description) return "";
-  return `/**\n * ${description}\n */\n`;
-}
-
 export function fieldDefinitions(
   schema: {
     readonly name: string;
@@ -165,18 +98,8 @@ export function fieldDefinitions(
 ) {
   return schema.fields
     .map(({ name, definition, description }) => {
-      const commentCode = description && comment ? makeCommentBlock(description) : "";
+      const commentCode = description && comment ? `/**\n * ${description}\n */\n` : "";
       return `${commentCode}${name}:${definition}`;
     })
     .join(",\n");
-}
-
-export function inferArktype(name: string) {
-  const capitalized = makeCapitalized(name);
-  return `export type ${capitalized} = typeof ${capitalized}Schema.infer`;
-}
-
-export function inferEffect(name: string) {
-  const capitalized = makeCapitalized(name);
-  return `export type ${capitalized}Encoded = typeof ${capitalized}Schema.Encoded`;
 }

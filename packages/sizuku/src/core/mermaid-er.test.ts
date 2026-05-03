@@ -1,7 +1,54 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
-import { afterEach, describe, expect, it } from "vite-plus/test";
-import { sizukuMermaidER } from "./index.js";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { stripImports } from "../utils/index.js";
+import { sizukuMermaidER } from "./mermaid-er.js";
+
+const ecSchemaContent = `import { mysqlTable, varchar, int, decimal, timestamp } from 'drizzle-orm/mysql-core'
+import { relations } from 'drizzle-orm'
+
+export const user = mysqlTable('user', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: varchar('name', { length: 50 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+})
+
+export const order = mysqlTable('order', {
+  id: int('id').primaryKey().autoincrement(),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id),
+  total: decimal('total', { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').notNull(),
+})
+
+export const orderItem = mysqlTable('order_item', {
+  id: int('id').primaryKey().autoincrement(),
+  orderId: int('order_id').notNull().references(() => order.id),
+  productName: varchar('product_name', { length: 200 }).notNull(),
+  quantity: int('quantity').notNull(),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+})`;
+
+const singleTableSchema = `import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+
+export const config = sqliteTable('config', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+})`;
+
+const pgAuthSchema = `import { pgTable, uuid, varchar, timestamp, boolean } from 'drizzle-orm/pg-core'
+
+/// Account table
+export const account = pgTable('account', {
+  /// Primary key
+  id: uuid('id').primaryKey().defaultRandom(),
+  /// User email address
+  email: varchar('email', { length: 255 }).notNull(),
+  passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  isActive: boolean('is_active').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+})`;
 
 // Test run
 // pnpm vitest run ./src/generator/mermaid-er/index.test.ts
@@ -246,5 +293,83 @@ erDiagram
     }
 \`\`\``;
     expect(result).toBe(expected);
+  });
+});
+
+describe("E2E: Mermaid ER generation", () => {
+  let tmpdir: string;
+
+  beforeEach(() => {
+    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-e2e-mermaid-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpdir, { recursive: true, force: true });
+  });
+
+  it("generates Mermaid ER with full erDiagram block for EC schema", async () => {
+    fs.writeFileSync(path.join(tmpdir, "schema.ts"), ecSchemaContent, "utf-8");
+    const output = path.join(tmpdir, "output", "ER.md");
+
+    const code = stripImports(ecSchemaContent);
+    const result = await sizukuMermaidER(code, output);
+
+    expect(result.ok).toBe(true);
+    expect(fs.existsSync(output)).toBe(true);
+
+    const content = fs.readFileSync(output, "utf-8");
+
+    // Mermaid structure
+    expect(content.startsWith("```mermaid\nerDiagram")).toBe(true);
+    expect(content.endsWith("```")).toBe(true);
+
+    // Relations (user -> order, order -> orderItem)
+    expect(content.includes('user ||--}| order : "(id) - (userId)"')).toBe(true);
+    expect(content.includes('order ||--}| orderItem : "(id) - (orderId)"')).toBe(true);
+
+    // Table definitions
+    expect(content.includes("user {")).toBe(true);
+    expect(content.includes("order {")).toBe(true);
+    expect(content.includes("orderItem {")).toBe(true);
+
+    // Field details
+    expect(content.includes("varchar id PK")).toBe(true);
+    expect(content.includes("varchar name")).toBe(true);
+    expect(content.includes("varchar userId FK")).toBe(true);
+    expect(content.includes("int orderId FK")).toBe(true);
+  });
+
+  it("generates Mermaid ER for single-table schema without relations", async () => {
+    fs.writeFileSync(path.join(tmpdir, "schema.ts"), singleTableSchema, "utf-8");
+    const output = path.join(tmpdir, "output", "ER.md");
+
+    const code = stripImports(singleTableSchema);
+    const result = await sizukuMermaidER(code, output);
+
+    expect(result.ok).toBe(true);
+    const content = fs.readFileSync(output, "utf-8");
+
+    expect(content.startsWith("```mermaid\nerDiagram")).toBe(true);
+    expect(content.endsWith("```")).toBe(true);
+    expect(content.includes("config {")).toBe(true);
+    expect(content.includes("text key PK")).toBe(true);
+    expect(content.includes("text value")).toBe(true);
+    // No relation lines (no ||-- pattern)
+    expect(content.includes("||--")).toBe(false);
+  });
+
+  it("generates Mermaid ER with field descriptions for auth schema", async () => {
+    fs.writeFileSync(path.join(tmpdir, "schema.ts"), pgAuthSchema, "utf-8");
+    const output = path.join(tmpdir, "output", "ER.md");
+
+    const code = stripImports(pgAuthSchema);
+    const result = await sizukuMermaidER(code, output);
+
+    expect(result.ok).toBe(true);
+    const content = fs.readFileSync(output, "utf-8");
+
+    expect(content.includes("account {")).toBe(true);
+    expect(content.includes('uuid id PK "Primary key"')).toBe(true);
+    expect(content.includes('varchar email "User email address"')).toBe(true);
   });
 });

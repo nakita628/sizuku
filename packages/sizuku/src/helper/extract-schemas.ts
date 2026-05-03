@@ -1,13 +1,6 @@
 import type { CallExpression, ObjectLiteralExpression } from "ts-morph";
 import { Node, Project } from "ts-morph";
-import {
-  extractFieldComments,
-  makeCapitalized,
-  parseFieldComments,
-  removeOptionalSuffix,
-  splitByTo,
-  splitByWhitespace,
-} from "../utils/index.js";
+import { extractFieldComments, makeCapitalized, parseFieldComments } from "../utils/index.js";
 
 function makeSourceFile(sourceCode: string) {
   const project = new Project({
@@ -230,63 +223,5 @@ export function extractRelationSchemas(
       const objectType = baseSchemaMap.get(baseName);
       return { name, baseName, fields, objectType };
     })
-    .filter((schema): schema is NonNullable<typeof schema> => schema !== null);
-}
-
-export function extractRelations(code: string[]) {
-  return code.map(parseRelationLine).filter((r): r is NonNullable<typeof r> => r !== null);
-}
-
-export function parseRelationLine(line: string) {
-  const trimmedLine = line.trim();
-  // Remove "///" prefix (3 chars) if present
-  const cleanLine = trimmedLine.startsWith("///") ? trimmedLine.substring(3) : trimmedLine;
-  const finalLine = cleanLine.trim();
-
-  if (!finalLine.startsWith("@relation")) return null;
-
-  // Format: "@relation <from.field> <to.field> <type>" → 4 parts minimum
-  const parts = splitByWhitespace(finalLine);
-  if (parts.length < 4) return null;
-
-  // parts[1] = "User.id", parts[2] = "Post.userId" → split by "." into [model, field]
-  const fromParts = parts[1].split(".");
-  const toParts = parts[2].split(".");
-  if (fromParts.length !== 2 || toParts.length !== 2) return null;
-
-  return {
-    fromModel: fromParts[0],
-    fromField: fromParts[1],
-    toModel: toParts[0],
-    toField: toParts[1],
-    type: parts[3],
-  };
-}
-
-export function toRelationSymbol(r: string) {
-  const map: Record<string, string> = {
-    "zero-one": "|o",
-    one: "||",
-    "zero-many": "}o",
-    many: "}|",
-  };
-  return map[r] ?? null;
-}
-
-export function makeRelationLine(input: string) {
-  const parts = splitByTo(input);
-  if (!parts) return { ok: false, error: `Invalid input format: ${input}` } as const;
-
-  const [fromRaw, toRawWithOptional] = parts;
-  const isOptional = toRawWithOptional.includes("-optional");
-  const toRaw = isOptional ? removeOptionalSuffix(toRawWithOptional) : toRawWithOptional;
-
-  const fromSymbol = toRelationSymbol(fromRaw);
-  const toSymbolStr = toRelationSymbol(toRaw);
-  if (!fromSymbol || !toSymbolStr) {
-    return { ok: false, error: `Invalid relationship string: ${input}` } as const;
-  }
-
-  const connector = isOptional ? ".." : "--";
-  return { ok: true, value: `${fromSymbol}${connector}${toSymbolStr}` } as const;
+    .filter((schema) => schema !== null);
 }

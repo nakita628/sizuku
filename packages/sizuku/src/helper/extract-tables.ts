@@ -1,34 +1,11 @@
 import type { CallExpression, Expression, PropertyAssignment, SourceFile } from "ts-morph";
 import { Node, Project } from "ts-morph";
 
-type FieldInfo = {
-  readonly name: string;
-  readonly type: string;
-  readonly keyType: "PK" | "FK" | null;
-  readonly description: string | null;
-};
-
-type RelationInfo = {
-  readonly fromModel: string;
-  readonly toModel: string;
-  readonly fromField: string;
-  readonly toField: string;
-  readonly isRequired: boolean;
-};
-
-function relationKey(r: RelationInfo) {
-  return `${r.fromModel}.${r.fromField}->${r.toModel}.${r.toField}`;
-}
-
 function baseBuilderName(expr: Expression): string {
   if (Node.isIdentifier(expr)) return expr.getText();
   if (Node.isCallExpression(expr) || Node.isPropertyAccessExpression(expr))
     return baseBuilderName(expr.getExpression());
   return "";
-}
-
-function isFieldInfo(v: FieldInfo | null): v is FieldInfo {
-  return v !== null;
 }
 
 function extractKeyType(initText: string) {
@@ -120,10 +97,7 @@ function extractRelationFromField(prop: PropertyAssignment, tableName: string) {
 }
 
 // Pattern: foreignKey({ columns: [Table.field], foreignColumns: [OtherTable.field] })
-function extractRelationsFromForeignKeyConstraints(
-  tableName: string,
-  constraintArg: Expression,
-): RelationInfo[] {
+function extractRelationsFromForeignKeyConstraints(tableName: string, constraintArg: Expression) {
   // Handle arrow function: (Table) => ({ ... })
   if (!Node.isArrowFunction(constraintArg)) return [];
   const body = constraintArg.getBody();
@@ -162,7 +136,7 @@ function isFkLikeName(name: string) {
 }
 
 // Pattern: relations(TableRef, ({ one, many }) => ({ ... }))
-function extractRelationsFromRelationBlocks(file: SourceFile): RelationInfo[] {
+function extractRelationsFromRelationBlocks(file: SourceFile) {
   return file
     .getVariableStatements()
     .filter((stmt) => stmt.isExported())
@@ -225,7 +199,7 @@ function extractRelationsFromRelationBlocks(file: SourceFile): RelationInfo[] {
               toField: refField, // FK in child
               isRequired: true,
             },
-          ];
+          ] as const;
         }
         return [
           {
@@ -235,7 +209,7 @@ function extractRelationsFromRelationBlocks(file: SourceFile): RelationInfo[] {
             toField: currentField,
             isRequired: true,
           },
-        ];
+        ] as const;
       });
     });
 }
@@ -267,7 +241,7 @@ export function parseTableInfo(code: readonly string[]) {
         .getProperties()
         .filter(Node.isPropertyAssignment)
         .map((prop) => extractFieldInfo(prop, code))
-        .filter(isFieldInfo);
+        .filter((f): f is NonNullable<typeof f> => f !== null);
 
       return [{ name: varName, fields }];
     });
@@ -281,7 +255,7 @@ export function extractRelationsFromSchema(code: readonly string[]) {
   const tableRelations = file
     .getVariableStatements()
     .filter((stmt) => stmt.isExported())
-    .flatMap((stmt): RelationInfo[] => {
+    .flatMap((stmt) => {
       const decl = stmt.getDeclarations()[0];
       if (!Node.isVariableDeclaration(decl)) return [];
       const varName = decl.getName();
@@ -303,7 +277,7 @@ export function extractRelationsFromSchema(code: readonly string[]) {
               .getProperties()
               .filter(Node.isPropertyAssignment)
               .map((prop) => extractRelationFromField(prop, varName))
-              .filter((r): r is RelationInfo => r !== null)
+              .filter((r): r is NonNullable<typeof r> => r !== null)
           : [];
 
       // Third argument: constraints (foreignKey, indexes, etc.)
@@ -318,7 +292,11 @@ export function extractRelationsFromSchema(code: readonly string[]) {
   const allRelations = [...tableRelations, ...extractRelationsFromRelationBlocks(file)];
 
   // Deduplicate relations based on fromModel.fromField -> toModel.toField
-  return allRelations.filter(
-    (r, i) => allRelations.findIndex((x) => relationKey(x) === relationKey(r)) === i,
-  );
+  const seen = new Set<string>();
+  return allRelations.filter((r) => {
+    const key = `${r.fromModel}.${r.fromField}->${r.toModel}.${r.toField}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
