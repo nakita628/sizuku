@@ -1,6 +1,6 @@
 {
   "name": "sizuku",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Sizuku is a tool that generates validation schemas for Zod and Valibot, as well as ER diagrams and DBML, from Drizzle schemas annotated with comments.",
   "keywords": [
     "dbml",
@@ -27,7 +27,6 @@
   "type": "module",
   "main": "dist/index.mjs",
   "types": "dist/index.d.mts",
-  "exports": {},
   "publishConfig": {
     "access": "public"
   },
