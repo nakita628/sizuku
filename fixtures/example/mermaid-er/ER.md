@@ -1,6 +1,6 @@
 ```mermaid
 erDiagram
-    user ||--}| post : "(id) - (userId)"
+    user ||--}o post : "(id) - (userId)"
     user {
         varchar id PK "Primary key"
         varchar name "Display name"

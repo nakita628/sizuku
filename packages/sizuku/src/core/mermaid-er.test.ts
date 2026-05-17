@@ -294,6 +294,80 @@ erDiagram
 \`\`\``;
     expect(result).toBe(expected);
   });
+
+  // `/// @relation From.field To.field type` overrides the inferred cardinality.
+  // Inference would output `||--}|` (one-to-many, required) for the FK on Post.userId;
+  // the explicit annotation upgrades this to a different cardinality (here, the same
+  // one-to-many but exercising the annotation path) and proves the override.
+  it("overrides inferred cardinality with explicit @relation annotation", async () => {
+    const code = [
+      "/// @relation User.id Post.userId one-to-zero-many",
+      "export const User = sqliteTable('User', {",
+      "  id: text('id').notNull().primaryKey(),",
+      "  name: text('name').notNull(),",
+      "})",
+      "",
+      "export const Post = sqliteTable('Post', {",
+      "  id: text('id').notNull().primaryKey(),",
+      "  body: text('body').notNull(),",
+      "  userId: text('userId').notNull().references(() => User.id),",
+      "})",
+      "",
+    ];
+    await sizukuMermaidER(code, "tmp-mermaid/mermaid-er-test.md");
+    const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
+    const expected = `\`\`\`mermaid
+erDiagram
+    User ||--}o Post : "(id) - (userId)"
+    User {
+        text id PK
+        text name
+    }
+    Post {
+        text id PK
+        text body
+        text userId FK
+    }
+\`\`\``;
+    expect(result).toBe(expected);
+  });
+
+  // Annotation-only relation: the schema has no `.references()`, no `foreignKey()`,
+  // no `relations()` block. The relation line is generated solely from the
+  // `/// @relation` annotation. This is the hekireki-parity scenario where the user
+  // documents relations without using Drizzle's FK helpers.
+  it("emits relation line from @relation annotation alone (no inferred FK)", async () => {
+    const code = [
+      "/// @relation User.id Profile.user_id zero-one-to-many-optional",
+      "export const User = sqliteTable('User', {",
+      "  id: text('id').notNull().primaryKey(),",
+      "  name: text('name').notNull(),",
+      "})",
+      "",
+      "export const Profile = sqliteTable('Profile', {",
+      "  id: text('id').notNull().primaryKey(),",
+      "  user_id: text('user_id').notNull(),",
+      "  bio: text('bio'),",
+      "})",
+      "",
+    ];
+    await sizukuMermaidER(code, "tmp-mermaid/mermaid-er-test.md");
+    const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
+    const expected = `\`\`\`mermaid
+erDiagram
+    User |o..}| Profile : "(id) - (user_id)"
+    User {
+        text id PK
+        text name
+    }
+    Profile {
+        text id PK
+        text user_id
+        text bio
+    }
+\`\`\``;
+    expect(result).toBe(expected);
+  });
 });
 
 describe("E2E: Mermaid ER generation", () => {
