@@ -200,6 +200,13 @@ export const UserSchema = type({
 });
 
 export type User = typeof UserSchema.infer;
+
+export const UserRelationsSchema = type({
+  ...UserSchema.t,
+  posts: PostSchema.array(),
+});
+
+export type UserRelations = typeof UserRelationsSchema.infer;
 ```
 
 ### Effect Schema
@@ -222,7 +229,14 @@ export const UserSchema = Schema.Struct({
   name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
 });
 
-export type UserEncoded = typeof UserSchema.Encoded;
+export type User = typeof UserSchema.Type;
+
+export const UserRelationsSchema = Schema.Struct({
+  ...UserSchema.fields,
+  posts: Schema.Array(PostSchema),
+});
+
+export type UserRelations = typeof UserRelationsSchema.Type;
 ```
 
 ### DBML
