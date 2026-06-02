@@ -136,9 +136,9 @@ describe("E2E: DBML generation", () => {
 
 describe("dbml relations", () => {
   // An annotation-only relation (no physical FK) is reflected in DBML, mirroring
-  // the Mermaid generator. `note:` is not a valid Ref setting, so the logical
-  // origin is carried by a `//` comment and the `_fk` suffix is dropped.
-  it("emits an annotation-only relation as a logical Ref with a // comment", () => {
+  // the Mermaid generator. Logical relations drop the `_fk` suffix that physical
+  // FKs carry, since they are not DB-enforced constraints.
+  it("emits an annotation-only relation as a logical Ref (no _fk suffix)", () => {
     const code = [
       "/// @relation user.id profile.user_id zero-one-to-many-optional",
       "export const user = mysqlTable('user', {",
@@ -172,7 +172,6 @@ Table profile {
 
 Ref post_userId_user_id_fk: post.userId > user.id
 
-// logical relation (src: zero-one-to-many-optional)
 Ref profile_user_id_user_id: profile.user_id > user.id`,
     );
   });
@@ -231,13 +230,10 @@ Table b {
   aid3 text
 }
 
-// logical relation (src: one-to-one)
 Ref b_aid_a_id: b.aid - a.id
 
-// logical relation (src: many-to-one)
 Ref b_aid2_a_id: b.aid2 < a.id
 
-// logical relation (src: many-to-many)
 Ref b_aid3_a_id: b.aid3 <> a.id`,
     );
   });

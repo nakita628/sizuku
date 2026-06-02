@@ -13,17 +13,6 @@ function dbmlOperator(leftMany: boolean, rightMany: boolean) {
   return "-";
 }
 
-// Reconstructs the original `/// @relation` cardinality string for the logical
-// comment, so the optional/zero information dropped by the DBML operator is not
-// silently lost.
-function annotationSource(r: {
-  readonly from: { readonly cardinality: string };
-  readonly to: { readonly cardinality: string };
-  readonly identifying: boolean;
-}) {
-  return `${r.from.cardinality}-to-${r.to.cardinality}${r.identifying ? "" : "-optional"}`;
-}
-
 export function dbml(code: string[]) {
   const TYPE_MAP: { readonly [k: string]: string } = {
     serial: "serial",
@@ -74,15 +63,11 @@ export function dbml(code: string[]) {
     const left = `${r.to.model}.${r.to.field}`;
     const right = `${r.from.model}.${r.from.field}`;
     const op = dbmlOperator(isMany(r.to.cardinality), isMany(r.from.cardinality));
-    // Physical FKs keep the `_fk` suffix. Logical (annotated) relations drop it
-    // and carry a `//` comment, since `note:` is not a valid Ref setting and the
-    // relation is not a DB-enforced constraint.
+    // Physical FKs keep the `_fk` suffix; logical (annotated) relations drop it,
+    // since they are not DB-enforced constraints.
     const suffix = r.origin === "inferred" ? "_fk" : "";
     const name = `${r.to.model}_${r.to.field}_${r.from.model}_${r.from.field}${suffix}`;
-    const refLine = `Ref ${name}: ${left} ${op} ${right}`;
-    return r.origin === "annotated"
-      ? `// logical relation (src: ${annotationSource(r)})\n${refLine}`
-      : refLine;
+    return `Ref ${name}: ${left} ${op} ${right}`;
   });
 
   return [...tableSections, ...refSections].join("\n\n");
