@@ -3,6 +3,7 @@ import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { mermaidRelationSymbol } from "../generator/index.js";
 import { stripImports } from "../utils/index.js";
 import { sizukuMermaidER } from "./mermaid-er.js";
 
@@ -49,9 +50,6 @@ export const account = pgTable('account', {
   isActive: boolean('is_active').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 })`;
-
-// Test run
-// pnpm vitest run ./src/generator/mermaid-er/index.test.ts
 
 const TEST_CODE = [
   "export const user = mysqlTable('user', {",
@@ -203,7 +201,7 @@ describe("sizukuMermaidER", () => {
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
-    user ||--}| post : "(id) - (userId)"
+    user ||--|{ post : "(id) - (userId)"
     user {
         varchar id PK "Primary key"
         varchar name "Display name"
@@ -223,7 +221,7 @@ erDiagram
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
-    user ||--}| post : "(id) - (userId)"
+    user ||--|{ post : "(id) - (userId)"
     user {
         varchar id PK
         varchar name
@@ -243,7 +241,7 @@ erDiagram
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
-    User ||--}| Post : "(id) - (userId)"
+    User ||--|{ Post : "(id) - (userId)"
     User {
         text id PK
         text name
@@ -262,7 +260,7 @@ erDiagram
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
-    User ||--}| Post : "(id) - (userId)"
+    User ||--|{ Post : "(id) - (userId)"
     User {
         text id PK
         text name
@@ -281,7 +279,7 @@ erDiagram
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
-    User ||--}| Post : "(id) - (userId)"
+    User ||--|{ Post : "(id) - (userId)"
     User {
         text id PK
         text name
@@ -296,9 +294,9 @@ erDiagram
   });
 
   // `/// @relation From.field To.field type` overrides the inferred cardinality.
-  // Inference would output `||--}|` (one-to-many, required) for the FK on Post.userId;
-  // the explicit annotation upgrades this to a different cardinality (here, the same
-  // one-to-many but exercising the annotation path) and proves the override.
+  // Inference would output `||--|{` (one-to-many, required) for the FK on Post.userId;
+  // the explicit `one-to-zero-many` annotation downgrades the child side to
+  // zero-or-more (`||--o{`), proving the annotation overrides the inferred cardinality.
   it("overrides inferred cardinality with explicit @relation annotation", async () => {
     const code = [
       "/// @relation User.id Post.userId one-to-zero-many",
@@ -318,7 +316,7 @@ erDiagram
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
-    User ||--}o Post : "(id) - (userId)"
+    User ||--o{ Post : "(id) - (userId)"
     User {
         text id PK
         text name
@@ -355,7 +353,7 @@ erDiagram
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
-    User |o..}| Profile : "(id) - (user_id)"
+    User |o..|{ Profile : "(id) - (user_id)"
     User {
         text id PK
         text name
@@ -398,8 +396,8 @@ describe("E2E: Mermaid ER generation", () => {
     expect(content.endsWith("```")).toBe(true);
 
     // Relations (user -> order, order -> orderItem)
-    expect(content.includes('user ||--}| order : "(id) - (userId)"')).toBe(true);
-    expect(content.includes('order ||--}| orderItem : "(id) - (orderId)"')).toBe(true);
+    expect(content.includes('user ||--|{ order : "(id) - (userId)"')).toBe(true);
+    expect(content.includes('order ||--|{ orderItem : "(id) - (orderId)"')).toBe(true);
 
     // Table definitions
     expect(content.includes("user {")).toBe(true);
@@ -445,5 +443,31 @@ describe("E2E: Mermaid ER generation", () => {
     expect(content.includes("account {")).toBe(true);
     expect(content.includes('uuid id PK "Primary key"')).toBe(true);
     expect(content.includes('varchar email "User email address"')).toBe(true);
+  });
+});
+
+// Locks the Mermaid crow's-foot spec: the right side is the MIRROR of the left
+// (e.g. "one or more" is `}|` on the left but `|{` on the right), and an
+// identifying relation uses `--` while a non-identifying one uses `..`.
+// https://mermaid.js.org/syntax/entityRelationshipDiagram.html
+describe("mermaidRelationSymbol", () => {
+  const cases = [
+    { from: "zero-one", to: "zero-one", identifying: true, expected: "|o--o|" },
+    { from: "one", to: "one", identifying: true, expected: "||--||" },
+    { from: "zero-many", to: "zero-many", identifying: true, expected: "}o--o{" },
+    { from: "many", to: "many", identifying: true, expected: "}|--|{" },
+    { from: "one", to: "many", identifying: true, expected: "||--|{" },
+    { from: "many", to: "one", identifying: true, expected: "}|--||" },
+    { from: "zero-one", to: "many", identifying: false, expected: "|o..|{" },
+    { from: "one", to: "zero-many", identifying: false, expected: "||..o{" },
+  ] as const;
+  it.each(cases)("renders $from -> $to (identifying=$identifying) as $expected", (c) => {
+    expect(
+      mermaidRelationSymbol({
+        from: { cardinality: c.from },
+        to: { cardinality: c.to },
+        identifying: c.identifying,
+      }),
+    ).toBe(c.expected);
   });
 });

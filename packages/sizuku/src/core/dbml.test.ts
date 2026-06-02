@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { dbml } from "../generator/index.js";
 import { stripImports } from "../utils/index.js";
 import { sizukuDbml } from "./dbml.js";
 
@@ -130,6 +131,115 @@ describe("E2E: DBML generation", () => {
     expect(content.includes("value text")).toBe(true);
     // No Ref lines
     expect(content.includes("Ref ")).toBe(false);
+  });
+});
+
+describe("dbml relations", () => {
+  // An annotation-only relation (no physical FK) is reflected in DBML, mirroring
+  // the Mermaid generator. `note:` is not a valid Ref setting, so the logical
+  // origin is carried by a `//` comment and the `_fk` suffix is dropped.
+  it("emits an annotation-only relation as a logical Ref with a // comment", () => {
+    const code = [
+      "/// @relation user.id profile.user_id zero-one-to-many-optional",
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  name: varchar('name', { length: 50 }).notNull(),",
+      "})",
+      "export const post = mysqlTable('post', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id),",
+      "})",
+      "export const profile = mysqlTable('profile', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  user_id: varchar('user_id', { length: 36 }).notNull(),",
+      "})",
+    ];
+    expect(dbml(code)).toBe(
+      `Table user {
+  id varchar [pk]
+  name varchar
+}
+
+Table post {
+  id varchar [pk]
+  userId varchar
+}
+
+Table profile {
+  id varchar [pk]
+  user_id varchar
+}
+
+Ref post_userId_user_id_fk: post.userId > user.id
+
+// logical relation (src: zero-one-to-many-optional)
+Ref profile_user_id_user_id: profile.user_id > user.id`,
+    );
+  });
+
+  // When an annotation refines an inferred FK, origin stays `inferred` (so the
+  // Ref keeps `_fk` and gets no logical comment) while the annotation's
+  // cardinality still drives the operator (here one-to-one => `-`, not `>`).
+  it("applies an annotation's cardinality to an inferred FK without marking it logical", () => {
+    const code = [
+      "/// @relation user.id post.userId one-to-one",
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "})",
+      "export const post = mysqlTable('post', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id),",
+      "})",
+    ];
+    expect(dbml(code)).toBe(
+      `Table user {
+  id varchar [pk]
+}
+
+Table post {
+  id varchar [pk]
+  userId varchar
+}
+
+Ref post_userId_user_id_fk: post.userId - user.id`,
+    );
+  });
+
+  // Cardinality pairs collapse to DBML's four operators: `-`, `<`, `>`, `<>`.
+  it("maps cardinality pairs to DBML relationship operators", () => {
+    const code = [
+      "/// @relation a.id b.aid one-to-one",
+      "/// @relation a.id b.aid2 many-to-one",
+      "/// @relation a.id b.aid3 many-to-many",
+      "export const a = sqliteTable('a', { id: text('id').primaryKey() })",
+      "export const b = sqliteTable('b', {",
+      "  id: text('id').primaryKey(),",
+      "  aid: text('aid').notNull(),",
+      "  aid2: text('aid2').notNull(),",
+      "  aid3: text('aid3').notNull(),",
+      "})",
+    ];
+    expect(dbml(code)).toBe(
+      `Table a {
+  id text [pk]
+}
+
+Table b {
+  id text [pk]
+  aid text
+  aid2 text
+  aid3 text
+}
+
+// logical relation (src: one-to-one)
+Ref b_aid_a_id: b.aid - a.id
+
+// logical relation (src: many-to-one)
+Ref b_aid2_a_id: b.aid2 < a.id
+
+// logical relation (src: many-to-many)
+Ref b_aid3_a_id: b.aid3 <> a.id`,
+    );
   });
 });
 

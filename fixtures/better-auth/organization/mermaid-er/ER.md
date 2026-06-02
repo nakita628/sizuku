@@ -1,11 +1,11 @@
 ```mermaid
 erDiagram
-    user ||--}| session : "(id) - (userId)"
-    user ||--}| account : "(id) - (userId)"
-    organization ||--}| member : "(id) - (organizationId)"
-    user ||--}| member : "(id) - (userId)"
-    organization ||--}| invitation : "(id) - (organizationId)"
-    user ||--}| invitation : "(id) - (inviterId)"
+    user ||--|{ session : "(id) - (userId)"
+    user ||--|{ account : "(id) - (userId)"
+    organization ||--|{ member : "(id) - (organizationId)"
+    user ||--|{ member : "(id) - (userId)"
+    organization ||--|{ invitation : "(id) - (organizationId)"
+    user ||--|{ invitation : "(id) - (inviterId)"
     user {
         text id PK
         text name

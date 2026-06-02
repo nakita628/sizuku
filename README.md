@@ -268,7 +268,7 @@ npx sizuku db/schema.ts -o docs/ER.md
 
 ```mermaid
 erDiagram
-    user ||--}| post : "(id) - (userId)"
+    user ||--|{ post : "(id) - (userId)"
     user {
         varchar id PK "Primary key"
         varchar name "Display name"
@@ -282,7 +282,8 @@ erDiagram
 
 ## Relation Detection
 
-Sizuku detects relations from three sources:
+Sizuku detects relations from four sources. They are reflected consistently
+across every ER output format (Mermaid, DBML, and PNG).
 
 ### 1. `.references()` chain
 
@@ -304,6 +305,58 @@ export const post = pgTable('post', { ... }, (t) => ({
 export const postRelations = relations(post, ({ one }) => ({
   user: one(user, { fields: [post.userId], references: [user.id] }),
 }));
+```
+
+### 4. `/// @relation` annotation (no foreign key required)
+
+When you don't define a Drizzle foreign key — e.g. sharded tables, legacy
+schemas, polymorphic associations, or relations you intentionally don't enforce
+at the database level — you can still document the relation for the ER diagram
+with a `/// @relation` annotation. No `.references()` is needed:
+
+```ts
+import { mysqlTable, varchar } from "drizzle-orm/mysql-core";
+
+/// @relation user.id post.userId one-to-many
+export const user = mysqlTable("user", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  name: varchar("name", { length: 50 }).notNull(),
+});
+
+export const post = mysqlTable("post", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  title: varchar("title", { length: 100 }).notNull(),
+  // No .references() — the relation is declared by the @relation annotation above.
+  userId: varchar("user_id", { length: 36 }).notNull(),
+});
+```
+
+Format: `@relation <parent>.<field> <child>.<field> <cardinality>`
+
+- Write the **parent** side first (the `one` side, `user`), then the **child**
+  (the `many` side, `post`) — the same direction Sizuku infers from a foreign key.
+- `<field>` is the schema **property name** (e.g. `userId`, the left-hand side of
+  `userId: varchar("user_id")`), not the database column name.
+- `<cardinality>` is `<from>-to-<to>` where each side is one of `zero-one`,
+  `one`, `zero-many`, or `many`. Add a `-optional` suffix for a non-identifying
+  (dashed) line, e.g. `zero-one-to-many-optional`.
+
+It renders in every ER format. In Mermaid (the optional variant renders dashed):
+
+```mermaid
+erDiagram
+    user ||--|{ post : "(id) - (userId)"
+    user |o..|{ post : "(id) - (userId)"
+```
+
+In DBML it is emitted as a regular `Ref` preceded by a `// logical relation`
+comment (which preserves the original cardinality), so it is not mistaken for a
+DB-enforced foreign key. Physical foreign keys carry a `_fk` suffix on the ref
+name; logical relations do not:
+
+```dbml
+// logical relation (src: one-to-many)
+Ref post_userId_user_id: post.userId > user.id
 ```
 
 ## License
