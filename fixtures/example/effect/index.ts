@@ -11,7 +11,7 @@ export const UserSchema = Schema.Struct({
   name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
 });
 
-export type User = Schema.Schema.Type<typeof UserSchema>;
+export type User = typeof UserSchema.Type;
 
 export const PostSchema = Schema.Struct({
   /**
@@ -32,15 +32,15 @@ export const PostSchema = Schema.Struct({
   userId: Schema.UUID,
 });
 
-export type Post = Schema.Schema.Type<typeof PostSchema>;
+export type Post = typeof PostSchema.Type;
 
 export const UserRelationsSchema = Schema.Struct({
   ...UserSchema.fields,
   posts: Schema.Array(PostSchema),
 });
 
-export type UserRelations = Schema.Schema.Type<typeof UserRelationsSchema>;
+export type UserRelations = typeof UserRelationsSchema.Type;
 
 export const PostRelationsSchema = Schema.Struct({ ...PostSchema.fields, user: UserSchema });
 
-export type PostRelations = Schema.Schema.Type<typeof PostRelationsSchema>;
+export type PostRelations = typeof PostRelationsSchema.Type;

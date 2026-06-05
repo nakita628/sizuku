@@ -200,6 +200,13 @@ export const UserSchema = type({
 });
 
 export type User = typeof UserSchema.infer;
+
+export const UserRelationsSchema = type({
+  ...UserSchema.t,
+  posts: PostSchema.array(),
+});
+
+export type UserRelations = typeof UserRelationsSchema.infer;
 ```
 
 ### Effect Schema
@@ -222,7 +229,14 @@ export const UserSchema = Schema.Struct({
   name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
 });
 
-export type UserEncoded = typeof UserSchema.Encoded;
+export type User = typeof UserSchema.Type;
+
+export const UserRelationsSchema = Schema.Struct({
+  ...UserSchema.fields,
+  posts: Schema.Array(PostSchema),
+});
+
+export type UserRelations = typeof UserRelationsSchema.Type;
 ```
 
 ### DBML
@@ -254,7 +268,7 @@ npx sizuku db/schema.ts -o docs/ER.md
 
 ```mermaid
 erDiagram
-    user ||--}| post : "(id) - (userId)"
+    user ||--|{ post : "(id) - (userId)"
     user {
         varchar id PK "Primary key"
         varchar name "Display name"
@@ -268,7 +282,8 @@ erDiagram
 
 ## Relation Detection
 
-Sizuku detects relations from three sources:
+Sizuku detects relations from four sources. They are reflected consistently
+across every ER output format (Mermaid, DBML, and PNG).
 
 ### 1. `.references()` chain
 
@@ -291,6 +306,29 @@ export const postRelations = relations(post, ({ one }) => ({
   user: one(user, { fields: [post.userId], references: [user.id] }),
 }));
 ```
+
+### 4. `/// @relation` annotation (no foreign key required)
+
+Document a relation for the ER diagram without a Drizzle foreign key by adding a
+`/// @relation <parent>.<field> <child>.<field> <cardinality>` annotation. No
+`.references()` is needed:
+
+```ts
+/// @relation user.id post.userId one-to-many
+export const user = sqliteTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+});
+
+export const post = sqliteTable("post", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+});
+```
+
+`<field>` is the schema **property name** (`userId`), not the database column.
+`<cardinality>` is `<from>-to-<to>` where each side is `zero-one`, `one`,
+`zero-many`, or `many`; add a `-optional` suffix for a dashed (non-identifying) line.
 
 ## License
 

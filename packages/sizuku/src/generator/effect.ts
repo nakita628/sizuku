@@ -8,7 +8,7 @@ export function effect(code: string[], comment?: boolean, type?: boolean, relati
   const baseLines = extractSchemas(code, "effect").map((schema) => {
     const cap = makeCapitalized(schema.name);
     const head = `export const ${cap}Schema = Schema.Struct({${fieldDefinitions(schema, c)}})`;
-    return t ? `${head}\n\nexport type ${cap}Encoded = typeof ${cap}Schema.Encoded\n` : `${head}\n`;
+    return t ? `${head}\n\nexport type ${cap} = typeof ${cap}Schema.Type\n` : `${head}\n`;
   });
 
   const relationLines = relation
@@ -18,7 +18,7 @@ export function effect(code: string[], comment?: boolean, type?: boolean, relati
         const obj = `\nexport const ${relSchema} = Schema.Struct({...${baseSchema}.fields,${makeRelationFields(schema.fields)}})`;
         if (!t) return obj;
         const cap = makeCapitalized(schema.name);
-        return `${obj}\n\nexport type ${cap}Encoded = typeof ${cap}Schema.Encoded\n`;
+        return `${obj}\n\nexport type ${cap} = typeof ${cap}Schema.Type\n`;
       })
     : [];
 
