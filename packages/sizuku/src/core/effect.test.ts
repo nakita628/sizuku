@@ -85,7 +85,7 @@ export const UserSchema = Schema.Struct({
   name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
 })
 
-export type UserEncoded = typeof UserSchema.Encoded
+export type User = typeof UserSchema.Type
 
 export const PostSchema = Schema.Struct({
   id: Schema.UUID,
@@ -94,7 +94,7 @@ export const PostSchema = Schema.Struct({
   userId: Schema.UUID,
 })
 
-export type PostEncoded = typeof PostSchema.Encoded
+export type Post = typeof PostSchema.Type
 `;
     expect(result).toBe(expected);
   });
@@ -122,6 +122,41 @@ export const UserRelationsSchema = Schema.Struct({
 })
 
 export const PostRelationsSchema = Schema.Struct({ ...PostSchema.fields, user: UserSchema })
+`;
+    expect(result).toBe(expected);
+  });
+
+  it("sizukuEffect type true with relation", async () => {
+    await sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts", false, true, true);
+    const result = await fsp.readFile("tmp-effect/effect-test.ts", "utf-8");
+    const expected = `import { Schema } from 'effect'
+
+export const UserSchema = Schema.Struct({
+  id: Schema.UUID,
+  name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
+})
+
+export type User = typeof UserSchema.Type
+
+export const PostSchema = Schema.Struct({
+  id: Schema.UUID,
+  title: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
+  content: Schema.String,
+  userId: Schema.UUID,
+})
+
+export type Post = typeof PostSchema.Type
+
+export const UserRelationsSchema = Schema.Struct({
+  ...UserSchema.fields,
+  posts: Schema.Array(PostSchema),
+})
+
+export type UserRelations = typeof UserRelationsSchema.Type
+
+export const PostRelationsSchema = Schema.Struct({ ...PostSchema.fields, user: UserSchema })
+
+export type PostRelations = typeof PostRelationsSchema.Type
 `;
     expect(result).toBe(expected);
   });

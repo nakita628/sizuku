@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import {
-  extractRelationsFromAnnotations,
-  makeRelationLine,
-  parseRelation,
-} from "./parse-relation.js";
+import { extractRelationsFromAnnotations, parseRelation } from "./parse-relation.js";
 
 describe("parseRelation", () => {
   it("parses full one-to-one form", () => {
@@ -57,65 +53,15 @@ describe("parseRelation", () => {
   });
 });
 
-describe("makeRelationLine", () => {
-  const cases = [
-    { input: "zero-one-to-zero-one", expected: "|o--|o" },
-    { input: "zero-one-to-one", expected: "|o--||" },
-    { input: "zero-one-to-zero-many", expected: "|o--}o" },
-    { input: "zero-one-to-many", expected: "|o--}|" },
-    { input: "zero-one-to-zero-one-optional", expected: "|o..|o" },
-    { input: "one-to-zero-one", expected: "||--|o" },
-    { input: "one-to-one", expected: "||--||" },
-    { input: "one-to-zero-many", expected: "||--}o" },
-    { input: "one-to-many", expected: "||--}|" },
-    { input: "one-to-one-optional", expected: "||..||" },
-    { input: "many-to-zero-one", expected: "}|--|o" },
-    { input: "many-to-one", expected: "}|--||" },
-    { input: "many-to-many", expected: "}|--}|" },
-    { input: "many-to-many-optional", expected: "}|..}|" },
-  ];
-  it.each(cases)("converts $input to $expected", ({ input, expected }) => {
-    const result = makeRelationLine(input);
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(expected);
-    }
-  });
-
-  it("returns error for invalid input format", () => {
-    const result = makeRelationLine("invalid");
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe("Invalid input format: invalid");
-    }
-  });
-
-  it("returns error for invalid from relationship", () => {
-    const result = makeRelationLine("invalid-to-one");
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe("Invalid relationship: invalid");
-    }
-  });
-
-  it("returns error for invalid to relationship", () => {
-    const result = makeRelationLine("one-to-invalid");
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe("Invalid relationship: invalid");
-    }
-  });
-});
-
 describe("extractRelationsFromAnnotations", () => {
-  it("extracts all valid annotations from code lines", () => {
+  it("extracts structured cardinality from valid annotations", () => {
     const code = [
       "/// @relation User.id Post.userId one-to-many",
       "export const user = sqliteTable('user', {",
       "  id: text('id').primaryKey(),",
       "})",
       "",
-      "/// @relation User.id Profile.user_id one-to-one",
+      "/// @relation User.id Profile.user_id zero-one-to-zero-many-optional",
       "export const profile = sqliteTable('profile', {",
       "  user_id: text('user_id').notNull(),",
       "})",
@@ -127,14 +73,18 @@ describe("extractRelationsFromAnnotations", () => {
         fromField: "id",
         toModel: "Post",
         toField: "userId",
-        symbol: "||--}|",
+        fromCard: "one",
+        toCard: "many",
+        optional: false,
       },
       {
         fromModel: "User",
         fromField: "id",
         toModel: "Profile",
         toField: "user_id",
-        symbol: "||--||",
+        fromCard: "zero-one",
+        toCard: "zero-many",
+        optional: true,
       },
     ]);
   });

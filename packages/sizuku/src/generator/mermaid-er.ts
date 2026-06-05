@@ -1,52 +1,41 @@
-import {
-  extractRelationsFromAnnotations,
-  extractRelationsFromSchema,
-  parseTableInfo,
-} from "../helper/index.js";
+import { mergeRelations, parseTableInfo } from "../helper/index.js";
 
-// Builds a Mermaid erDiagram from the schema code. Relations come from two
-// sources: inferred via AST (`.references()` / `foreignKey()` / `relations()`)
-// and explicit `/// @relation Model.field Model.field type` annotations.
-// Explicit annotations override inferred lines for the same
-// fromModel.fromField -> toModel.toField key, so the user-declared cardinality
-// (e.g. `zero-one-to-many-optional`) wins over the boolean `isRequired`
-// approximation.
+// Mermaid crow's-foot tokens. Per the Mermaid ER spec the right side is the
+// mirror of the left, e.g. "one or more" is `}|` on the left but `|{` on the
+// right. https://mermaid.js.org/syntax/entityRelationshipDiagram.html
+// MERMAID_LEFT is the canonical key set; MERMAID_RIGHT must mirror its keys.
+const MERMAID_LEFT = {
+  "zero-one": "|o",
+  one: "||",
+  "zero-many": "}o",
+  many: "}|",
+} as const;
+
+const MERMAID_RIGHT = {
+  "zero-one": "o|",
+  one: "||",
+  "zero-many": "o{",
+  many: "|{",
+} as const satisfies Record<keyof typeof MERMAID_LEFT, string>;
+
+export function mermaidRelationSymbol(r: {
+  readonly from: { readonly cardinality: keyof typeof MERMAID_LEFT };
+  readonly to: { readonly cardinality: keyof typeof MERMAID_LEFT };
+  readonly identifying: boolean;
+}) {
+  return `${MERMAID_LEFT[r.from.cardinality]}${r.identifying ? "--" : ".."}${MERMAID_RIGHT[r.to.cardinality]}`;
+}
+
+// Builds a Mermaid erDiagram from the schema code. Relations come from a single
+// merged source (inferred FK + `/// @relation` annotations) and are rendered to
+// crow's-foot symbols here, at the output boundary.
 export function mermaidER(code: string[]) {
   const tables = parseTableInfo(code);
-  const inferred = extractRelationsFromSchema(code);
-  const annotated = extractRelationsFromAnnotations(code);
+  const relations = mergeRelations(code);
 
-  const key = (r: { fromModel: string; fromField: string; toModel: string; toField: string }) =>
-    `${r.fromModel}.${r.fromField}->${r.toModel}.${r.toField}`;
-
-  // Map preserves insertion order. Inferred relations seed the order; matching
-  // annotations overwrite the symbol in-place. New annotation-only relations
-  // append at the end.
-  const merged = new Map<
-    string,
-    {
-      fromModel: string;
-      fromField: string;
-      toModel: string;
-      toField: string;
-      symbol: string;
-    }
-  >();
-  for (const r of inferred) {
-    merged.set(key(r), {
-      fromModel: r.fromModel,
-      fromField: r.fromField,
-      toModel: r.toModel,
-      toField: r.toField,
-      symbol: r.isRequired ? "||--}|" : "||--}o",
-    });
-  }
-  for (const r of annotated) {
-    merged.set(key(r), r);
-  }
-
-  const relationLines = [...merged.values()].map(
-    (r) => `    ${r.fromModel} ${r.symbol} ${r.toModel} : "(${r.fromField}) - (${r.toField})"`,
+  const relationLines = relations.map(
+    (r) =>
+      `    ${r.from.model} ${mermaidRelationSymbol(r)} ${r.to.model} : "(${r.from.field}) - (${r.to.field})"`,
   );
 
   const tableDefinitions = tables.flatMap((table) => [

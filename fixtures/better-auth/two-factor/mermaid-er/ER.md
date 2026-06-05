@@ -1,8 +1,8 @@
 ```mermaid
 erDiagram
-    user ||--}| session : "(id) - (userId)"
-    user ||--}| account : "(id) - (userId)"
-    user ||--}| twoFactor : "(id) - (userId)"
+    user ||--|{ session : "(id) - (userId)"
+    user ||--|{ account : "(id) - (userId)"
+    user ||--|{ twoFactor : "(id) - (userId)"
     user {
         text id PK
         text name
