@@ -237,6 +237,32 @@ Ref b_aid2_a_id: b.aid2 < a.id
 Ref b_aid3_a_id: b.aid3 <> a.id`,
     );
   });
+
+  // A FK declared with a referential-action config (`onDelete`/`onUpdate`) must
+  // still render a Ref line; the relation used to be silently dropped.
+  it("renders a Ref for a FK declared with an onDelete config", () => {
+    const code = [
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "})",
+      "export const post = mysqlTable('post', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),",
+      "})",
+    ];
+    expect(dbml(code)).toBe(
+      `Table user {
+  id varchar [pk]
+}
+
+Table post {
+  id varchar [pk]
+  userId varchar
+}
+
+Ref post_userId_user_id_fk: post.userId > user.id`,
+    );
+  });
 });
 
 describe("E2E: PNG generation", () => {

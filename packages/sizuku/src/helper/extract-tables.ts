@@ -1,5 +1,5 @@
 import type { CallExpression, Expression, PropertyAssignment, SourceFile } from "ts-morph";
-import { Node, Project } from "ts-morph";
+import { Node, Project, SyntaxKind } from "ts-morph";
 
 function baseBuilderName(expr: Expression): string {
   if (Node.isIdentifier(expr)) return expr.getText();
@@ -34,13 +34,28 @@ function findImmediateComment(code: readonly string[], lineIdx: number) {
   );
 }
 
+// Reads the `() => table.col` target from a `.references()` call via the AST so
+// the second argument (a `{ onDelete, onUpdate }` config object) never affects
+// extraction — a text-based match on `.references(... )` would lose the relation
+// whenever a referential-action config is present.
 function extractReferenceInfo(initExpr: CallExpression) {
-  const initText = initExpr.getText();
-  const match = initText.match(/\.references\(\s*\(\)\s*=>\s*(\w+)\.(\w+)\s*\)/);
-  if (!match) return null;
+  const referencesCall = [
+    initExpr,
+    ...initExpr.getDescendantsOfKind(SyntaxKind.CallExpression),
+  ].find((call) => {
+    const callee = call.getExpression();
+    return Node.isPropertyAccessExpression(callee) && callee.getName() === "references";
+  });
+  if (!referencesCall) return null;
+  const [target] = referencesCall.getArguments();
+  if (!(target && Node.isArrowFunction(target))) return null;
+  const body = target.getBody();
+  if (!Node.isPropertyAccessExpression(body)) return null;
+  const table = body.getExpression();
+  if (!Node.isIdentifier(table)) return null;
   return {
-    referencedTable: match[1],
-    referencedField: match[2],
+    referencedTable: table.getText(),
+    referencedField: body.getName(),
   };
 }
 

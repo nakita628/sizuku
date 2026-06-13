@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { extractRelationsFromSchema, parseTableInfo } from "./extract-tables.js";
 
-// Test run
-// pnpm vitest run ./src/generator/mermaid-er/validator/parse-table-info.test.ts
-
 describe("parseTableInfo", () => {
   it.concurrent("parseTableInfo Test", () => {
     const result = parseTableInfo([
@@ -311,5 +308,72 @@ describe("extractRelationsFromSchema", () => {
       toField: "userId",
       isRequired: true,
     });
+  });
+
+  it.concurrent("extracts a relation when .references() carries an onDelete config", () => {
+    const code = [
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "})",
+      "export const post = mysqlTable('post', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),",
+      "})",
+    ];
+    expect(extractRelationsFromSchema(code)).toStrictEqual([
+      {
+        fromModel: "user",
+        toModel: "post",
+        fromField: "id",
+        toField: "userId",
+        isRequired: true,
+      },
+    ]);
+  });
+
+  it.concurrent("extracts a relation when .references() carries onDelete and onUpdate", () => {
+    const code = [
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "})",
+      "export const post = mysqlTable('post', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade', onUpdate: 'restrict' }),",
+      "})",
+    ];
+    expect(extractRelationsFromSchema(code)).toStrictEqual([
+      {
+        fromModel: "user",
+        toModel: "post",
+        fromField: "id",
+        toField: "userId",
+        isRequired: true,
+      },
+    ]);
+  });
+
+  it.concurrent("extracts a relation when the onDelete config spans multiple lines", () => {
+    const code = [
+      "export const user = mysqlTable('user', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "})",
+      "export const post = mysqlTable('post', {",
+      "  id: varchar('id', { length: 36 }).primaryKey(),",
+      "  userId: varchar('user_id', { length: 36 })",
+      "    .notNull()",
+      "    .references(() => user.id, {",
+      "      onDelete: 'cascade',",
+      "    }),",
+      "})",
+    ];
+    expect(extractRelationsFromSchema(code)).toStrictEqual([
+      {
+        fromModel: "user",
+        toModel: "post",
+        fromField: "id",
+        toField: "userId",
+        isRequired: true,
+      },
+    ]);
   });
 });
