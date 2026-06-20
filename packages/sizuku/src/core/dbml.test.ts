@@ -1,3 +1,4 @@
+import { run } from "@softwaretechnik/dbml-renderer";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -135,6 +136,29 @@ describe("E2E: DBML generation", () => {
 });
 
 describe("dbml relations", () => {
+  // Guard: a column note never spans multiple lines, so it can never break DBML's
+  // single-line single-quoted string literal (which rejects embedded newlines). A
+  // note is sourced from the nearest single `///` line, so even stacked `///`
+  // comments collapse to one line; an apostrophe is escaped, and non-ASCII text
+  // (full-width parens) passes through verbatim.
+  it("collapses stacked doc comments to a single-line single-quoted note", () => {
+    const code = [
+      "export const user = pgTable('user', {",
+      "  /// first comment line",
+      "  /// second comment line",
+      "  id: uuid('id').primaryKey(),",
+      "  /// User's email （連絡先）",
+      "  email: varchar('email').notNull(),",
+      "})",
+    ];
+    expect(dbml(code)).toBe(
+      `Table user {
+  id uuid [pk, note: 'second comment line']
+  email varchar [note: 'User\\'s email （連絡先）']
+}`,
+    );
+  });
+
   // An annotation-only relation (no physical FK) is reflected in DBML, mirroring
   // the Mermaid generator. Logical relations drop the `_fk` suffix that physical
   // FKs carry, since they are not DB-enforced constraints.
@@ -262,6 +286,29 @@ Table post {
 
 Ref post_userId_user_id_fk: post.userId > user.id`,
     );
+  });
+});
+
+describe("DBML output always parses (issue regression guard)", () => {
+  // The reported failure was a multi-line, single-quoted `Note:` breaking the DBML
+  // parser (`Invalid newline encountered while parsing` / `Unexpected token '（'`).
+  // sizuku never emits a table-level `Note:`, and a column note is sourced from a
+  // single `///` line, so every note stays single-line. This proves the generated
+  // DBML parses even with the exact characters from the report — apostrophes,
+  // full-width parens, Japanese, and stacked `///` comments. The renderer is the
+  // same one core/dbml.ts uses for PNG output.
+  it("parses notes with apostrophes, full-width parens, and stacked comments", () => {
+    const code = [
+      "export const user = pgTable('user', {",
+      "  /// 上の行（無視される）",
+      "  /// User's primary key （主キー）",
+      "  id: uuid('id').primaryKey(),",
+      "  /// メールアドレス（連絡先）",
+      "  email: varchar('email').notNull(),",
+      "})",
+    ];
+
+    expect(() => run(dbml(code), "svg")).not.toThrow();
   });
 });
 
