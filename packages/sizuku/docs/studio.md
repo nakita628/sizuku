@@ -140,13 +140,18 @@ return { added, total: await db.$count(tag) };
   ...) are in scope without an import.
 - The code is the body of an async function: `await` works, and the last expression is the
   result (or `return` one).
-- **Result** shows rows as a table (one object is one row); **JSON** shows the value as is;
-  **SQL** lists the statements with their parameters, row counts and times. When the code
-  throws, the message (with the database's own words) is shown with the statements that ran
-  before it.
+- **Result** shows rows as a table (one object is one row), or the value as JSON (**Table** /
+  **JSON**); **SQL** lists the statements with their parameters, row counts and times, each with
+  a copy button and **Open in SQL**, which takes it to the SQL page with its values written in.
+  When the code throws, the message (with the database's own words) is shown, and the
+  statements that ran before it are on the SQL tab.
+- A query that inserts into, updates or deletes from a table (`db.insert(post)`, ...) is
+  confirmed before it runs, naming the tables. The bar under the editor lists the tables the
+  code touches, with the ones it writes marked.
+- **Format** (Shift + Alt + F) runs oxfmt as the schema editor does; **Copy** copies the code.
 - Completion, hovers, signature help and type errors work as in the schema editor, with `db`
   typed by the schema: `db.query.` offers the tables, `post.` their columns.
-- Under the editor, the saved schema's diagram lights up the tables the code touches as you
+- Beside the editor, the saved schema's diagram lights up the tables the code touches as you
   type — named (`post`), through `db.query.user`, or reached by a `with` through `relations()` —
   marks the columns it names (`post.title`), and dims the rest. Its cards are where the Schema
   page left them.

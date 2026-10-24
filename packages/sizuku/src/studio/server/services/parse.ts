@@ -93,7 +93,8 @@ export function parseQuery(code: string) {
 
 /**
  * The names a query uses: every identifier it reads, `table.column` member accesses, the tables
- * of `db.query.<table>`, and the keys of every `with: { ... }`, nested ones included.
+ * of `db.query.<table>`, the keys of every `with: { ... }`, nested ones included, and the tables
+ * handed to `.insert()`, `.update()` and `.delete()`.
  */
 export function readQueryNames(code: string) {
   const { program, errors } = parseSync("query.ts", `async function __q() {\n${code}\n}`, {
@@ -108,7 +109,16 @@ export function readQueryNames(code: string) {
   const members: { readonly object: string; readonly property: string }[] = [];
   const queries = new Set<string>();
   const withs = new Set<string>();
+  const writes = new Set<string>();
   new Visitor({
+    CallExpression(node) {
+      const callee = node.callee;
+      const [first] = node.arguments;
+      if (callee.type !== "MemberExpression" || callee.computed) return;
+      if (callee.property.type !== "Identifier") return;
+      if (!["insert", "update", "delete"].includes(callee.property.name)) return;
+      if (first?.type === "Identifier") writes.add(first.name);
+    },
     Identifier(node) {
       identifiers.push(node);
     },
@@ -144,5 +154,11 @@ export function readQueryNames(code: string) {
   for (const node of identifiers) {
     if (!keys.has(node) && node.type === "Identifier") names.add(node.name);
   }
-  return { names: [...names], members, queries: [...queries], withs: [...withs] };
+  return {
+    names: [...names],
+    members,
+    queries: [...queries],
+    withs: [...withs],
+    writes: [...writes],
+  };
 }

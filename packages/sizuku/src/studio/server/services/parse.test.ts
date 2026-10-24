@@ -87,6 +87,10 @@ describe("readQueryNames", () => {
     );
     expect(names?.queries).toStrictEqual(["user"]);
     expect(names?.withs).toStrictEqual(["posts", "comments"]);
+    expect(names?.writes).toStrictEqual([]);
+    expect(readQueryNames("await db.delete(post).where(eq(post.id, 1))")?.writes).toStrictEqual([
+      "post",
+    ]);
   });
 
   it("is null for code that does not parse", () => {

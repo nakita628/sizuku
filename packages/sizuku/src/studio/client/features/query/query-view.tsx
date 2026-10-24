@@ -1,25 +1,39 @@
-import { Button, Kbd, Tabs } from "@heroui/react";
+import { Button, Kbd, toast, Tooltip } from "@heroui/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import type { editor as MonacoEditor } from "monaco-editor/editor/editor.api.js";
-import { useEffect, useRef, useState } from "react";
-import { LuPlay } from "react-icons/lu";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LuCopy, LuPlay, LuWandSparkles } from "react-icons/lu";
+import { ConfirmDialog } from "../../components/confirm-dialog.js";
 import { SplitPane } from "../../components/split-pane.js";
 import {
   getDbKey,
   useDb,
   useLanguage,
-  usePostLanguageDiagnostics,
   usePostDrizzle,
+  usePostFormat,
+  usePostLanguageDiagnostics,
 } from "../../hooks/index.js";
+import { copyText } from "../../lib/copy.js";
 import { problemMessage } from "../../lib/problem.js";
 import { loadString, saveString } from "../../lib/storage.js";
+import { useSavedDiagram } from "../diagram/saved-diagram.js";
 import { CodeEditor } from "../editor/code-editor.js";
 import { QUERY_MODEL, setLanguageEnabled, setTypeMarkers } from "../editor/language.js";
-import { asRows, ResultView } from "./result-view.js";
+import { bindFormatter } from "../editor/monaco.js";
+import { presetSql } from "../sql/sql-view.js";
+import { inlineParams } from "./inline.js";
+import { ResultPane } from "./result-pane.js";
 import { QuerySchemaPane } from "./schema-pane.js";
+import { useTouched } from "./touched.js";
+import type { TouchedTable } from "./touched.js";
 
 const CODE_KEY = "sizuku-studio:query";
 const CHECK_DEBOUNCE_MS = 500;
+// How the page is shared out: the editor above its result and SQL, and the schema the whole
+// height of the other side, to be looked at while the query is written.
+const PANES_KEY = "sizuku-studio:query-panes";
+const EDITOR_KEY = "sizuku-studio:query-editor-height";
 
 /** Puts code in the Query page's editor, for the page to open with: the docs' examples go there. */
 export function presetQuery(code: string) {
@@ -39,26 +53,46 @@ function initialCode(firstTable: string | null) {
 }
 
 /**
- * Drizzle against the connected database: write a query with completion and type errors from
- * the project's TypeScript, run it, and see its value and the SQL it sent.
+ * Drizzle against the connected database: a query typed as the application would write it, with
+ * completion and type errors from the project's TypeScript, run through the project's own
+ * drizzle-orm, its result beside the tables it touches and the SQL it sends.
  */
 export function QueryView() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const db = useDb().data ?? null;
   const language = useLanguage().data ?? null;
   const typesOn = language?.typescript != null;
+  const { snapshot, schema } = useSavedDiagram();
   const run = usePostDrizzle();
   const check = usePostLanguageDiagnostics();
+  const format = usePostFormat();
   const [code, setCode] = useState<string | null>(null);
-  const [tab, setTab] = useState<"result" | "json" | "sql">("result");
+  const [tab, setTab] = useState<"result" | "sql">("result");
+  const [asJson, setAsJson] = useState(false);
+  const [writes, setWrites] = useState<readonly TouchedTable[] | null>(null);
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const [editorReady, setEditorReady] = useState(false);
   const checkSeq = useRef(0);
   const text = code ?? (db === null ? null : initialCode(db.tables[0]?.name ?? null));
+  const { tables, analyze } = useTouched(text ?? "", snapshot?.source ?? null);
 
   useEffect(() => {
     setLanguageEnabled(typesOn);
   }, [typesOn]);
+
+  // Format Document runs oxfmt on the server, as the schema editor's does.
+  useEffect(() => {
+    bindFormatter(async (source) => {
+      try {
+        return (await format.mutateAsync({ json: { source } })).source;
+      } catch (error) {
+        toast.danger(problemMessage(error));
+        return null;
+      }
+    });
+    return () => bindFormatter(null);
+  }, [format]);
 
   // Type errors once typing stops, checked against the saved schema.
   useEffect(() => {
@@ -80,24 +114,37 @@ export function QueryView() {
     return () => clearTimeout(timer);
   }, [text, typesOn, editorReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const execute = () => {
-    const current = editorRef.current?.getValue() ?? text;
-    if (current === null || current.trim() === "") return;
-    run.mutate(
-      { json: { code: current } },
-      {
-        onSuccess: (result) => {
-          setTab(
-            result.error !== null ? "sql" : asRows(result.result) === null ? "json" : "result",
-          );
-          // A write changes the counts and rows the other pages show.
-          if (result.statements.some((s) => !/^\s*(select|with)\b/iu.test(s.sql))) {
-            void queryClient.invalidateQueries({ queryKey: getDbKey() });
-          }
+  const send = useCallback(
+    (current: string) => {
+      run.mutate(
+        { json: { code: current } },
+        {
+          onSuccess: (result) => {
+            setTab(result.error !== null && result.statements.length > 0 ? "sql" : "result");
+            // A write changes the counts and rows the other pages show.
+            if (result.statements.some((s) => !/^\s*(select|with)\b/iu.test(s.sql))) {
+              void queryClient.invalidateQueries({ queryKey: getDbKey() });
+            }
+          },
         },
-      },
-    );
-  };
+      );
+    },
+    [run, queryClient],
+  );
+
+  // A write is confirmed first; the code is read again on the spot so a just-typed `delete` is
+  // not waved through on the strength of an analysis from before it was typed.
+  const execute = useCallback(async () => {
+    const current = editorRef.current?.getValue() ?? text;
+    if (current === null || current.trim() === "" || run.isPending) return;
+    const checked = await analyze.mutateAsync({ json: { code: current } }).catch(() => null);
+    const writing = checked?.tables.filter((t) => t.write) ?? [];
+    if (writing.length > 0) {
+      setWrites(writing);
+      return;
+    }
+    send(current);
+  }, [text, run.isPending, analyze, send]);
 
   if (db === null || text === null) return <div className="p-6 text-muted">Loading…</div>;
   const result = run.data ?? null;
@@ -107,115 +154,158 @@ export function QueryView() {
       ? `Running a query needs the project's TypeScript: ${language.reason}`
       : null;
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
+  const editorPane = (
+    <div className="flex min-h-0 flex-col">
+      <div className="min-h-0 flex-1 bg-surface">
+        <CodeEditor
+          path={QUERY_MODEL}
+          language="typescript"
+          value={text}
+          commands={[{ keys: "run", run: () => void execute() }]}
+          onChange={(next) => {
+            setCode(next);
+            saveString(CODE_KEY, next);
+          }}
+          onMount={(editor) => {
+            editorRef.current = editor;
+            setEditorReady(true);
+            // The model outlives the page; code put in while it was away replaces what it held.
+            if (editor.getValue() !== text) editor.setValue(text);
+          }}
+        />
+      </div>
+      {tables.length === 0 ? null : (
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-line bg-surface-2 px-4 py-1.5 text-code">
+          <span className="heading mb-0">Tables</span>
+          {tables.map((table) => (
+            <span
+              key={table.table}
+              className={`pill ${table.write ? "border-warn text-warn" : "border-line bg-canvas text-muted"}`}
+            >
+              {table.table}
+              {table.write ? " · write" : ""}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const resultPane = (
+    <ResultPane
+      tab={tab}
+      onTab={setTab}
+      result={result}
+      running={run.isPending}
+      error={run.isError ? run.error : null}
+      asJson={asJson}
+      onAsJson={setAsJson}
+      dialect={db.dialect}
+      // The SQL page runs a statement as it is typed, so the values it was bound with are written in.
+      onOpen={(statement) => {
+        presetSql(inlineParams(statement.sql, statement.params, db.dialect ?? "sqlite"));
+        void navigate({ to: "/sql" });
+      }}
+    />
+  );
+
+  const workspace = (
+    <div className="flex min-h-0 min-w-0 flex-col">
       <header className="flex flex-wrap items-center gap-3.5 border-b border-line bg-surface px-6 py-3">
         <h1 className="page-title">Query</h1>
         <span className="min-w-0 text-lead [overflow-wrap:anywhere] text-muted">
-          {db.connected ? `Drizzle · ${db.dialect} · ${db.url}` : "No database connected"}
+          {text.split("\n").length} lines
+          {db.connected ? ` · Drizzle · ${db.dialect} ${db.url}` : " · No database connected"}
         </span>
         <span className="ml-auto flex items-center gap-1.5 text-code text-faint">
           <Kbd>⌘/Ctrl</Kbd>
           <Kbd>Enter</Kbd>
           to run
         </span>
-        <Button size="sm" onPress={execute} isDisabled={unavailable !== null || run.isPending}>
-          <LuPlay />
+        <Tooltip>
+          <Button
+            variant="ghost"
+            onPress={() => {
+              void editorRef.current?.getAction("editor.action.formatDocument")?.run();
+            }}
+          >
+            <LuWandSparkles size={15} />
+            Format
+          </Button>
+          <Tooltip.Content>Format with oxfmt (Shift+Alt+F)</Tooltip.Content>
+        </Tooltip>
+        <Button
+          variant="ghost"
+          onPress={() => {
+            copyText(editorRef.current?.getValue() ?? text, "The query");
+          }}
+        >
+          <LuCopy size={15} />
+          Copy
+        </Button>
+        <Button
+          variant="primary"
+          isDisabled={unavailable !== null || run.isPending}
+          onPress={() => void execute()}
+        >
+          <LuPlay size={14} />
           Run
         </Button>
       </header>
-      {unavailable ? (
-        <p className="border-b border-line bg-surface-2 px-4 py-2 text-body text-muted">
-          {unavailable}
-        </p>
-      ) : null}
+      {unavailable ? <pre className="error-box m-4 whitespace-pre-wrap">{unavailable}</pre> : null}
       <SplitPane
-        direction="row"
-        storageKey="sizuku-studio:query-split"
-        defaultRatio={0.45}
-        label="Resize the query editor"
-        first={
-          <SplitPane
-            direction="column"
-            storageKey="sizuku-studio:query-schema-split"
-            defaultRatio={0.6}
-            label="Resize the schema under the query"
-            first={
-              <div className="h-full min-h-0 min-w-0 bg-surface">
-                <CodeEditor
-                  path={QUERY_MODEL}
-                  language="typescript"
-                  value={text}
-                  commands={[{ keys: "run", run: execute }]}
-                  onChange={(next) => {
-                    setCode(next);
-                    saveString(CODE_KEY, next);
-                  }}
-                  onMount={(editor) => {
-                    editorRef.current = editor;
-                    setEditorReady(true);
-                    // The model outlives the page; code put in while it was away replaces what it held.
-                    if (editor.getValue() !== text) editor.setValue(text);
-                  }}
-                />
-              </div>
-            }
-            second={<QuerySchemaPane code={text} />}
-          />
-        }
-        second={
-          <div className="flex min-h-0 min-w-0 flex-col bg-surface">
-            <div className="flex items-center gap-3 border-b border-line px-3 py-1.5">
-              <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(key as typeof tab)}>
-                <Tabs.ListContainer className="w-fit">
-                  <Tabs.List aria-label="Views of the result">
-                    <Tabs.Tab id="result">Result</Tabs.Tab>
-                    <Tabs.Tab id="json">JSON</Tabs.Tab>
-                    <Tabs.Tab id="sql" className="whitespace-nowrap">
-                      SQL{result ? ` (${result.statements.length})` : ""}
-                    </Tabs.Tab>
-                  </Tabs.List>
-                </Tabs.ListContainer>
-              </Tabs>
-              <span className="flex-1" />
-              <span className="text-meta text-muted tabular-nums">
-                {run.isPending ? "Running…" : result ? `${result.durationMs} ms` : null}
-              </span>
-            </div>
-            {run.error ? (
-              <p className="m-4 rounded-lg border border-danger-line bg-danger-soft px-3 py-2 font-mono text-code whitespace-pre-wrap text-danger">
-                {problemMessage(run.error)}
-              </p>
-            ) : null}
-            {result?.error ? (
-              <p className="m-4 rounded-lg border border-danger-line bg-danger-soft px-3 py-2 font-mono text-code whitespace-pre-wrap text-danger">
-                {result.error}
-              </p>
-            ) : null}
-            {result === null || run.error ? null : tab === "sql" ? (
-              <ol className="min-h-0 flex-1 overflow-auto">
-                {result.statements.map((statement, index) => (
-                  <li key={index} className="border-b border-line px-4 py-2">
-                    <pre className="font-mono text-code whitespace-pre-wrap">{statement.sql}</pre>
-                    <div className="mt-1 flex flex-wrap gap-3 font-mono text-meta text-muted">
-                      {statement.params.length > 0 ? (
-                        <span>params {JSON.stringify(statement.params)}</span>
-                      ) : null}
-                      <span>{statement.rowCount} rows</span>
-                      <span>{statement.durationMs} ms</span>
-                    </div>
-                  </li>
-                ))}
-                {result.statements.length === 0 ? (
-                  <li className="px-4 py-3 text-body text-muted">No statement was sent.</li>
-                ) : null}
-              </ol>
-            ) : result.error ? null : (
-              <ResultView value={result.result} asJson={tab === "json"} />
-            )}
-          </div>
-        }
+        direction="column"
+        storageKey={EDITOR_KEY}
+        defaultRatio={0.4}
+        label="Resize the editor"
+        first={editorPane}
+        second={resultPane}
       />
     </div>
+  );
+
+  return (
+    <section className="flex min-h-0 flex-1 overflow-hidden">
+      <SplitPane
+        direction="row"
+        storageKey={PANES_KEY}
+        defaultRatio={0.58}
+        min={0.3}
+        max={0.8}
+        label="Resize the schema"
+        first={workspace}
+        second={
+          <QuerySchemaPane
+            schema={schema}
+            schemaPath={snapshot?.file ?? null}
+            parseError={snapshot?.parseError != null}
+            tables={tables}
+          />
+        }
+      />
+      <ConfirmDialog
+        isOpen={writes !== null}
+        title={`Run a write to ${writes?.length === 1 ? "a table" : `${writes?.length ?? 0} tables`}?`}
+        detail={
+          <div className="flex flex-col gap-2">
+            <span>This changes the database through Drizzle:</span>
+            <ul className="m-0 list-disc pl-5 font-mono text-code">
+              {(writes ?? []).map((table) => (
+                <li key={table.table}>{table.table}</li>
+              ))}
+            </ul>
+          </div>
+        }
+        confirmLabel="Run"
+        isPending={run.isPending}
+        onConfirm={() => {
+          setWrites(null);
+          send(editorRef.current?.getValue() ?? text);
+        }}
+        onOpenChange={(open) => {
+          if (!open) setWrites(null);
+        }}
+      />
+    </section>
   );
 }

@@ -207,7 +207,7 @@ throw new Error("stop here");`);
     const touched = async (code: string) =>
       (await (await request("/api/drizzle/touched", { code })).json()).tables;
     expect(await touched("db.select().from(post).where(eq(post.published, true))")).toStrictEqual([
-      { table: "post", columns: ["published"] },
+      { table: "post", columns: ["published"], write: false },
     ]);
     expect(await touched("db.select(")).toStrictEqual([]);
   });

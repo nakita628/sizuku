@@ -1028,9 +1028,16 @@ export const TouchedTableSchema = z
       .array(z.string())
       .readonly()
       .openapi({ description: "The columns the code names on it, as `table.column`" }),
+    write: z.boolean().openapi({
+      description:
+        "Whether the code writes to it: `db.insert(table)`, `db.update(table)` or `db.delete(table)`",
+    }),
   })
   .readonly()
-  .openapi({ required: ["table", "columns"], description: "A table Drizzle code touches." })
+  .openapi({
+    required: ["table", "columns", "write"],
+    description: "A table Drizzle code touches.",
+  })
   .openapi("TouchedTable");
 
 export const QueryTouchedSchema = z

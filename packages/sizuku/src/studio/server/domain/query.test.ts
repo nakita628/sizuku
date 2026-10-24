@@ -82,8 +82,9 @@ describe("makeQueryTouched", () => {
         ],
         queries: [],
         withs: [],
+        writes: [],
       }),
-    ).toStrictEqual([{ table: "post", columns: ["title"] }]);
+    ).toStrictEqual([{ table: "post", columns: ["title"], write: false }]);
   });
 
   it("follows db.query and nested with through the relations", () => {
@@ -95,8 +96,26 @@ describe("makeQueryTouched", () => {
         members: [],
         queries: ["user"],
         withs: ["comments", "posts"],
+        writes: [],
       }).map((t) => t.table),
     ).toStrictEqual(["user", "post", "comment"]);
+  });
+
+  it("marks the tables written by insert, update and delete", () => {
+    expect(
+      makeQueryTouched({
+        models,
+        relationFields,
+        names: ["db", "post", "user"],
+        members: [],
+        queries: [],
+        withs: [],
+        writes: ["post"],
+      }).map((t) => [t.table, t.write]),
+    ).toStrictEqual([
+      ["user", false],
+      ["post", true],
+    ]);
   });
 
   it("touches nothing that is not a table", () => {
@@ -108,6 +127,7 @@ describe("makeQueryTouched", () => {
         members: [],
         queries: [],
         withs: ["posts"],
+        writes: [],
       }),
     ).toStrictEqual([]);
   });

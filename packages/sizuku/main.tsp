@@ -755,6 +755,9 @@ model TouchedTable {
 
   /** The columns the code names on it, as `table.column` */
   columns: string[];
+
+  /** Whether the code writes to it: `db.insert(table)`, `db.update(table)` or `db.delete(table)` */
+  write: boolean;
 }
 
 /** The tables Drizzle code touches, for the diagram beside the editor to light up. */

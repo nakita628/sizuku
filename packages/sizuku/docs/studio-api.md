@@ -2254,7 +2254,8 @@ does not parse touches nothing.
   "tables": [
     {
       "table": "string",
-      "columns": ["string"]
+      "columns": ["string"],
+      "write": true
     }
   ]
 }
@@ -4400,7 +4401,8 @@ Drizzle code to run.
 ```json
 {
   "table": "string",
-  "columns": ["string"]
+  "columns": ["string"],
+  "write": true
 }
 ```
 
@@ -4408,10 +4410,11 @@ A table Drizzle code touches.
 
 ### Properties
 
-| Name    | Type     | Required | Restrictions | Description                                         |
-| ------- | -------- | -------- | ------------ | --------------------------------------------------- |
-| table   | string   | true     | none         | The table's exported name                           |
-| columns | [string] | true     | none         | The columns the code names on it, as `table.column` |
+| Name    | Type     | Required | Restrictions | Description                                                                                 |
+| ------- | -------- | -------- | ------------ | ------------------------------------------------------------------------------------------- |
+| table   | string   | true     | none         | The table's exported name                                                                   |
+| columns | [string] | true     | none         | The columns the code names on it, as `table.column`                                         |
+| write   | boolean  | true     | none         | Whether the code writes to it: `db.insert(table)`, `db.update(table)` or `db.delete(table)` |
 
 <h2 id="tocS_QueryTouched">QueryTouched</h2>
 <!-- backwards compatibility -->
@@ -4425,7 +4428,8 @@ A table Drizzle code touches.
   "tables": [
     {
       "table": "string",
-      "columns": ["string"]
+      "columns": ["string"],
+      "write": true
     }
   ]
 }

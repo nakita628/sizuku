@@ -11,6 +11,11 @@ import { CodeEditor } from "../editor/code-editor.js";
 
 const SQL_KEY = "sizuku-studio:sql";
 
+/** Puts a statement in the SQL page's editor, for the page to open with: the Query page's go there. */
+export function presetSql(sql: string) {
+  saveString(SQL_KEY, sql);
+}
+
 function initialSql(firstTable: string | null) {
   const stored = loadString(SQL_KEY);
   if (stored !== null && stored.trim() !== "") return stored;

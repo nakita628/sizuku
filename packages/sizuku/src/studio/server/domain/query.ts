@@ -247,13 +247,18 @@ const MakeQueryTouchedInput = z
       .array(z.string())
       .readonly()
       .meta({ description: "The relation names given to `with`", example: ["posts"] }),
+    writes: z
+      .array(z.string())
+      .readonly()
+      .meta({ description: "The names handed to insert, update or delete", example: ["post"] }),
   })
   .readonly()
   .meta({ description: "The tables of a schema and the names a query uses" });
 
 /**
  * The tables a query touches, each with the columns it names: a table read by its name or through
- * `db.query`, and the tables its `with` reaches through the relations of the ones already touched.
+ * `db.query`, and the tables its `with` reaches through the relations of the ones already touched;
+ * the ones it inserts into, updates or deletes from are marked as written.
  */
 export function makeQueryTouched(input: z.infer<typeof MakeQueryTouchedInput>) {
   const named = new Set([...input.names, ...input.queries]);
@@ -277,6 +282,10 @@ export function makeQueryTouched(input: z.infer<typeof MakeQueryTouchedInput>) {
       const columns = input.members
         .filter((m) => m.object === model.name && fields.has(m.property))
         .map((m) => m.property);
-      return { table: model.name, columns: [...new Set(columns)] };
+      return {
+        table: model.name,
+        columns: [...new Set(columns)],
+        write: input.writes.includes(model.name),
+      };
     });
 }
