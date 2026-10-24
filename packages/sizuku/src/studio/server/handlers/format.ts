@@ -6,9 +6,10 @@ import { internalError } from "../domain/respond.js";
 import * as FormatUseCase from "../usecases/format.js";
 
 /** `POST /format` handler. The formatted source; a syntax error is a 422. */
-export const postFormatRouteHandler: RouteHandler<typeof postFormatRoute> = (c) =>
-  Effect.runPromise(
-    Effect.matchEffect(FormatUseCase.formatText(c.req.valid("json")), {
+export const postFormatRouteHandler: RouteHandler<typeof postFormatRoute> = (c) => {
+  const data = c.req.valid("json");
+  return Effect.runPromise(
+    Effect.matchEffect(FormatUseCase.formatText({ source: data.source, options: data.options }), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
@@ -32,6 +33,7 @@ export const postFormatRouteHandler: RouteHandler<typeof postFormatRoute> = (c) 
         ),
     }),
   );
+};
 
 /** `GET /format/settings` handler. The options in effect and the config they come from. */
 export const getFormatSettingsRouteHandler: RouteHandler<typeof getFormatSettingsRoute> = (c) =>
@@ -52,9 +54,10 @@ export const getFormatSettingsRouteHandler: RouteHandler<typeof getFormatSetting
   );
 
 /** `PUT /format/settings` handler. Writes the options into `.oxfmtrc.json`. */
-export const putFormatSettingsRouteHandler: RouteHandler<typeof putFormatSettingsRoute> = (c) =>
-  Effect.runPromise(
-    Effect.matchEffect(FormatUseCase.writeFormatSettings(c.req.valid("json")), {
+export const putFormatSettingsRouteHandler: RouteHandler<typeof putFormatSettingsRoute> = (c) => {
+  const data = c.req.valid("json");
+  return Effect.runPromise(
+    Effect.matchEffect(FormatUseCase.writeFormatSettings({ options: data.options }), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
@@ -81,3 +84,4 @@ export const putFormatSettingsRouteHandler: RouteHandler<typeof putFormatSetting
         ),
     }),
   );
+};

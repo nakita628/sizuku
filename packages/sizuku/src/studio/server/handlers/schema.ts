@@ -24,9 +24,10 @@ export const getSchemaRouteHandler: RouteHandler<typeof getSchemaRoute> = (c) =>
   );
 
 /** `PUT /schema` handler. Writes the schema file. */
-export const putSchemaRouteHandler: RouteHandler<typeof putSchemaRoute> = (c) =>
-  Effect.runPromise(
-    Effect.matchEffect(SchemaUseCase.writeSchema({ source: c.req.valid("json").source }), {
+export const putSchemaRouteHandler: RouteHandler<typeof putSchemaRoute> = (c) => {
+  const data = c.req.valid("json");
+  return Effect.runPromise(
+    Effect.matchEffect(SchemaUseCase.writeSchema({ source: data.source }), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
@@ -37,6 +38,7 @@ export const putSchemaRouteHandler: RouteHandler<typeof putSchemaRoute> = (c) =>
         ),
     }),
   );
+};
 
 /**
  * `GET /schema/events` handler. A `change` event whenever the schema file changes on disk, so

@@ -109,63 +109,65 @@ export const getDbCountsRouteHandler: RouteHandler<typeof getDbCountsRoute> = (c
 
 /** `GET /db/rows/{tableName}` handler. One page of rows. */
 export const getDbRowsTableNameRouteHandler: RouteHandler<typeof getDbRowsTableNameRoute> = (c) => {
-  const { tableName } = c.req.valid("param");
-  const { skip, take } = c.req.valid("query");
+  const data = { ...c.req.valid("param"), ...c.req.valid("query") };
   return Effect.runPromise(
-    Effect.matchEffect(DbUseCase.readRows({ table: tableName, skip, take }), {
+    Effect.matchEffect(
+      DbUseCase.readRows({ table: data.tableName, skip: data.skip, take: data.take }),
+      {
+        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+        onFailure: (error) => rowsFailure(c, error),
+      },
+    ),
+  );
+};
+
+/** `POST /db/rows/{tableName}` handler. Inserts a row. */
+export const postDbRowsTableNameRouteHandler: RouteHandler<typeof postDbRowsTableNameRoute> = (
+  c,
+) => {
+  const data = { ...c.req.valid("param"), ...c.req.valid("json") };
+  return Effect.runPromise(
+    Effect.matchEffect(DbUseCase.insertRow({ table: data.tableName, values: data.values }), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
       onFailure: (error) => rowsFailure(c, error),
     }),
   );
 };
 
-/** `POST /db/rows/{tableName}` handler. Inserts a row. */
-export const postDbRowsTableNameRouteHandler: RouteHandler<typeof postDbRowsTableNameRoute> = (c) =>
-  Effect.runPromise(
-    Effect.matchEffect(
-      DbUseCase.insertRow({
-        table: c.req.valid("param").tableName,
-        values: c.req.valid("json").values,
-      }),
-      {
-        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-        onFailure: (error) => rowsFailure(c, error),
-      },
-    ),
-  );
-
 /** `PATCH /db/rows/{tableName}` handler. Updates the row `where` names. */
 export const patchDbRowsTableNameRouteHandler: RouteHandler<typeof patchDbRowsTableNameRoute> = (
   c,
-) =>
-  Effect.runPromise(
+) => {
+  const data = { ...c.req.valid("param"), ...c.req.valid("json") };
+  return Effect.runPromise(
     Effect.matchEffect(
-      DbUseCase.updateRow({ table: c.req.valid("param").tableName, ...c.req.valid("json") }),
+      DbUseCase.updateRow({ table: data.tableName, where: data.where, values: data.values }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
         onFailure: (error) => rowsFailure(c, error),
       },
     ),
   );
+};
 
 /** `DELETE /db/rows/{tableName}` handler. Deletes the row `where` names. */
 export const deleteDbRowsTableNameRouteHandler: RouteHandler<typeof deleteDbRowsTableNameRoute> = (
   c,
-) =>
-  Effect.runPromise(
-    Effect.matchEffect(
-      DbUseCase.deleteRow({ table: c.req.valid("param").tableName, ...c.req.valid("json") }),
-      {
-        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-        onFailure: (error) => rowsFailure(c, error),
-      },
-    ),
+) => {
+  const data = { ...c.req.valid("param"), ...c.req.valid("json") };
+  return Effect.runPromise(
+    Effect.matchEffect(DbUseCase.deleteRow({ table: data.tableName, where: data.where }), {
+      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onFailure: (error) => rowsFailure(c, error),
+    }),
   );
+};
 
 /** `POST /db/sql` handler. Runs one statement; one the database rejects is a 503 with its message. */
-export const postDbSqlRouteHandler: RouteHandler<typeof postDbSqlRoute> = (c) =>
-  Effect.runPromise(
-    Effect.matchEffect(DbUseCase.runSql(c.req.valid("json")), {
+export const postDbSqlRouteHandler: RouteHandler<typeof postDbSqlRoute> = (c) => {
+  const data = c.req.valid("json");
+  return Effect.runPromise(
+    Effect.matchEffect(DbUseCase.runSql({ sql: data.sql }), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
@@ -175,3 +177,4 @@ export const postDbSqlRouteHandler: RouteHandler<typeof postDbSqlRoute> = (c) =>
         ),
     }),
   );
+};
