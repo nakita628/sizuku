@@ -96,13 +96,13 @@ export function TableView({ tableName }: { readonly tableName: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex items-center gap-2 border-b border-line bg-surface px-4 py-2">
-        <h1 className="font-mono text-ui font-semibold">{table.name}</h1>
+      <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-6 py-3">
+        <h1 className="page-title">{table.name}</h1>
         {table.table !== table.name ? (
-          <span className="font-mono text-meta text-muted">{table.table}</span>
+          <span className="font-mono text-lead text-muted">{table.table}</span>
         ) : null}
-        <span className="text-meta text-muted tabular-nums">{total} rows</span>
-        <span className="flex-1" />
+        <span className="text-lead text-muted tabular-nums">{total} rows</span>
+        <span className="ml-auto" />
         <Button size="sm" variant="ghost" onPress={() => void refresh()}>
           <LuRefreshCw />
           Refresh

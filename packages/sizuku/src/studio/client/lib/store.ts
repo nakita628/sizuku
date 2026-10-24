@@ -3,6 +3,9 @@ import { loadString, saveString } from "./storage.js";
 
 export type Theme = "light" | "dark";
 
+/** Whether the page is following the schema file: the server's event stream is open, not yet, or lost. */
+export type Connection = "connecting" | "live" | "offline";
+
 const THEME_KEY = "sizuku-studio:theme";
 const SIDEBAR_KEY = "sizuku-studio:sidebar";
 
@@ -27,9 +30,11 @@ function initialTheme(): Theme {
 
 type UiStore = {
   readonly theme: Theme;
+  readonly connection: Connection;
   readonly sidebarOpen: boolean;
   readonly paletteOpen: boolean;
   readonly toggleTheme: () => void;
+  readonly setConnection: (connection: Connection) => void;
   readonly toggleSidebar: () => void;
   readonly openPalette: () => void;
   readonly closePalette: () => void;
@@ -37,6 +42,7 @@ type UiStore = {
 
 export const useUiStore = create<UiStore>()((set, get) => ({
   theme: initialTheme(),
+  connection: "connecting",
   sidebarOpen: loadString(SIDEBAR_KEY) !== "closed",
   // The palette is a moment, not a setting: it opens on the shortcut and is gone again.
   paletteOpen: false,
@@ -45,6 +51,9 @@ export const useUiStore = create<UiStore>()((set, get) => ({
     saveString(THEME_KEY, theme);
     applyTheme(theme);
     set({ theme });
+  },
+  setConnection: (connection) => {
+    set({ connection });
   },
   toggleSidebar: () => {
     const sidebarOpen = !get().sidebarOpen;

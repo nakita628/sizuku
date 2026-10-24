@@ -21,6 +21,8 @@
   --c-danger: #c2410c;
   --c-danger-soft: #fff4ec;
   --c-danger-line: #fed7aa;
+  --c-warn: #b45309;
+  --c-warn-soft: #fff7e6;
   --c-node: #1f2233;
   --c-node-text: #f4f5fa;
   --c-edge: #9095ab;
@@ -34,6 +36,17 @@
   --c-tok-string: #0f766e;
   --c-tok-number: #b45309;
   --c-tok-definition: #1d4ed8;
+  /* The nodes of a statement's data-flow picture: one hue per family, so it reads at a glance. */
+  --c-kind-source: #0f766e;
+  --c-kind-source-soft: #e6f6f3;
+  --c-kind-shape: #1d4ed8;
+  --c-kind-shape-soft: #e8efff;
+  --c-kind-filter: #b45309;
+  --c-kind-filter-soft: #fff4e5;
+  --c-kind-output: #7c3aed;
+  --c-kind-output-soft: #f1eaff;
+  --c-kind-write: #c2410c;
+  --c-kind-write-soft: #fff1ea;
 }
 
 .dark {
@@ -51,6 +64,8 @@
   --c-danger: #fb923c;
   --c-danger-soft: #2b1d14;
   --c-danger-line: #5b3a1f;
+  --c-warn: #fbbf24;
+  --c-warn-soft: #2b2414;
   --c-node: #2a2f45;
   --c-node-text: #f4f5fa;
   --c-edge: #6b7189;
@@ -64,6 +79,16 @@
   --c-tok-string: #5eead4;
   --c-tok-number: #fcd34d;
   --c-tok-definition: #93c5fd;
+  --c-kind-source: #5eead4;
+  --c-kind-source-soft: #12302c;
+  --c-kind-shape: #93c5fd;
+  --c-kind-shape-soft: #172445;
+  --c-kind-filter: #fcd34d;
+  --c-kind-filter-soft: #2e2611;
+  --c-kind-output: #c4b5fd;
+  --c-kind-output-soft: #26204a;
+  --c-kind-write: #fb923c;
+  --c-kind-write-soft: #3a2113;
 }
 
 /* HeroUI reads its own variables; pointed at the palette above, its components follow the theme. */
@@ -84,6 +109,8 @@
     --default-foreground: var(--c-ink);
     --border: var(--c-line-strong);
     --separator: var(--c-line);
+    /* HeroUI mixes these two out of --surface for the lines inside a table; the palette has a
+       colour for a line already, and a grid whose rules disagree with its borders looks unfinished. */
     --separator-secondary: var(--c-line);
     --separator-tertiary: var(--c-line);
     --focus: var(--c-accent);
@@ -115,6 +142,8 @@
   --color-danger: var(--c-danger);
   --color-danger-soft: var(--c-danger-soft);
   --color-danger-line: var(--c-danger-line);
+  --color-warn: var(--c-warn);
+  --color-warn-soft: var(--c-warn-soft);
   --color-node: var(--c-node);
   --color-node-text: var(--c-node-text);
   --color-edge: var(--c-edge);
@@ -123,12 +152,24 @@
   --color-enum: var(--c-enum);
   --color-ok: var(--c-ok);
   --color-busy: var(--c-busy);
+  --color-kind-source: var(--c-kind-source);
+  --color-kind-source-soft: var(--c-kind-source-soft);
+  --color-kind-shape: var(--c-kind-shape);
+  --color-kind-shape-soft: var(--c-kind-shape-soft);
+  --color-kind-filter: var(--c-kind-filter);
+  --color-kind-filter-soft: var(--c-kind-filter-soft);
+  --color-kind-output: var(--c-kind-output);
+  --color-kind-output-soft: var(--c-kind-output-soft);
+  --color-kind-write: var(--c-kind-write);
+  --color-kind-write-soft: var(--c-kind-write-soft);
   --font-sans:
     ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans CJK JP",
     sans-serif;
   --font-mono:
     ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", "Noto Sans Mono CJK JP", monospace;
 
+  /* The type scale, named for what each step is for: one scale, and a size that is not on it is a
+     mistake rather than a decision. The three steps that always set their leading carry it. */
   --text-badge: 8.5px;
   --text-badge--line-height: 11px;
   --text-caption: 9.5px;
@@ -139,7 +180,9 @@
   --text-code: 12.5px;
   --text-body: 13px;
   --text-ui: 14px;
+  --text-lead: 15px;
   --text-section: 18px;
+  --text-heading: 20px;
   --text-title: 22px;
 }
 
@@ -148,15 +191,83 @@
   body,
   #root {
     height: 100%;
+    margin: 0;
   }
 
   body {
-    margin: 0;
-    background: var(--c-canvas);
-    color: var(--c-ink);
-    font-family: var(--font-sans);
-    font-size: 13px;
-    -webkit-font-smoothing: antialiased;
+    @apply bg-canvas font-sans text-ui text-ink antialiased;
+  }
+}
+
+@layer components {
+  /* The `h1` of a page, and the small capitals that head a group in the sidebar or a panel. */
+  .page-title {
+    @apply m-0 text-title font-bold tracking-tight;
+  }
+
+  .heading {
+    @apply mb-2 text-meta font-bold tracking-[0.08em] text-faint uppercase;
+  }
+
+  .cell-input {
+    @apply w-full min-w-24 rounded border border-accent bg-surface px-1.5 py-0.5 font-mono text-code text-ink outline-none;
+  }
+
+  .error-box {
+    @apply rounded-[10px] border border-danger-line bg-danger-soft p-4 font-mono text-code whitespace-pre-wrap text-ink;
+  }
+
+  /* The cells of the plain `<table>`s that are read rather than worked in: the docs, and the SQL
+     page's lists. The tables that are worked in are HeroUI `Table`s, dressed by `.studio-table`. */
+  .th {
+    @apply sticky top-0 border-b border-line bg-surface-2 px-3.5 py-2.5 text-left text-code font-semibold whitespace-nowrap text-muted;
+  }
+
+  .td {
+    @apply border-b border-line px-3.5 py-2 align-top text-code;
+  }
+
+  /* A small pill naming a statement, a kind or a source column. */
+  .pill {
+    @apply inline-flex items-center rounded-full border px-2 py-px font-mono text-caption whitespace-nowrap;
+  }
+
+  /* HeroUI's `secondary` table is spaced for a dozen rows of prose; a page of a hundred rows is
+     read at the density of a spreadsheet, with its header held while they scroll under it. */
+  .studio-table .table__column {
+    @apply sticky top-0 z-10 border-b border-line px-3 py-2 text-code font-semibold whitespace-nowrap text-muted;
+  }
+
+  /* The variant rounds the outermost column headers into a card. These tables run edge to edge. */
+  .studio-table .table__column:first-child,
+  .studio-table .table__column:last-child {
+    border-radius: 0;
+  }
+
+  .studio-table .table__cell {
+    @apply px-3 py-1.5 align-top text-code;
+  }
+
+  /* The picked cell is the one holding the focus, drawn by CSS rather than by state, so a page of
+     a hundred rows is not redrawn for a click. Its buttons appear under the pointer or the focus. */
+  .studio-table .table__cell:focus-within {
+    box-shadow: inset 0 0 0 1px var(--c-accent);
+  }
+
+  .studio-table .cell-actions {
+    visibility: hidden;
+  }
+
+  .studio-table .table__cell:hover .cell-actions,
+  .studio-table .table__cell:focus-within .cell-actions {
+    visibility: visible;
+  }
+
+  /* A cell holding controls rather than a value centres them on the row instead. */
+  .studio-table .table__cell:has(> button),
+  .studio-table .table__cell:has(> label),
+  .studio-table .table__cell:has(> div > button) {
+    @apply py-1 align-middle;
   }
 }
 

@@ -206,8 +206,11 @@ export function SchemaView() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex items-center gap-2 border-b border-line bg-surface px-4 py-2">
-        <h1 className="font-mono text-ui font-semibold">{snapshot?.file ?? "…"}</h1>
+      <header className="flex flex-nowrap items-center gap-3.5 border-b border-line bg-surface px-6 py-3">
+        <h1 className="page-title shrink-0">Schema</h1>
+        <span className="min-w-0 truncate font-mono text-lead text-muted">
+          {snapshot?.file ?? "…"}
+        </span>
         <Chip size="sm" color={status.color} variant="soft">
           {status.label}
         </Chip>
@@ -225,7 +228,7 @@ export function SchemaView() {
             </Tooltip.Content>
           </Tooltip>
         )}
-        <span className="flex-1" />
+        <span className="ml-auto" />
         <Button
           size="sm"
           variant="ghost"

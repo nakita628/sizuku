@@ -322,7 +322,7 @@ export function DocsView() {
       </nav>
       <div className="min-h-0 overflow-auto">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
-          <h1 className="text-title font-semibold">Schema docs</h1>
+          <h1 className="page-title">Schema docs</h1>
           {docs.parseError ? (
             <p className="rounded-lg border border-danger-line bg-danger-soft px-3 py-2 font-mono text-code text-danger">
               The saved schema does not parse (line {docs.parseError.line}):{" "}

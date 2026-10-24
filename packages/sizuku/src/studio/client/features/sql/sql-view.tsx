@@ -1,4 +1,4 @@
-import { Button } from "@heroui/react";
+import { Button, Kbd } from "@heroui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { LuPlay } from "react-icons/lu";
@@ -44,13 +44,16 @@ export function SqlView() {
   const result = run.data ?? null;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex items-center gap-2 border-b border-line bg-surface px-4 py-2">
-        <h1 className="text-ui font-semibold">SQL</h1>
-        <span className="font-mono text-meta text-muted">
-          {db.connected ? `${db.dialect} · ${db.url}` : "no database"}
+      <header className="flex flex-wrap items-center gap-3.5 border-b border-line bg-surface px-6 py-3">
+        <h1 className="page-title">SQL</h1>
+        <span className="min-w-0 text-lead [overflow-wrap:anywhere] text-muted">
+          {db.connected ? `${db.dialect} · ${db.url}` : "No database connected"}
         </span>
-        <span className="flex-1" />
-        <span className="text-meta text-faint">Ctrl/Cmd + Enter</span>
+        <span className="ml-auto flex items-center gap-1.5 text-code text-faint">
+          <Kbd>⌘/Ctrl</Kbd>
+          <Kbd>Enter</Kbd>
+          to run
+        </span>
         <Button size="sm" onPress={execute} isDisabled={!db.connected || run.isPending}>
           <LuPlay />
           Run

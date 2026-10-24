@@ -1,10 +1,11 @@
-import { Button, Tooltip } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LuBook,
-  LuDatabase,
+  LuDroplet,
   LuFileCode,
+  LuList,
   LuMoon,
   LuPanelLeft,
   LuSun,
@@ -12,19 +13,19 @@ import {
   LuTerminal,
   LuZap,
 } from "react-icons/lu";
-import { useDb, useDbCounts, useSchema } from "../../hooks/index.js";
+import { useDb, useDbCounts, useDocs, useSchema } from "../../hooks/index.js";
 import { useUiStore } from "../../lib/store.js";
 import { PaletteButton } from "../palette/palette.js";
 
-const NAV = "flex items-center gap-2.5 rounded-lg px-3 py-2 text-ui";
+const NAV = "flex items-center gap-2.5 rounded-lg px-3 py-2 text-lead";
 const NAV_ACTIVE = { className: `${NAV} bg-accent-soft font-semibold text-accent-text` } as const;
 const NAV_INACTIVE = { className: `${NAV} hover:bg-canvas` } as const;
 
-const TABLE = "flex items-center gap-2 rounded-lg border px-3 py-[7px] font-mono text-body";
-const TABLE_ACTIVE = {
-  className: `${TABLE} border-accent bg-accent-soft font-semibold text-accent-text`,
+const ENTITY = "flex items-center gap-2 rounded-lg border px-3 py-[7px] font-mono text-body";
+const ENTITY_ACTIVE = {
+  className: `${ENTITY} border-accent bg-accent-soft font-semibold text-accent-text`,
 } as const;
-const TABLE_INACTIVE = { className: `${TABLE} border-transparent hover:bg-canvas` } as const;
+const ENTITY_INACTIVE = { className: `${ENTITY} border-transparent hover:bg-canvas` } as const;
 
 function NavLink({
   to,
@@ -42,64 +43,74 @@ function NavLink({
       activeProps={NAV_ACTIVE}
       inactiveProps={NAV_INACTIVE}
     >
-      <span className="shrink-0">{icon}</span>
-      {children}
+      <span className="inline-flex opacity-85">{icon}</span>
+      <span>{children}</span>
     </Link>
   );
 }
 
-function StatusDot({
-  connected,
-  failed,
-}: {
-  readonly connected: boolean;
-  readonly failed: boolean;
-}) {
+function StatusDot({ on, warn = false }: { readonly on: boolean; readonly warn?: boolean }) {
   return (
     <span
-      aria-hidden
-      className={`inline-block size-2 shrink-0 rounded-full ${connected ? "bg-ok" : failed ? "bg-danger" : "bg-faint"}`}
+      className={`size-2 shrink-0 rounded-full ${on ? "bg-ok ring-[3px] ring-ok/20" : warn ? "bg-danger" : "bg-faint"}`}
     />
   );
 }
 
-/** The studio's navigation: the pages, the tables of the schema with their row counts, and the database. */
+/**
+ * The studio's navigation: the pages, the tables of the schema with their row counts, its enums,
+ * and whether the file and the database are being followed.
+ */
 export function Sidebar() {
   const file = useSchema().data?.file ?? null;
+  const docs = useDocs().data ?? null;
   const db = useDb().data ?? null;
-  const counts =
-    useDbCounts({ query: { enabled: db?.connected === true, retry: false } }).data?.counts ?? {};
+  const connected = db?.connected === true;
+  const counts = useDbCounts({ query: { enabled: connected, retry: false } }).data?.counts ?? {};
+  const connection = useUiStore((s) => s.connection);
   const theme = useUiStore((s) => s.theme);
   const toggleTheme = useUiStore((s) => s.toggleTheme);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
+  const tables = docs?.tables ?? [];
+  const enums = docs?.enums ?? [];
+  const status =
+    connection === "live" ? "Watching" : connection === "offline" ? "Disconnected" : "Connecting";
   return (
-    <aside className="flex min-h-0 flex-col border-r border-line bg-surface">
-      <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-        <span className="text-section">💧</span>
-        <div className="min-w-0 flex-1">
-          <div className="text-ui font-semibold">sizuku studio</div>
-          <div className="truncate font-mono text-meta text-muted">{file ?? "…"}</div>
-        </div>
+    <aside className="flex min-h-0 flex-col overflow-y-auto border-r border-line bg-surface">
+      <div className="flex items-center gap-1.5 px-[18px] pt-[18px] pb-3.5">
+        <Link className="flex min-w-0 items-center gap-2 text-lead font-bold tracking-tight" to="/">
+          <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent text-white">
+            <LuDroplet size={18} />
+          </span>
+          <span className="truncate">Sizuku Studio</span>
+        </Link>
         <Button
           variant="ghost"
-          isIconOnly
           size="sm"
-          className="text-muted"
+          isIconOnly
+          className="ml-auto size-7 shrink-0 text-muted"
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          onPress={toggleTheme}
+        >
+          {theme === "dark" ? <LuSun /> : <LuMoon />}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          isIconOnly
+          className="size-7 shrink-0 text-muted"
           aria-label="Hide the sidebar"
           onPress={toggleSidebar}
         >
           <LuPanelLeft />
         </Button>
       </div>
-      <div className="px-2 pb-2">
+      <div className="px-2.5 pb-2">
         <PaletteButton />
       </div>
-      <nav className="flex flex-col gap-0.5 px-2">
+      <nav className="flex flex-col gap-0.5 px-2.5 pb-3">
         <NavLink to="/" icon={<LuFileCode />}>
           Schema
-        </NavLink>
-        <NavLink to="/docs" icon={<LuBook />}>
-          Docs
         </NavLink>
         <NavLink to="/query" icon={<LuZap />}>
           Query
@@ -107,55 +118,87 @@ export function Sidebar() {
         <NavLink to="/sql" icon={<LuTerminal />}>
           SQL
         </NavLink>
+        <NavLink to="/docs" icon={<LuBook />}>
+          Docs
+        </NavLink>
       </nav>
-      <div className="mt-4 flex items-center gap-2 px-5 pb-1 text-meta font-semibold tracking-wide text-faint uppercase">
-        <LuTable />
-        Tables
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto px-2 pb-2">
-        {(db?.tables ?? []).map((table) => (
-          <Link
-            key={table.name}
-            to="/data/$table"
-            params={{ table: table.name }}
-            activeProps={TABLE_ACTIVE}
-            inactiveProps={TABLE_INACTIVE}
-          >
-            <span className="flex-1 truncate">{table.name}</span>
-            {counts[table.name] === undefined ? null : (
-              <span className="text-meta text-faint tabular-nums">{counts[table.name]}</span>
-            )}
-          </Link>
-        ))}
-        {db !== null && db.tables.length === 0 ? (
-          <p className="px-3 py-2 text-meta text-faint">No tables in the schema.</p>
+      <div className="px-2.5 pb-2.5">
+        <div className="heading px-3 pt-2.5 pb-1.5">Tables</div>
+        <ul className="m-0 list-none p-0">
+          {tables.map((table) => (
+            <li key={table.name}>
+              <Link
+                to="/data/$table"
+                params={{ table: table.name }}
+                activeProps={ENTITY_ACTIVE}
+                inactiveProps={ENTITY_INACTIVE}
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className={`shrink-0 ${isActive ? "text-accent" : "text-faint"}`}>
+                      <LuTable size={15} />
+                    </span>
+                    <span className="flex-1 truncate">{table.name}</span>
+                    {counts[table.name] === undefined ? null : (
+                      <span className="text-meta font-normal text-faint tabular-nums">
+                        {counts[table.name]}
+                      </span>
+                    )}
+                  </>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        {docs !== null && tables.length === 0 ? (
+          <p className="m-0 px-3 py-2 text-meta text-faint">No tables in the schema.</p>
         ) : null}
       </div>
-      <div className="flex items-center gap-1 border-t border-line px-3 py-2">
-        <Tooltip delay={300}>
-          <Tooltip.Trigger className="flex min-w-0 flex-1 items-center gap-2 text-meta text-muted">
-            <LuDatabase className="shrink-0" />
-            <StatusDot connected={db?.connected === true} failed={db?.error != null} />
-            <span className="truncate">
-              {db?.connected ? db.dialect : db?.error ? "not connected" : "no database"}
-            </span>
-          </Tooltip.Trigger>
-          <Tooltip.Content className="max-w-80 text-meta">
-            {db?.connected
-              ? db.url
-              : (db?.error ??
-                "Start the studio with --url, or set DATABASE_URL, to browse and edit rows.")}
-          </Tooltip.Content>
-        </Tooltip>
-        <Button
-          variant="ghost"
-          isIconOnly
-          size="sm"
-          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-          onPress={toggleTheme}
-        >
-          {theme === "dark" ? <LuSun /> : <LuMoon />}
-        </Button>
+      {enums.length > 0 ? (
+        <div className="px-2.5 pb-2.5">
+          <div className="heading px-3 pt-2.5 pb-1.5">Enums</div>
+          <ul className="m-0 list-none p-0">
+            {enums.map((value) => (
+              <li key={value.name}>
+                <Link to="/docs" hash={`enum-${value.name}`} className={ENTITY_INACTIVE.className}>
+                  <span className="shrink-0 text-faint">
+                    <LuList size={15} />
+                  </span>
+                  <span className="flex-1 truncate">{value.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <div className="mt-auto flex flex-col gap-1 border-t border-line px-[18px] py-3 text-code text-muted">
+        <div className="flex items-center gap-2">
+          <StatusDot on={connection === "live"} warn={connection === "offline"} />
+          <span className="truncate">
+            {status}
+            {file ? ` · ${file}` : ""}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusDot on={connected} warn={db?.error != null} />
+          <span
+            className="truncate"
+            title={
+              db?.error ??
+              (connected
+                ? undefined
+                : "Start the studio with --url, or set DATABASE_URL, to browse and edit rows.")
+            }
+          >
+            {db === null
+              ? "Database: checking…"
+              : connected
+                ? `${db.dialect ?? "database"} · ${db.url ?? ""}`
+                : db.error
+                  ? "Database not connected"
+                  : "No database connected"}
+          </span>
+        </div>
       </div>
     </aside>
   );

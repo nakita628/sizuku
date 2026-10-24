@@ -50,8 +50,6 @@ export function PaletteButton({ compact = false }: { readonly compact?: boolean 
       <Button
         variant="ghost"
         isIconOnly
-        size="sm"
-        className="text-muted"
         aria-label={`${label} (${shortcutLabel()})`}
         onPress={openPalette}
       >
@@ -60,13 +58,7 @@ export function PaletteButton({ compact = false }: { readonly compact?: boolean 
     );
   }
   return (
-    <Button
-      variant="ghost"
-      fullWidth
-      size="sm"
-      className="justify-start text-muted"
-      onPress={openPalette}
-    >
+    <Button variant="ghost" fullWidth className="justify-start text-muted" onPress={openPalette}>
       <LuSearch size={15} />
       <span>{label}</span>
       <Kbd className="ml-auto">{shortcutLabel()}</Kbd>
