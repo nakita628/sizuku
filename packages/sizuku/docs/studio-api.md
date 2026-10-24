@@ -3,7 +3,7 @@
 > Scroll down for code samples, example requests and responses. Select a language for code samples from the tabs above or the mobile navigation menu.
 
 Local API behind `sizuku studio`: the Drizzle schema file on disk, its ER diagram and docs,
-the formatter, and the connected database. It listens on loopback only and has no
+the formatter, the project's TypeScript for the editor, and the connected database. It listens on loopback only and has no
 authentication, so nothing here is reachable from another origin.
 
 <h1 id="sizuku-studio-api-schema">schema</h1>
@@ -1536,6 +1536,610 @@ Run one SQL statement.
 This operation does not require authentication
 </aside>
 
+<h1 id="sizuku-studio-api-language">language</h1>
+
+## readLanguageStatus
+
+<a id="opIdreadLanguageStatus"></a>
+
+> Code samples
+
+```bash
+curl http://127.0.0.1:4983/api/language \
+  -H 'Accept: application/json'
+```
+
+`GET /language`
+
+Whether the project's TypeScript is loaded, and why not when it is not.
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "typescript": "string",
+  "reason": "string"
+}
+```
+
+> 500 Response
+
+```json
+{
+  "type": "/problems/internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "string",
+  "instance": "string"
+}
+```
+
+<h3 id="readlanguagestatus-responses">Responses</h3>
+
+| Status | Meaning               | Description                                            | Schema                                                |
+| ------ | --------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| 200    | OK                    | The request has succeeded.                             | [LanguageStatus](#schemalanguagestatus)               |
+| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem) |
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## complete
+
+<a id="opIdcomplete"></a>
+
+> Code samples
+
+```bash
+curl http://127.0.0.1:4983/api/language/complete \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "source": "string",
+    "offset": 0
+  }'
+```
+
+`POST /language/complete`
+
+The completions at the cursor.
+
+> Body parameter
+
+```json
+{
+  "source": "string",
+  "offset": 0
+}
+```
+
+<h3 id="complete-parameters">Parameters</h3>
+
+| Name     | In   | Type                                | Required | Description                     |
+| -------- | ---- | ----------------------------------- | -------- | ------------------------------- |
+| body     | body | [PositionBody](#schemapositionbody) | true     | none                            |
+| » source | body | string                              | true     | The schema source, saved or not |
+| » offset | body | integer(int32)                      | true     | The UTF-16 offset of the cursor |
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "items": [
+    {
+      "label": "string",
+      "kind": "string",
+      "sortText": "string",
+      "insertText": "string",
+      "replacement": {
+        "start": 0,
+        "end": 0
+      }
+    }
+  ]
+}
+```
+
+> 422 Response
+
+```json
+{
+  "type": "/problems/validation-failed",
+  "title": "Validation Failed",
+  "status": 422,
+  "detail": "string",
+  "instance": "string",
+  "errors": [
+    {
+      "field": "string",
+      "message": "string"
+    }
+  ]
+}
+```
+
+> 500 Response
+
+```json
+{
+  "type": "/problems/internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "string",
+  "instance": "string"
+}
+```
+
+> 503 Response
+
+```json
+{
+  "type": "/problems/service-unavailable",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "No database is connected. Pass --url to sizuku studio or set DATABASE_URL.",
+  "instance": "/api/db/counts"
+}
+```
+
+<h3 id="complete-responses">Responses</h3>
+
+| Status | Meaning               | Description                                            | Schema                                                        |
+| ------ | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| 200    | OK                    | The request has succeeded.                             | [Completions](#schemacompletions)                             |
+| 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)                 |
+| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem)         |
+| 503    | Service Unavailable   | 503 Service Unavailable (`application/problem+json`)   | [ServiceUnavailableProblem](#schemaserviceunavailableproblem) |
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## completeDetail
+
+<a id="opIdcompleteDetail"></a>
+
+> Code samples
+
+```bash
+curl http://127.0.0.1:4983/api/language/complete/detail \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "source": "string",
+    "offset": 0,
+    "name": "string"
+  }'
+```
+
+`POST /language/complete/detail`
+
+The type and documentation of one completion.
+
+> Body parameter
+
+```json
+{
+  "source": "string",
+  "offset": 0,
+  "name": "string"
+}
+```
+
+<h3 id="completedetail-parameters">Parameters</h3>
+
+| Name     | In   | Type                                                | Required | Description                     |
+| -------- | ---- | --------------------------------------------------- | -------- | ------------------------------- |
+| body     | body | [CompletionDetailBody](#schemacompletiondetailbody) | true     | none                            |
+| » source | body | string                                              | true     | The schema source, saved or not |
+| » offset | body | integer(int32)                                      | true     | The UTF-16 offset of the cursor |
+| » name   | body | string                                              | true     | The name of the completion      |
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "detail": "string",
+  "documentation": "string"
+}
+```
+
+> 422 Response
+
+```json
+{
+  "type": "/problems/validation-failed",
+  "title": "Validation Failed",
+  "status": 422,
+  "detail": "string",
+  "instance": "string",
+  "errors": [
+    {
+      "field": "string",
+      "message": "string"
+    }
+  ]
+}
+```
+
+> 500 Response
+
+```json
+{
+  "type": "/problems/internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "string",
+  "instance": "string"
+}
+```
+
+> 503 Response
+
+```json
+{
+  "type": "/problems/service-unavailable",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "No database is connected. Pass --url to sizuku studio or set DATABASE_URL.",
+  "instance": "/api/db/counts"
+}
+```
+
+<h3 id="completedetail-responses">Responses</h3>
+
+| Status | Meaning               | Description                                            | Schema                                                        |
+| ------ | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| 200    | OK                    | The request has succeeded.                             | [CompletionDetail](#schemacompletiondetail)                   |
+| 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)                 |
+| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem)         |
+| 503    | Service Unavailable   | 503 Service Unavailable (`application/problem+json`)   | [ServiceUnavailableProblem](#schemaserviceunavailableproblem) |
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## hover
+
+<a id="opIdhover"></a>
+
+> Code samples
+
+```bash
+curl http://127.0.0.1:4983/api/language/hover \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "source": "string",
+    "offset": 0
+  }'
+```
+
+`POST /language/hover`
+
+What TypeScript says about the symbol at the cursor.
+
+> Body parameter
+
+```json
+{
+  "source": "string",
+  "offset": 0
+}
+```
+
+<h3 id="hover-parameters">Parameters</h3>
+
+| Name     | In   | Type                                | Required | Description                     |
+| -------- | ---- | ----------------------------------- | -------- | ------------------------------- |
+| body     | body | [PositionBody](#schemapositionbody) | true     | none                            |
+| » source | body | string                              | true     | The schema source, saved or not |
+| » offset | body | integer(int32)                      | true     | The UTF-16 offset of the cursor |
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "contents": "string",
+  "range": {
+    "start": 0,
+    "end": 0
+  }
+}
+```
+
+> 422 Response
+
+```json
+{
+  "type": "/problems/validation-failed",
+  "title": "Validation Failed",
+  "status": 422,
+  "detail": "string",
+  "instance": "string",
+  "errors": [
+    {
+      "field": "string",
+      "message": "string"
+    }
+  ]
+}
+```
+
+> 500 Response
+
+```json
+{
+  "type": "/problems/internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "string",
+  "instance": "string"
+}
+```
+
+> 503 Response
+
+```json
+{
+  "type": "/problems/service-unavailable",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "No database is connected. Pass --url to sizuku studio or set DATABASE_URL.",
+  "instance": "/api/db/counts"
+}
+```
+
+<h3 id="hover-responses">Responses</h3>
+
+| Status | Meaning               | Description                                            | Schema                                                        |
+| ------ | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| 200    | OK                    | The request has succeeded.                             | [Hover](#schemahover)                                         |
+| 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)                 |
+| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem)         |
+| 503    | Service Unavailable   | 503 Service Unavailable (`application/problem+json`)   | [ServiceUnavailableProblem](#schemaserviceunavailableproblem) |
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## signature
+
+<a id="opIdsignature"></a>
+
+> Code samples
+
+```bash
+curl http://127.0.0.1:4983/api/language/signature \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "source": "string",
+    "offset": 0
+  }'
+```
+
+`POST /language/signature`
+
+The signatures of the call the cursor is in.
+
+> Body parameter
+
+```json
+{
+  "source": "string",
+  "offset": 0
+}
+```
+
+<h3 id="signature-parameters">Parameters</h3>
+
+| Name     | In   | Type                                | Required | Description                     |
+| -------- | ---- | ----------------------------------- | -------- | ------------------------------- |
+| body     | body | [PositionBody](#schemapositionbody) | true     | none                            |
+| » source | body | string                              | true     | The schema source, saved or not |
+| » offset | body | integer(int32)                      | true     | The UTF-16 offset of the cursor |
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "signatures": [
+    {
+      "label": "string",
+      "documentation": "string",
+      "parameters": [
+        {
+          "label": "string",
+          "documentation": "string"
+        }
+      ]
+    }
+  ],
+  "activeSignature": 0,
+  "activeParameter": 0
+}
+```
+
+> 422 Response
+
+```json
+{
+  "type": "/problems/validation-failed",
+  "title": "Validation Failed",
+  "status": 422,
+  "detail": "string",
+  "instance": "string",
+  "errors": [
+    {
+      "field": "string",
+      "message": "string"
+    }
+  ]
+}
+```
+
+> 500 Response
+
+```json
+{
+  "type": "/problems/internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "string",
+  "instance": "string"
+}
+```
+
+> 503 Response
+
+```json
+{
+  "type": "/problems/service-unavailable",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "No database is connected. Pass --url to sizuku studio or set DATABASE_URL.",
+  "instance": "/api/db/counts"
+}
+```
+
+<h3 id="signature-responses">Responses</h3>
+
+| Status | Meaning               | Description                                            | Schema                                                        |
+| ------ | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| 200    | OK                    | The request has succeeded.                             | [SignatureHelp](#schemasignaturehelp)                         |
+| 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)                 |
+| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem)         |
+| 503    | Service Unavailable   | 503 Service Unavailable (`application/problem+json`)   | [ServiceUnavailableProblem](#schemaserviceunavailableproblem) |
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## diagnostics
+
+<a id="opIddiagnostics"></a>
+
+> Code samples
+
+```bash
+curl http://127.0.0.1:4983/api/language/diagnostics \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "source": "string"
+  }'
+```
+
+`POST /language/diagnostics`
+
+The type errors of the source.
+
+> Body parameter
+
+```json
+{
+  "source": "string"
+}
+```
+
+<h3 id="diagnostics-parameters">Parameters</h3>
+
+| Name     | In   | Type                            | Required | Description                     |
+| -------- | ---- | ------------------------------- | -------- | ------------------------------- |
+| body     | body | [SourceBody](#schemasourcebody) | true     | none                            |
+| » source | body | string                          | true     | The schema source, saved or not |
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "diagnostics": [
+    {
+      "message": "string",
+      "severity": "error",
+      "range": {
+        "start": 0,
+        "end": 0
+      }
+    }
+  ]
+}
+```
+
+> 422 Response
+
+```json
+{
+  "type": "/problems/validation-failed",
+  "title": "Validation Failed",
+  "status": 422,
+  "detail": "string",
+  "instance": "string",
+  "errors": [
+    {
+      "field": "string",
+      "message": "string"
+    }
+  ]
+}
+```
+
+> 500 Response
+
+```json
+{
+  "type": "/problems/internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "string",
+  "instance": "string"
+}
+```
+
+> 503 Response
+
+```json
+{
+  "type": "/problems/service-unavailable",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "No database is connected. Pass --url to sizuku studio or set DATABASE_URL.",
+  "instance": "/api/db/counts"
+}
+```
+
+<h3 id="diagnostics-responses">Responses</h3>
+
+| Status | Meaning               | Description                                            | Schema                                                        |
+| ------ | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| 200    | OK                    | The request has succeeded.                             | [Diagnostics](#schemadiagnostics)                             |
+| 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)                 |
+| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem)         |
+| 503    | Service Unavailable   | 503 Service Unavailable (`application/problem+json`)   | [ServiceUnavailableProblem](#schemaserviceunavailableproblem) |
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
 # Schemas
 
 <h2 id="tocS_ParseError">ParseError</h2>
@@ -2739,3 +3343,386 @@ A statement for the SQL console.
 | Name | Type   | Required | Restrictions | Description       |
 | ---- | ------ | -------- | ------------ | ----------------- |
 | sql  | string | true     | none         | The SQL statement |
+
+<h2 id="tocS_LanguageStatus">LanguageStatus</h2>
+<!-- backwards compatibility -->
+<a id="schemalanguagestatus"></a>
+<a id="schema_LanguageStatus"></a>
+<a id="tocSlanguagestatus"></a>
+<a id="tocslanguagestatus"></a>
+
+```json
+{
+  "typescript": "string",
+  "reason": "string"
+}
+```
+
+Whether the editor has TypeScript behind it.
+
+### Properties
+
+| Name       | Type           | Required | Restrictions | Description                                                               |
+| ---------- | -------------- | -------- | ------------ | ------------------------------------------------------------------------- |
+| typescript | string \| null | true     | none         | The version of the project's TypeScript, null when it could not be loaded |
+| reason     | string \| null | true     | none         | Why there is no language service, null when there is one                  |
+
+<h2 id="tocS_TextRange">TextRange</h2>
+<!-- backwards compatibility -->
+<a id="schematextrange"></a>
+<a id="schema_TextRange"></a>
+<a id="tocStextrange"></a>
+<a id="tocstextrange"></a>
+
+```json
+{
+  "start": 0,
+  "end": 0
+}
+```
+
+A stretch of the source, as UTF-16 offsets.
+
+### Properties
+
+| Name  | Type           | Required | Restrictions | Description     |
+| ----- | -------------- | -------- | ------------ | --------------- |
+| start | integer(int32) | true     | none         | Where it starts |
+| end   | integer(int32) | true     | none         | Where it ends   |
+
+<h2 id="tocS_CompletionItem">CompletionItem</h2>
+<!-- backwards compatibility -->
+<a id="schemacompletionitem"></a>
+<a id="schema_CompletionItem"></a>
+<a id="tocScompletionitem"></a>
+<a id="tocscompletionitem"></a>
+
+```json
+{
+  "label": "string",
+  "kind": "string",
+  "sortText": "string",
+  "insertText": "string",
+  "replacement": {
+    "start": 0,
+    "end": 0
+  }
+}
+```
+
+One thing TypeScript offers at the cursor.
+
+### Properties
+
+| Name        | Type           | Required | Restrictions | Description                                                             |
+| ----------- | -------------- | -------- | ------------ | ----------------------------------------------------------------------- |
+| label       | string         | true     | none         | What is shown and inserted                                              |
+| kind        | string         | true     | none         | TypeScript's kind of the entry: `method`, `property`, `function`, ...   |
+| sortText    | string         | true     | none         | How TypeScript orders it                                                |
+| insertText  | string \| null | true     | none         | Text to insert in place of the label, when it differs                   |
+| replacement | object \| null | true     | none         | The text the completion replaces, when it is not the word at the cursor |
+
+<h2 id="tocS_Completions">Completions</h2>
+<!-- backwards compatibility -->
+<a id="schemacompletions"></a>
+<a id="schema_Completions"></a>
+<a id="tocScompletions"></a>
+<a id="tocscompletions"></a>
+
+```json
+{
+  "items": [
+    {
+      "label": "string",
+      "kind": "string",
+      "sortText": "string",
+      "insertText": "string",
+      "replacement": {
+        "start": 0,
+        "end": 0
+      }
+    }
+  ]
+}
+```
+
+The completions at the cursor.
+
+### Properties
+
+| Name  | Type                                      | Required | Restrictions | Description                      |
+| ----- | ----------------------------------------- | -------- | ------------ | -------------------------------- |
+| items | [[CompletionItem](#schemacompletionitem)] | true     | none         | The items, in TypeScript's order |
+
+<h2 id="tocS_PositionBody">PositionBody</h2>
+<!-- backwards compatibility -->
+<a id="schemapositionbody"></a>
+<a id="schema_PositionBody"></a>
+<a id="tocSpositionbody"></a>
+<a id="tocspositionbody"></a>
+
+```json
+{
+  "source": "string",
+  "offset": 0
+}
+```
+
+The editor buffer and a place in it.
+
+### Properties
+
+| Name   | Type           | Required | Restrictions | Description                     |
+| ------ | -------------- | -------- | ------------ | ------------------------------- |
+| source | string         | true     | none         | The schema source, saved or not |
+| offset | integer(int32) | true     | none         | The UTF-16 offset of the cursor |
+
+<h2 id="tocS_CompletionDetail">CompletionDetail</h2>
+<!-- backwards compatibility -->
+<a id="schemacompletiondetail"></a>
+<a id="schema_CompletionDetail"></a>
+<a id="tocScompletiondetail"></a>
+<a id="tocscompletiondetail"></a>
+
+```json
+{
+  "detail": "string",
+  "documentation": "string"
+}
+```
+
+The type and documentation of one completion.
+
+### Properties
+
+| Name          | Type           | Required | Restrictions | Description                  |
+| ------------- | -------------- | -------- | ------------ | ---------------------------- |
+| detail        | string \| null | true     | none         | Its signature or type        |
+| documentation | string \| null | true     | none         | Its doc comment, as Markdown |
+
+<h2 id="tocS_CompletionDetailBody">CompletionDetailBody</h2>
+<!-- backwards compatibility -->
+<a id="schemacompletiondetailbody"></a>
+<a id="schema_CompletionDetailBody"></a>
+<a id="tocScompletiondetailbody"></a>
+<a id="tocscompletiondetailbody"></a>
+
+```json
+{
+  "source": "string",
+  "offset": 0,
+  "name": "string"
+}
+```
+
+A completion to describe in full.
+
+### Properties
+
+| Name   | Type           | Required | Restrictions | Description                     |
+| ------ | -------------- | -------- | ------------ | ------------------------------- |
+| source | string         | true     | none         | The schema source, saved or not |
+| offset | integer(int32) | true     | none         | The UTF-16 offset of the cursor |
+| name   | string         | true     | none         | The name of the completion      |
+
+<h2 id="tocS_Hover">Hover</h2>
+<!-- backwards compatibility -->
+<a id="schemahover"></a>
+<a id="schema_Hover"></a>
+<a id="tocShover"></a>
+<a id="tocshover"></a>
+
+```json
+{
+  "contents": "string",
+  "range": {
+    "start": 0,
+    "end": 0
+  }
+}
+```
+
+What TypeScript says about the symbol at the cursor.
+
+### Properties
+
+| Name     | Type           | Required | Restrictions | Description                                                |
+| -------- | -------------- | -------- | ------------ | ---------------------------------------------------------- |
+| contents | string \| null | true     | none         | The type and documentation, as Markdown; null over nothing |
+| range    | object \| null | true     | none         | The symbol's range                                         |
+
+<h2 id="tocS_SignatureParameter">SignatureParameter</h2>
+<!-- backwards compatibility -->
+<a id="schemasignatureparameter"></a>
+<a id="schema_SignatureParameter"></a>
+<a id="tocSsignatureparameter"></a>
+<a id="tocssignatureparameter"></a>
+
+```json
+{
+  "label": "string",
+  "documentation": "string"
+}
+```
+
+One parameter of a signature.
+
+### Properties
+
+| Name          | Type           | Required | Restrictions | Description                   |
+| ------------- | -------------- | -------- | ------------ | ----------------------------- |
+| label         | string         | true     | none         | How it reads in the signature |
+| documentation | string \| null | true     | none         | Its doc comment               |
+
+<h2 id="tocS_Signature">Signature</h2>
+<!-- backwards compatibility -->
+<a id="schemasignature"></a>
+<a id="schema_Signature"></a>
+<a id="tocSsignature"></a>
+<a id="tocssignature"></a>
+
+```json
+{
+  "label": "string",
+  "documentation": "string",
+  "parameters": [
+    {
+      "label": "string",
+      "documentation": "string"
+    }
+  ]
+}
+```
+
+One overload of the call.
+
+### Properties
+
+| Name          | Type                                              | Required | Restrictions | Description         |
+| ------------- | ------------------------------------------------- | -------- | ------------ | ------------------- |
+| label         | string                                            | true     | none         | The whole signature |
+| documentation | string \| null                                    | true     | none         | Its doc comment     |
+| parameters    | [[SignatureParameter](#schemasignatureparameter)] | true     | none         | Its parameters      |
+
+<h2 id="tocS_SignatureHelp">SignatureHelp</h2>
+<!-- backwards compatibility -->
+<a id="schemasignaturehelp"></a>
+<a id="schema_SignatureHelp"></a>
+<a id="tocSsignaturehelp"></a>
+<a id="tocssignaturehelp"></a>
+
+```json
+{
+  "signatures": [
+    {
+      "label": "string",
+      "documentation": "string",
+      "parameters": [
+        {
+          "label": "string",
+          "documentation": "string"
+        }
+      ]
+    }
+  ],
+  "activeSignature": 0,
+  "activeParameter": 0
+}
+```
+
+The signatures of the call the cursor is in.
+
+### Properties
+
+| Name            | Type                            | Required | Restrictions | Description                    |
+| --------------- | ------------------------------- | -------- | ------------ | ------------------------------ |
+| signatures      | [[Signature](#schemasignature)] | true     | none         | The overloads                  |
+| activeSignature | integer(int32)                  | true     | none         | The overload TypeScript picked |
+| activeParameter | integer(int32)                  | true     | none         | The parameter the cursor is on |
+
+<h2 id="tocS_Diagnostic">Diagnostic</h2>
+<!-- backwards compatibility -->
+<a id="schemadiagnostic"></a>
+<a id="schema_Diagnostic"></a>
+<a id="tocSdiagnostic"></a>
+<a id="tocsdiagnostic"></a>
+
+```json
+{
+  "message": "string",
+  "severity": "error",
+  "range": {
+    "start": 0,
+    "end": 0
+  }
+}
+```
+
+One problem TypeScript found.
+
+### Properties
+
+| Name     | Type   | Required | Restrictions | Description   |
+| -------- | ------ | -------- | ------------ | ------------- |
+| message  | string | true     | none         | What is wrong |
+| severity | string | true     | none         | How bad it is |
+| range    | object | true     | none         | Where it is   |
+
+#### Enumerated Values
+
+| Property | Value   |
+| -------- | ------- |
+| severity | error   |
+| severity | warning |
+| severity | info    |
+
+<h2 id="tocS_Diagnostics">Diagnostics</h2>
+<!-- backwards compatibility -->
+<a id="schemadiagnostics"></a>
+<a id="schema_Diagnostics"></a>
+<a id="tocSdiagnostics"></a>
+<a id="tocsdiagnostics"></a>
+
+```json
+{
+  "diagnostics": [
+    {
+      "message": "string",
+      "severity": "error",
+      "range": {
+        "start": 0,
+        "end": 0
+      }
+    }
+  ]
+}
+```
+
+The type errors of a source; its syntax errors come from the parser, with the diagram.
+
+### Properties
+
+| Name        | Type                              | Required | Restrictions | Description                        |
+| ----------- | --------------------------------- | -------- | ------------ | ---------------------------------- |
+| diagnostics | [[Diagnostic](#schemadiagnostic)] | true     | none         | The problems, in order of position |
+
+<h2 id="tocS_SourceBody">SourceBody</h2>
+<!-- backwards compatibility -->
+<a id="schemasourcebody"></a>
+<a id="schema_SourceBody"></a>
+<a id="tocSsourcebody"></a>
+<a id="tocssourcebody"></a>
+
+```json
+{
+  "source": "string"
+}
+```
+
+A source to check.
+
+### Properties
+
+| Name   | Type   | Required | Restrictions | Description                     |
+| ------ | ------ | -------- | ------------ | ------------------------------- |
+| source | string | true     | none         | The schema source, saved or not |

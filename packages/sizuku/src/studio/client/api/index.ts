@@ -1,5 +1,5 @@
 import { hc } from "hono/client";
-import type { schema, diagram, format, docs, db } from "../../server/index";
+import type { schema, diagram, format, docs, db, language } from "../../server/index";
 
 type SchemaClient = ReturnType<typeof hc<typeof schema>>;
 
@@ -33,3 +33,10 @@ type DbClient = ReturnType<typeof hc<typeof db>>;
 const hcDbWithType = (...args: Parameters<typeof hc>): DbClient => hc<typeof db>(...args);
 
 export const dbClient = hcDbWithType("/").api;
+
+type LanguageClient = ReturnType<typeof hc<typeof language>>;
+
+const hcLanguageWithType = (...args: Parameters<typeof hc>): LanguageClient =>
+  hc<typeof language>(...args);
+
+export const languageClient = hcLanguageWithType("/").api;

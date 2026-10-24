@@ -12,5 +12,8 @@
   "dependencies": {
     "drizzle-orm": "^0.45.2",
     "sizuku": "workspace:^"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
   }
 }

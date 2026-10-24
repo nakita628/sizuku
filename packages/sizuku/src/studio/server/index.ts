@@ -6,6 +6,7 @@ import {
   getDbRowsTableNameRoute,
   getDocsRoute,
   getFormatSettingsRoute,
+  getLanguageRoute,
   getSchemaEventsRoute,
   getSchemaRoute,
   patchDbRowsTableNameRoute,
@@ -14,6 +15,11 @@ import {
   postDiagramPngRoute,
   postDiagramSvgRoute,
   postFormatRoute,
+  postLanguageCompleteDetailRoute,
+  postLanguageCompleteRoute,
+  postLanguageDiagnosticsRoute,
+  postLanguageHoverRoute,
+  postLanguageSignatureRoute,
   putFormatSettingsRoute,
   putSchemaRoute,
 } from "./routes";
@@ -24,6 +30,7 @@ import {
   getDbRowsTableNameRouteHandler,
   getDocsRouteHandler,
   getFormatSettingsRouteHandler,
+  getLanguageRouteHandler,
   getSchemaEventsRouteHandler,
   getSchemaRouteHandler,
   patchDbRowsTableNameRouteHandler,
@@ -32,6 +39,11 @@ import {
   postDiagramPngRouteHandler,
   postDiagramSvgRouteHandler,
   postFormatRouteHandler,
+  postLanguageCompleteDetailRouteHandler,
+  postLanguageCompleteRouteHandler,
+  postLanguageDiagnosticsRouteHandler,
+  postLanguageHoverRouteHandler,
+  postLanguageSignatureRouteHandler,
   putFormatSettingsRouteHandler,
   putSchemaRouteHandler,
 } from "./handlers";
@@ -62,5 +74,13 @@ export const db = app
   .openapi(patchDbRowsTableNameRoute, patchDbRowsTableNameRouteHandler)
   .openapi(deleteDbRowsTableNameRoute, deleteDbRowsTableNameRouteHandler)
   .openapi(postDbSqlRoute, postDbSqlRouteHandler);
+
+export const language = app
+  .openapi(getLanguageRoute, getLanguageRouteHandler)
+  .openapi(postLanguageCompleteRoute, postLanguageCompleteRouteHandler)
+  .openapi(postLanguageCompleteDetailRoute, postLanguageCompleteDetailRouteHandler)
+  .openapi(postLanguageHoverRoute, postLanguageHoverRouteHandler)
+  .openapi(postLanguageSignatureRoute, postLanguageSignatureRouteHandler)
+  .openapi(postLanguageDiagnosticsRoute, postLanguageDiagnosticsRouteHandler);
 
 export default app;

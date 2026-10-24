@@ -1,13 +1,14 @@
 // The Monaco build the studio ships: the editor core, the features the editors use, and the
 // TypeScript and SQL tokenizers, bundled by Vite. Nothing is fetched from a CDN, so the studio
-// works offline. TypeScript is coloured only: Monaco's language service would type-check the
-// schema without drizzle-orm's types and mark every import. The syntax errors come from the
-// server's parser instead, and Format Document runs the server's oxfmt.
+// works offline. Monaco's own TypeScript service is left out: the browser has no drizzle-orm
+// types. Completion, hovers and type errors come from the project's TypeScript on the server
+// (language.ts), the syntax errors from the server's parser, and Format Document from oxfmt.
 import { loader } from "@monaco-editor/react";
 import * as monacoApi from "monaco-editor/editor/editor.api.js";
 import { editor, languages, MarkerSeverity } from "monaco-editor/editor/editor.api.js";
 import EditorWorker from "monaco-editor/editor/editor.worker.js?worker";
 import "./monaco-features.js";
+import { registerLanguage } from "./language.js";
 import type { Theme } from "../../lib/store.js";
 
 export const EDITOR_FONT =
@@ -132,6 +133,7 @@ export function setupMonaco() {
   loader.config({ monaco: monacoApi });
   editor.defineTheme(themeName("light"), themeData("light"));
   editor.defineTheme(themeName("dark"), themeData("dark"));
+  registerLanguage();
   languages.registerDocumentFormattingEditProvider("typescript", {
     async provideDocumentFormattingEdits(model) {
       const source = model.getValue();

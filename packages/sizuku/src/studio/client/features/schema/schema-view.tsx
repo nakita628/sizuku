@@ -1,4 +1,4 @@
-import { Button, Chip, toast } from "@heroui/react";
+import { Button, Chip, Tooltip, toast } from "@heroui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { editor as MonacoEditor } from "monaco-editor/editor/editor.api.js";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -7,9 +7,11 @@ import { SplitPane } from "../../components/split-pane.js";
 import {
   getSchemaQueryKey,
   useFormatSettings,
+  useLanguage,
   usePostDiagramPng,
   usePostDiagramSvg,
   usePostFormat,
+  usePostLanguageDiagnostics,
   usePutSchema,
   useSchema,
 } from "../../hooks/index.js";
@@ -17,12 +19,14 @@ import { problemMessage } from "../../lib/problem.js";
 import { FORMAT_DEFAULTS } from "../../lib/settings.js";
 import { useUiStore } from "../../lib/store.js";
 import { CodeEditor } from "../editor/code-editor.js";
+import { setLanguageEnabled, setTypeMarkers } from "../editor/language.js";
 import { bindFormatter, setParseMarker } from "../editor/monaco.js";
 import { DiagramPane } from "./diagram-pane.js";
 
 type ParseError = { readonly message: string; readonly line: number; readonly column: number };
 
 const DRAW_DEBOUNCE_MS = 250;
+const CHECK_DEBOUNCE_MS = 500;
 const AUTO_SAVE_MS = 1000;
 
 function download(name: string, blob: Blob) {
@@ -49,6 +53,9 @@ export function SchemaView() {
   const drawPng = usePostDiagramPng();
   const format = usePostFormat();
   const put = usePutSchema();
+  const language = useLanguage().data ?? null;
+  const check = usePostLanguageDiagnostics();
+  const typesOn = language?.typescript != null;
 
   const [text, setText] = useState<string | null>(null);
   const [base, setBase] = useState<string | null>(null);
@@ -56,6 +63,8 @@ export function SchemaView() {
   const [svg, setSvg] = useState<string | null>(null);
   const [parseError, setParseError] = useState<ParseError | null>(null);
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+  // The editor mounts after the text arrives; the type check waits for it.
+  const [editorReady, setEditorReady] = useState(false);
   const drawSeq = useRef(0);
   const saving = useRef(false);
 
@@ -102,6 +111,36 @@ export function SchemaView() {
     const model = editorRef.current?.getModel();
     if (model) setParseMarker(model, parseError);
   }, [parseError]);
+
+  useEffect(() => {
+    setLanguageEnabled(typesOn);
+  }, [typesOn]);
+
+  // Type errors once typing stops. While the text does not parse, the parser's error is the one
+  // that matters, and TypeScript's would only repeat it.
+  const checkSeq = useRef(0);
+  useEffect(() => {
+    const model = editorRef.current?.getModel();
+    if (!typesOn || text === null || !model) return;
+    if (parseError !== null) {
+      setTypeMarkers(model, []);
+      return;
+    }
+    const seq = ++checkSeq.current;
+    const timer = setTimeout(() => {
+      check.mutate(
+        { json: { source: text } },
+        {
+          onSuccess: (result) => {
+            if (seq === checkSeq.current && !model.isDisposed()) {
+              setTypeMarkers(model, result.diagnostics);
+            }
+          },
+        },
+      );
+    }, CHECK_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [text, typesOn, parseError, editorReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const runFormat = useCallback(
     async (source: string) => {
@@ -201,6 +240,20 @@ export function SchemaView() {
         <Chip size="sm" color={status.color} variant="soft">
           {status.label}
         </Chip>
+        {language === null ? null : (
+          <Tooltip delay={300}>
+            <Tooltip.Trigger>
+              <Chip size="sm" variant="soft" color={typesOn ? "accent" : "default"}>
+                {typesOn ? `TS ${language.typescript}` : "No TypeScript"}
+              </Chip>
+            </Tooltip.Trigger>
+            <Tooltip.Content className="max-w-96 text-meta">
+              {typesOn
+                ? "Completion, hovers, signatures and type errors from the project's TypeScript."
+                : language.reason}
+            </Tooltip.Content>
+          </Tooltip>
+        )}
         <span className="flex-1" />
         <Button
           size="sm"
@@ -278,6 +331,7 @@ export function SchemaView() {
                 onChange={setText}
                 onMount={(editor) => {
                   editorRef.current = editor;
+                  setEditorReady(true);
                   const model = editor.getModel();
                   if (model) setParseMarker(model, parseError);
                 }}
@@ -288,6 +342,7 @@ export function SchemaView() {
         second={
           <DiagramPane
             svg={svg}
+            placeholder={parseError ? "Fix the syntax error to draw the diagram." : "Drawing…"}
             overlay={
               parseError ? (
                 <button

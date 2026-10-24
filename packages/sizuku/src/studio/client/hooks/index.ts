@@ -14,7 +14,14 @@ import type {
 } from "@tanstack/react-query";
 import type { ClientRequestOptions, InferRequestType } from "hono/client";
 import { parseResponse } from "hono/client";
-import { schemaClient, diagramClient, formatClient, docsClient, dbClient } from "../api";
+import {
+  schemaClient,
+  diagramClient,
+  formatClient,
+  docsClient,
+  dbClient,
+  languageClient,
+} from "../api";
 
 export function getDbKey() {
   return ["db"] as const;
@@ -30,6 +37,10 @@ export function getDocsKey() {
 
 export function getFormatKey() {
   return ["format"] as const;
+}
+
+export function getLanguageKey() {
+  return ["language"] as const;
 }
 
 export function getSchemaKey() {
@@ -1136,6 +1147,389 @@ export function usePostDbSql<TError = DefaultError, TOnMutateResult = unknown>(
 ) {
   const { mutation: mutationOptions, options: clientOptions } = options ?? {};
   const mutationDefaults = getPostDbSqlMutationOptions<TError, TOnMutateResult>(clientOptions);
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}
+
+export function getLanguageQueryKey() {
+  return ["language", "/language"] as const;
+}
+
+export function getLanguageQueryOptions<
+  TData = Awaited<
+    ReturnType<typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.$get>>>>
+  >,
+  TError = DefaultError,
+>(options?: ClientRequestOptions) {
+  return queryOptions<
+    Awaited<
+      ReturnType<typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.$get>>>>
+    >,
+    TError,
+    TData,
+    ReturnType<typeof getLanguageQueryKey>
+  >({
+    queryKey: getLanguageQueryKey(),
+    queryFn({ signal }) {
+      return parseResponse(
+        languageClient.language.$get(undefined, { ...options, init: { ...options?.init, signal } }),
+      );
+    },
+  });
+}
+
+export function useLanguage<
+  TData = Awaited<
+    ReturnType<typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.$get>>>>
+  >,
+  TError = DefaultError,
+>(
+  options?: {
+    query?: Omit<
+      UseQueryOptions<
+        Awaited<
+          ReturnType<typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.$get>>>>
+        >,
+        TError,
+        TData,
+        ReturnType<typeof getLanguageQueryKey>
+      >,
+      "queryKey" | "queryFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { query: queryOptions, options: clientOptions } = options ?? {};
+  return useQuery(
+    { ...getLanguageQueryOptions<TData, TError>(clientOptions), ...queryOptions },
+    queryClient,
+  );
+}
+
+export function useSuspenseLanguage<
+  TData = Awaited<
+    ReturnType<typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.$get>>>>
+  >,
+  TError = DefaultError,
+>(
+  options?: {
+    query?: Omit<
+      UseSuspenseQueryOptions<
+        Awaited<
+          ReturnType<typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.$get>>>>
+        >,
+        TError,
+        TData,
+        ReturnType<typeof getLanguageQueryKey>
+      >,
+      "queryKey" | "queryFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { query: queryOptions, options: clientOptions } = options ?? {};
+  return useSuspenseQuery(
+    { ...getLanguageQueryOptions<TData, TError>(clientOptions), ...queryOptions },
+    queryClient,
+  );
+}
+
+export function getPostLanguageCompleteMutationKey() {
+  return ["language", "/language/complete", "POST"] as const;
+}
+
+export function getPostLanguageCompleteMutationOptions<
+  TError = DefaultError,
+  TOnMutateResult = unknown,
+>(options?: ClientRequestOptions) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<
+        typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.complete.$post>>>
+      >
+    >,
+    TError,
+    InferRequestType<typeof languageClient.language.complete.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostLanguageCompleteMutationKey(),
+    async mutationFn(args: InferRequestType<typeof languageClient.language.complete.$post>) {
+      return parseResponse(languageClient.language.complete.$post(args, options));
+    },
+  });
+}
+
+export function usePostLanguageComplete<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<
+            typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.complete.$post>>>
+          >
+        >,
+        TError,
+        InferRequestType<typeof languageClient.language.complete.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostLanguageCompleteMutationOptions<TError, TOnMutateResult>(
+    clientOptions,
+  );
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}
+
+export function getPostLanguageCompleteDetailMutationKey() {
+  return ["language", "/language/complete/detail", "POST"] as const;
+}
+
+export function getPostLanguageCompleteDetailMutationOptions<
+  TError = DefaultError,
+  TOnMutateResult = unknown,
+>(options?: ClientRequestOptions) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<
+        typeof parseResponse<
+          Awaited<ReturnType<typeof languageClient.language.complete.detail.$post>>
+        >
+      >
+    >,
+    TError,
+    InferRequestType<typeof languageClient.language.complete.detail.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostLanguageCompleteDetailMutationKey(),
+    async mutationFn(args: InferRequestType<typeof languageClient.language.complete.detail.$post>) {
+      return parseResponse(languageClient.language.complete.detail.$post(args, options));
+    },
+  });
+}
+
+export function usePostLanguageCompleteDetail<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<
+            typeof parseResponse<
+              Awaited<ReturnType<typeof languageClient.language.complete.detail.$post>>
+            >
+          >
+        >,
+        TError,
+        InferRequestType<typeof languageClient.language.complete.detail.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostLanguageCompleteDetailMutationOptions<TError, TOnMutateResult>(
+    clientOptions,
+  );
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}
+
+export function getPostLanguageHoverMutationKey() {
+  return ["language", "/language/hover", "POST"] as const;
+}
+
+export function getPostLanguageHoverMutationOptions<
+  TError = DefaultError,
+  TOnMutateResult = unknown,
+>(options?: ClientRequestOptions) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<
+        typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.hover.$post>>>
+      >
+    >,
+    TError,
+    InferRequestType<typeof languageClient.language.hover.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostLanguageHoverMutationKey(),
+    async mutationFn(args: InferRequestType<typeof languageClient.language.hover.$post>) {
+      return parseResponse(languageClient.language.hover.$post(args, options));
+    },
+  });
+}
+
+export function usePostLanguageHover<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<
+            typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.hover.$post>>>
+          >
+        >,
+        TError,
+        InferRequestType<typeof languageClient.language.hover.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostLanguageHoverMutationOptions<TError, TOnMutateResult>(
+    clientOptions,
+  );
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}
+
+export function getPostLanguageSignatureMutationKey() {
+  return ["language", "/language/signature", "POST"] as const;
+}
+
+export function getPostLanguageSignatureMutationOptions<
+  TError = DefaultError,
+  TOnMutateResult = unknown,
+>(options?: ClientRequestOptions) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<
+        typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.signature.$post>>>
+      >
+    >,
+    TError,
+    InferRequestType<typeof languageClient.language.signature.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostLanguageSignatureMutationKey(),
+    async mutationFn(args: InferRequestType<typeof languageClient.language.signature.$post>) {
+      return parseResponse(languageClient.language.signature.$post(args, options));
+    },
+  });
+}
+
+export function usePostLanguageSignature<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<
+            typeof parseResponse<
+              Awaited<ReturnType<typeof languageClient.language.signature.$post>>
+            >
+          >
+        >,
+        TError,
+        InferRequestType<typeof languageClient.language.signature.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostLanguageSignatureMutationOptions<TError, TOnMutateResult>(
+    clientOptions,
+  );
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}
+
+export function getPostLanguageDiagnosticsMutationKey() {
+  return ["language", "/language/diagnostics", "POST"] as const;
+}
+
+export function getPostLanguageDiagnosticsMutationOptions<
+  TError = DefaultError,
+  TOnMutateResult = unknown,
+>(options?: ClientRequestOptions) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<
+        typeof parseResponse<Awaited<ReturnType<typeof languageClient.language.diagnostics.$post>>>
+      >
+    >,
+    TError,
+    InferRequestType<typeof languageClient.language.diagnostics.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostLanguageDiagnosticsMutationKey(),
+    async mutationFn(args: InferRequestType<typeof languageClient.language.diagnostics.$post>) {
+      return parseResponse(languageClient.language.diagnostics.$post(args, options));
+    },
+  });
+}
+
+export function usePostLanguageDiagnostics<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<
+            typeof parseResponse<
+              Awaited<ReturnType<typeof languageClient.language.diagnostics.$post>>
+            >
+          >
+        >,
+        TError,
+        InferRequestType<typeof languageClient.language.diagnostics.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostLanguageDiagnosticsMutationOptions<TError, TOnMutateResult>(
+    clientOptions,
+  );
   return useMutation(
     {
       ...mutationOptions,

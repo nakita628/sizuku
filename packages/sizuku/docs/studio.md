@@ -36,9 +36,29 @@ included.
 - Drag to pan, scroll to zoom around the pointer, and use the **−**, **+** and **⛶** (fit) buttons.
   The divider between the panes can be dragged, or moved with the arrow keys.
 
-The editor colours TypeScript but does not type-check it: the browser does not have
-drizzle-orm's types, and every import would be reported as missing. The errors it shows are the
-parser's.
+#### Completion and type errors
+
+The editor asks the project's own TypeScript about the schema, through the server, so it knows
+drizzle-orm's types as they are installed:
+
+- **Completion** of what is there to write: the builders an import offers (`varchar`,
+  `integer`, `pgEnum`, ...), the column methods after a `.` (`.notNull()`, `.default()`,
+  `.references()`, ...), object keys and the tables of the file. The highlighted item shows its
+  type and documentation.
+- **Signature help** inside a call, with the parameter you are on.
+- **Hover** over a name for its type.
+- **Type errors** under a squiggle about half a second after you stop typing: `.notNul()` is
+  `Property 'notNul' does not exist ... Did you mean 'notNull'?`. While the file has a syntax
+  error, only that one is shown.
+
+The header says which TypeScript is in use (**TS 6.0.3**). The schema is checked as part of the
+project: with the compiler options of the nearest `tsconfig.json`, and with its imports — other
+files of the schema, drizzle-orm — resolved from the schema's directory as the project resolves
+them. Unsaved text is what is checked.
+
+This needs `typescript` 5.x or 6.x installed in the project (`npm install -D typescript`).
+TypeScript 7 has no language service API yet. Without one, the header says **No TypeScript**
+(hover it for why) and the editor keeps its colouring and the parser's syntax errors.
 
 ### Docs
 
@@ -147,13 +167,13 @@ into the `@hono/zod-openapi` routes (`src/studio/server/routes`), the typed `hc`
 TanStack Query hooks (`src/studio/client/api`, `hooks`) and [studio-api.md](studio-api.md), with
 [hono-takibi](https://www.npmjs.com/package/hono-takibi). Handlers it has already written are kept.
 
-| Path                         | What it is                                                                  |
-| ---------------------------- | --------------------------------------------------------------------------- |
-| `src/studio/server/handlers` | One Hono handler per route: runs a use case, maps its errors to problems    |
-| `src/studio/server/usecases` | What each route does, as [Effect](https://effect.website) programs          |
-| `src/studio/server/services` | The schema file, the formatter, the database drivers                        |
-| `src/studio/server/domain`   | Pure functions: docs, SQL statements, parse errors, problems                |
-| `src/studio/client`          | React + TanStack Router / Query + HeroUI + Tailwind + Monaco, built by Vite |
+| Path                         | What it is                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `src/studio/server/handlers` | One Hono handler per route: runs a use case, maps its errors to problems       |
+| `src/studio/server/usecases` | What each route does, as [Effect](https://effect.website) programs             |
+| `src/studio/server/services` | The schema file, the formatter, the project's TypeScript, the database drivers |
+| `src/studio/server/domain`   | Pure functions: docs, SQL statements, parse errors, problems                   |
+| `src/studio/client`          | React + TanStack Router / Query + HeroUI + Tailwind + Monaco, built by Vite    |
 
 ```sh
 pnpm -F sizuku studio:dev   # Vite with hot reload and the API, on examples/studio/db/schema.ts

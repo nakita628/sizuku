@@ -620,6 +620,189 @@ export const SqlBodySchema = z
   .openapi({ required: ["sql"], description: "A statement for the SQL console." })
   .openapi("SqlBody");
 
+export const LanguageStatusSchema = z
+  .object({
+    typescript: z.string().nullable().openapi({
+      description: "The version of the project's TypeScript, null when it could not be loaded",
+    }),
+    reason: z
+      .string()
+      .nullable()
+      .openapi({ description: "Why there is no language service, null when there is one" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["typescript", "reason"],
+    description: "Whether the editor has TypeScript behind it.",
+  })
+  .openapi("LanguageStatus");
+
+export const TextRangeSchema = z
+  .object({
+    start: z.int32().openapi({ description: "Where it starts" }),
+    end: z.int32().openapi({ description: "Where it ends" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["start", "end"],
+    description: "A stretch of the source, as UTF-16 offsets.",
+  })
+  .openapi("TextRange");
+
+export const CompletionItemSchema = z
+  .object({
+    label: z.string().openapi({ description: "What is shown and inserted" }),
+    kind: z.string().openapi({
+      description: "TypeScript's kind of the entry: `method`, `property`, `function`, ...",
+    }),
+    sortText: z.string().openapi({ description: "How TypeScript orders it" }),
+    insertText: z
+      .string()
+      .nullable()
+      .openapi({ description: "Text to insert in place of the label, when it differs" }),
+    replacement: TextRangeSchema.nullable().openapi({
+      description: "The text the completion replaces, when it is not the word at the cursor",
+    }),
+  })
+  .readonly()
+  .openapi({
+    required: ["label", "kind", "sortText", "insertText", "replacement"],
+    description: "One thing TypeScript offers at the cursor.",
+  })
+  .openapi("CompletionItem");
+
+export const CompletionsSchema = z
+  .object({
+    items: z
+      .array(CompletionItemSchema)
+      .readonly()
+      .openapi({ description: "The items, in TypeScript's order" }),
+  })
+  .readonly()
+  .openapi({ required: ["items"], description: "The completions at the cursor." })
+  .openapi("Completions");
+
+export const PositionBodySchema = z
+  .object({
+    source: z.string().openapi({ description: "The schema source, saved or not" }),
+    offset: z.int32().min(0).openapi({ description: "The UTF-16 offset of the cursor" }),
+  })
+  .readonly()
+  .openapi({ required: ["source", "offset"], description: "The editor buffer and a place in it." })
+  .openapi("PositionBody");
+
+export const CompletionDetailSchema = z
+  .object({
+    detail: z.string().nullable().openapi({ description: "Its signature or type" }),
+    documentation: z.string().nullable().openapi({ description: "Its doc comment, as Markdown" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["detail", "documentation"],
+    description: "The type and documentation of one completion.",
+  })
+  .openapi("CompletionDetail");
+
+export const CompletionDetailBodySchema = z
+  .object({
+    source: z.string().openapi({ description: "The schema source, saved or not" }),
+    offset: z.int32().min(0).openapi({ description: "The UTF-16 offset of the cursor" }),
+    name: z.string().openapi({ description: "The name of the completion" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["source", "offset", "name"],
+    description: "A completion to describe in full.",
+  })
+  .openapi("CompletionDetailBody");
+
+export const HoverSchema = z
+  .object({
+    contents: z
+      .string()
+      .nullable()
+      .openapi({ description: "The type and documentation, as Markdown; null over nothing" }),
+    range: TextRangeSchema.nullable().openapi({ description: "The symbol's range" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["contents", "range"],
+    description: "What TypeScript says about the symbol at the cursor.",
+  })
+  .openapi("Hover");
+
+export const SignatureParameterSchema = z
+  .object({
+    label: z.string().openapi({ description: "How it reads in the signature" }),
+    documentation: z.string().nullable().openapi({ description: "Its doc comment" }),
+  })
+  .readonly()
+  .openapi({ required: ["label", "documentation"], description: "One parameter of a signature." })
+  .openapi("SignatureParameter");
+
+export const SignatureSchema = z
+  .object({
+    label: z.string().openapi({ description: "The whole signature" }),
+    documentation: z.string().nullable().openapi({ description: "Its doc comment" }),
+    parameters: z
+      .array(SignatureParameterSchema)
+      .readonly()
+      .openapi({ description: "Its parameters" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["label", "documentation", "parameters"],
+    description: "One overload of the call.",
+  })
+  .openapi("Signature");
+
+export const SignatureHelpSchema = z
+  .object({
+    signatures: z.array(SignatureSchema).readonly().openapi({ description: "The overloads" }),
+    activeSignature: z.int32().openapi({ description: "The overload TypeScript picked" }),
+    activeParameter: z.int32().openapi({ description: "The parameter the cursor is on" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["signatures", "activeSignature", "activeParameter"],
+    description: "The signatures of the call the cursor is in.",
+  })
+  .openapi("SignatureHelp");
+
+export const DiagnosticSchema = z
+  .object({
+    message: z.string().openapi({ description: "What is wrong" }),
+    severity: z.enum(["error", "warning", "info"]).openapi({ description: "How bad it is" }),
+    range: TextRangeSchema.openapi({ description: "Where it is" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["message", "severity", "range"],
+    description: "One problem TypeScript found.",
+  })
+  .openapi("Diagnostic");
+
+export const DiagnosticsSchema = z
+  .object({
+    diagnostics: z
+      .array(DiagnosticSchema)
+      .readonly()
+      .openapi({ description: "The problems, in order of position" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["diagnostics"],
+    description:
+      "The type errors of a source; its syntax errors come from the parser, with the diagram.",
+  })
+  .openapi("Diagnostics");
+
+export const SourceBodySchema = z
+  .object({ source: z.string().openapi({ description: "The schema source, saved or not" }) })
+  .readonly()
+  .openapi({ required: ["source"], description: "A source to check." })
+  .openapi("SourceBody");
+
 const RowsQuerySkipParamsSchema = SkipSchema.openapi({
   param: {
     name: "skip",
@@ -1058,6 +1241,172 @@ export const postDbSqlRoute = createRoute({
     200: {
       description: "The request has succeeded.",
       content: { "application/json": { schema: SqlResultSchema } },
+    },
+    422: {
+      description: "422 Unprocessable Content (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ValidationProblemSchema } },
+    },
+    500: {
+      description: "500 Internal Server Error (`application/problem+json`)",
+      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
+    },
+    503: {
+      description: "503 Service Unavailable (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ServiceUnavailableProblemSchema } },
+    },
+  },
+} as const);
+
+export const getLanguageRoute = createRoute({
+  method: "get",
+  path: "/language",
+  tags: ["language"],
+  description: "Whether the project's TypeScript is loaded, and why not when it is not.",
+  operationId: "readLanguageStatus",
+  responses: {
+    200: {
+      description: "The request has succeeded.",
+      content: { "application/json": { schema: LanguageStatusSchema } },
+    },
+    500: {
+      description: "500 Internal Server Error (`application/problem+json`)",
+      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
+    },
+  },
+} as const);
+
+export const postLanguageCompleteRoute = createRoute({
+  method: "post",
+  path: "/language/complete",
+  tags: ["language"],
+  description: "The completions at the cursor.",
+  operationId: "complete",
+  request: {
+    body: { content: { "application/json": { schema: PositionBodySchema } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "The request has succeeded.",
+      content: { "application/json": { schema: CompletionsSchema } },
+    },
+    422: {
+      description: "422 Unprocessable Content (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ValidationProblemSchema } },
+    },
+    500: {
+      description: "500 Internal Server Error (`application/problem+json`)",
+      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
+    },
+    503: {
+      description: "503 Service Unavailable (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ServiceUnavailableProblemSchema } },
+    },
+  },
+} as const);
+
+export const postLanguageCompleteDetailRoute = createRoute({
+  method: "post",
+  path: "/language/complete/detail",
+  tags: ["language"],
+  description: "The type and documentation of one completion.",
+  operationId: "completeDetail",
+  request: {
+    body: {
+      content: { "application/json": { schema: CompletionDetailBodySchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: "The request has succeeded.",
+      content: { "application/json": { schema: CompletionDetailSchema } },
+    },
+    422: {
+      description: "422 Unprocessable Content (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ValidationProblemSchema } },
+    },
+    500: {
+      description: "500 Internal Server Error (`application/problem+json`)",
+      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
+    },
+    503: {
+      description: "503 Service Unavailable (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ServiceUnavailableProblemSchema } },
+    },
+  },
+} as const);
+
+export const postLanguageHoverRoute = createRoute({
+  method: "post",
+  path: "/language/hover",
+  tags: ["language"],
+  description: "What TypeScript says about the symbol at the cursor.",
+  operationId: "hover",
+  request: {
+    body: { content: { "application/json": { schema: PositionBodySchema } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "The request has succeeded.",
+      content: { "application/json": { schema: HoverSchema } },
+    },
+    422: {
+      description: "422 Unprocessable Content (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ValidationProblemSchema } },
+    },
+    500: {
+      description: "500 Internal Server Error (`application/problem+json`)",
+      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
+    },
+    503: {
+      description: "503 Service Unavailable (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ServiceUnavailableProblemSchema } },
+    },
+  },
+} as const);
+
+export const postLanguageSignatureRoute = createRoute({
+  method: "post",
+  path: "/language/signature",
+  tags: ["language"],
+  description: "The signatures of the call the cursor is in.",
+  operationId: "signature",
+  request: {
+    body: { content: { "application/json": { schema: PositionBodySchema } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "The request has succeeded.",
+      content: { "application/json": { schema: SignatureHelpSchema } },
+    },
+    422: {
+      description: "422 Unprocessable Content (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ValidationProblemSchema } },
+    },
+    500: {
+      description: "500 Internal Server Error (`application/problem+json`)",
+      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
+    },
+    503: {
+      description: "503 Service Unavailable (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ServiceUnavailableProblemSchema } },
+    },
+  },
+} as const);
+
+export const postLanguageDiagnosticsRoute = createRoute({
+  method: "post",
+  path: "/language/diagnostics",
+  tags: ["language"],
+  description: "The type errors of the source.",
+  operationId: "diagnostics",
+  request: {
+    body: { content: { "application/json": { schema: SourceBodySchema } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "The request has succeeded.",
+      content: { "application/json": { schema: DiagnosticsSchema } },
     },
     422: {
       description: "422 Unprocessable Content (`application/problem+json`)",

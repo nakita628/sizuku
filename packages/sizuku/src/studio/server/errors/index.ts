@@ -46,3 +46,7 @@ export class ServerListenError extends Data.TaggedError("ServerListenError")<{
   readonly code: string | null;
   readonly message: string;
 }> {}
+
+export class LanguageUnavailableError extends Data.TaggedError("LanguageUnavailableError")<{
+  readonly reason: string;
+}> {}

@@ -26,8 +26,9 @@ forwarded port 4983 from the **Ports** tab. Stop the server with Ctrl+C.
 `pnpm studio` creates `sqlite/dev.db` the first time (Node.js 22.13 or newer, for `node:sqlite`).
 Then:
 
-- **Schema** — edit the schema; the diagram redraws as you type. Ctrl/Cmd + S saves, **Format**
-  runs oxfmt, **SVG** / **PNG** download the diagram.
+- **Schema** — edit the schema; the diagram redraws as you type. Type `.` after
+  `text("name")` for drizzle-orm's column methods, or misspell `.notNull()` to see a type error.
+  Ctrl/Cmd + S saves, **Format** runs oxfmt, **SVG** / **PNG** download the diagram.
 - **Docs** — the tables, columns, relations and enums, with the `///` descriptions.
 - **user**, **post**, ... in the sidebar — the rows; add, edit and delete them.
 - **SQL** — e.g. `SELECT * FROM posts WHERE published = 1`, then Ctrl/Cmd + Enter.

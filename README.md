@@ -315,9 +315,10 @@ npx sizuku studio db/schema.ts --url postgres://localhost/app # pg from your pro
 
 Opens `http://127.0.0.1:4983` with four pages:
 
-- **Schema**: the file in Monaco with its ER diagram beside it, redrawn as you type. Syntax errors
-  are underlined with their line while the last good drawing stays. Ctrl/Cmd + S saves,
-  **Format** runs oxfmt, and the diagram downloads as SVG or PNG.
+- **Schema**: the file in Monaco with its ER diagram beside it, redrawn as you type. Completion,
+  hovers, signature help and type errors come from the project's TypeScript and drizzle-orm's
+  types; syntax errors are underlined with their line while the last good drawing stays.
+  Ctrl/Cmd + S saves, **Format** runs oxfmt, and the diagram downloads as SVG or PNG.
 - **Docs**: every table, column, key, default, index, relation (both ways) and enum, with the
   `///` descriptions.
 - **Data**: each table's rows, with adding, editing and deleting a row (composite keys included).

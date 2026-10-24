@@ -7,7 +7,7 @@ using OpenAPI;
 
 /**
  * Local API behind `sizuku studio`: the Drizzle schema file on disk, its ER diagram and docs,
- * the formatter, and the connected database. It listens on loopback only and has no
+ * the formatter, the project's TypeScript for the editor, and the connected database. It listens on loopback only and has no
  * authentication, so nothing here is reachable from another origin.
  */
 @service(#{ title: "Sizuku Studio API" })
@@ -444,6 +444,145 @@ model SqlResult {
 }
 
 // ---------------------------------------------------------------------------
+// Language (the project's TypeScript, over the schema file)
+// ---------------------------------------------------------------------------
+
+/** Whether the editor has TypeScript behind it. */
+model LanguageStatus {
+  /** The version of the project's TypeScript, null when it could not be loaded */
+  typescript: string | null;
+
+  /** Why there is no language service, null when there is one */
+  reason: string | null;
+}
+
+/** The editor buffer and a place in it. */
+model PositionBody {
+  /** The schema source, saved or not */
+  source: string;
+
+  /** The UTF-16 offset of the cursor */
+  @minValue(0)
+  offset: int32;
+}
+
+/** A completion to describe in full. */
+model CompletionDetailBody {
+  ...PositionBody;
+
+  /** The name of the completion */
+  name: string;
+}
+
+/** A stretch of the source, as UTF-16 offsets. */
+model TextRange {
+  /** Where it starts */
+  start: int32;
+
+  /** Where it ends */
+  end: int32;
+}
+
+/** One thing TypeScript offers at the cursor. */
+model CompletionItem {
+  /** What is shown and inserted */
+  label: string;
+
+  /** TypeScript's kind of the entry: `method`, `property`, `function`, ... */
+  kind: string;
+
+  /** How TypeScript orders it */
+  sortText: string;
+
+  /** Text to insert in place of the label, when it differs */
+  insertText: string | null;
+
+  /** The text the completion replaces, when it is not the word at the cursor */
+  replacement: TextRange | null;
+}
+
+/** The completions at the cursor. */
+model Completions {
+  /** The items, in TypeScript's order */
+  items: CompletionItem[];
+}
+
+/** The type and documentation of one completion. */
+model CompletionDetail {
+  /** Its signature or type */
+  detail: string | null;
+
+  /** Its doc comment, as Markdown */
+  documentation: string | null;
+}
+
+/** What TypeScript says about the symbol at the cursor. */
+model Hover {
+  /** The type and documentation, as Markdown; null over nothing */
+  contents: string | null;
+
+  /** The symbol's range */
+  range: TextRange | null;
+}
+
+/** One parameter of a signature. */
+model SignatureParameter {
+  /** How it reads in the signature */
+  label: string;
+
+  /** Its doc comment */
+  documentation: string | null;
+}
+
+/** One overload of the call. */
+model Signature {
+  /** The whole signature */
+  label: string;
+
+  /** Its doc comment */
+  documentation: string | null;
+
+  /** Its parameters */
+  parameters: SignatureParameter[];
+}
+
+/** The signatures of the call the cursor is in. */
+model SignatureHelp {
+  /** The overloads */
+  signatures: Signature[];
+
+  /** The overload TypeScript picked */
+  activeSignature: int32;
+
+  /** The parameter the cursor is on */
+  activeParameter: int32;
+}
+
+/** A source to check. */
+model SourceBody {
+  /** The schema source, saved or not */
+  source: string;
+}
+
+/** One problem TypeScript found. */
+model Diagnostic {
+  /** What is wrong */
+  message: string;
+
+  /** How bad it is */
+  severity: "error" | "warning" | "info";
+
+  /** Where it is */
+  range: TextRange;
+}
+
+/** The type errors of a source; its syntax errors come from the parser, with the diagram. */
+model Diagnostics {
+  /** The problems, in order of position */
+  diagnostics: Diagnostic[];
+}
+
+// ---------------------------------------------------------------------------
 // Problems (RFC 9457)
 // ---------------------------------------------------------------------------
 
@@ -733,6 +872,65 @@ namespace DbRoutes {
   @operationId("runSql")
   op sql(@body body: SqlBody):
     | SqlResult
+    | ValidationProblemResponse
+    | ServiceUnavailableProblemResponse
+    | InternalServerProblemResponse;
+}
+
+@route("/language")
+@tag("language")
+namespace LanguageRoutes {
+  /** Whether the project's TypeScript is loaded, and why not when it is not. */
+  @get
+  @operationId("readLanguageStatus")
+  op status(): LanguageStatus | InternalServerProblemResponse;
+
+  /** The completions at the cursor. */
+  @post
+  @route("/complete")
+  @operationId("complete")
+  op complete(@body body: PositionBody):
+    | Completions
+    | ValidationProblemResponse
+    | ServiceUnavailableProblemResponse
+    | InternalServerProblemResponse;
+
+  /** The type and documentation of one completion. */
+  @post
+  @route("/complete/detail")
+  @operationId("completeDetail")
+  op completeDetail(@body body: CompletionDetailBody):
+    | CompletionDetail
+    | ValidationProblemResponse
+    | ServiceUnavailableProblemResponse
+    | InternalServerProblemResponse;
+
+  /** What TypeScript says about the symbol at the cursor. */
+  @post
+  @route("/hover")
+  @operationId("hover")
+  op hover(@body body: PositionBody):
+    | Hover
+    | ValidationProblemResponse
+    | ServiceUnavailableProblemResponse
+    | InternalServerProblemResponse;
+
+  /** The signatures of the call the cursor is in. */
+  @post
+  @route("/signature")
+  @operationId("signature")
+  op signature(@body body: PositionBody):
+    | SignatureHelp
+    | ValidationProblemResponse
+    | ServiceUnavailableProblemResponse
+    | InternalServerProblemResponse;
+
+  /** The type errors of the source. */
+  @post
+  @route("/diagnostics")
+  @operationId("diagnostics")
+  op diagnostics(@body body: SourceBody):
+    | Diagnostics
     | ValidationProblemResponse
     | ServiceUnavailableProblemResponse
     | InternalServerProblemResponse;

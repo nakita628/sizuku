@@ -25,9 +25,12 @@ function svgSize(svg: string) {
  */
 export function DiagramPane({
   svg,
+  placeholder,
   overlay,
 }: {
   readonly svg: string | null;
+  /** What the pane says before there is a drawing. */
+  readonly placeholder: string;
   readonly overlay?: React.ReactNode;
 }) {
   const pane = useRef<HTMLDivElement | null>(null);
@@ -115,7 +118,7 @@ export function DiagramPane({
     >
       {svg === null ? (
         <div className="absolute inset-0 flex items-center justify-center text-body text-muted">
-          Drawing…
+          {placeholder}
         </div>
       ) : (
         <div
