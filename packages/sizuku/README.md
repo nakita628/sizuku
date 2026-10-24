@@ -128,7 +128,17 @@ export const postRelations = relations(post, ({ one }) => ({
 }));
 ```
 
-Annotations are optional. Generators work without them (DBML/Mermaid don't need annotations at all).
+The validator schemas (`--zod`, `--valibot`, `--arktype`, `--effect`) are written from these
+annotations, so every column needs one in the library's tag (`@z.`, `@v.`, `@a.`, `@e.`). When
+some do not have one, sizuku writes nothing and names them:
+
+```
+1 column has no /// @z. annotation, so the Zod schema cannot be written: user.bio.
+   Add one above each column, for example /// @z.string().
+```
+
+A plain `///` line is a description, not an annotation. DBML, Mermaid and the ER diagram need no
+annotations at all.
 
 ## Output Examples
 

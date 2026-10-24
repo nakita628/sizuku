@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { extractRelationSchemas, extractSchemas } from "./extract-schemas.js";
+import { extractRelationSchemas, extractSchemas, unannotatedColumns } from "./extract-schemas.js";
 
 // Test run
 // pnpm vitest run ./src/helper/extract-schemas.test.ts
@@ -525,5 +525,29 @@ describe("extractSchemas - empty schema", () => {
   it("returns empty array when no tables present", () => {
     const result = extractSchemas([""], "zod");
     expect(result).toStrictEqual([]);
+  });
+});
+
+describe("unannotatedColumns", () => {
+  const lines = [
+    "export const user = mysqlTable('user', {",
+    "  /// @z.string().uuid()",
+    "  /// @v.pipe(v.string(), v.uuid())",
+    "  id: varchar('id', { length: 36 }).primaryKey(),",
+    "  /// @z.string()",
+    "  name: varchar('name', { length: 50 }).notNull(),",
+    "  /// Shown on the profile",
+    "  bio: varchar('bio', { length: 200 }),",
+    "})",
+  ];
+
+  it("names the columns without an annotation in the library's tag", () => {
+    expect(unannotatedColumns(lines, "zod")).toStrictEqual(["user.bio"]);
+    expect(unannotatedColumns(lines, "valibot")).toStrictEqual(["user.name", "user.bio"]);
+    expect(unannotatedColumns(lines, "arktype")).toStrictEqual([
+      "user.id",
+      "user.name",
+      "user.bio",
+    ]);
   });
 });

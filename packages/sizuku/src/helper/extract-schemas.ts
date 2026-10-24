@@ -209,3 +209,18 @@ export function extractRelationSchemas(
     })
     .filter((schema) => schema !== null);
 }
+
+/**
+ * The columns of the schema that carry no annotation in the library's tag, as `table.column`:
+ * the ones a validator schema has nothing to write for.
+ */
+export function unannotatedColumns(
+  lines: string[],
+  library: "zod" | "valibot" | "arktype" | "effect",
+) {
+  return extractSchemas(lines, library).flatMap((schema) =>
+    schema.fields
+      .filter((field) => field.definition.trim() === "")
+      .map((field) => `${schema.name}.${field.name}`),
+  );
+}

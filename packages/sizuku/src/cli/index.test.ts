@@ -295,6 +295,23 @@ describe("sizuku <input> -o <output>", () => {
     });
   }
 
+  it("refuses a schema whose columns are not annotated, naming them, and writes nothing", async () => {
+    const bare = path.join(tmpdir, "bare.ts");
+    fs.writeFileSync(
+      bare,
+      "export const tag = mysqlTable('tag', {\n  /// @z.number()\n  id: int('id').primaryKey(),\n  name: varchar('name', { length: 50 }),\n})",
+      "utf-8",
+    );
+    const output = path.join(tmpdir, "tag.ts");
+    const { exit, printed } = await cli([bare, "-o", output, "--zod"]);
+    expect(Exit.isFailure(exit)).toBe(true);
+    expect(printed).toContain(
+      "1 column has no /// @z. annotation, so the Zod schema cannot be written: tag.name.",
+    );
+    expect(printed).toContain("for example /// @z.string()");
+    expect(fs.existsSync(output)).toBe(false);
+  });
+
   it("takes the flags in any order, before the input too", async () => {
     const output = path.join(tmpdir, "first.ts");
     const { exit } = await cli(["--zod", "-o", output, schemaPath]);

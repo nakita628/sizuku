@@ -1,7 +1,9 @@
+import { Effect } from "effect";
 import { emit } from "../emit/index.js";
 import { valibot } from "../generator/index.js";
+import { requireAnnotations } from "./annotations.js";
 
-/** Writes the Valibot schemas of a Drizzle schema to `output`, formatted. */
+/** Writes the Valibot schemas of a Drizzle schema to `output`, formatted; a column without an annotation fails. */
 export function sizukuValibot(
   code: string[],
   output: string,
@@ -9,5 +11,8 @@ export function sizukuValibot(
   type?: boolean,
   relation?: boolean,
 ) {
-  return emit(valibot(code, comment, type, relation), output);
+  return Effect.gen(function* () {
+    yield* requireAnnotations(code, "valibot");
+    yield* emit(valibot(code, comment, type, relation), output);
+  });
 }

@@ -139,7 +139,13 @@ export function generate(args: GenerateArgs) {
       return sizukuEffect(code, output, withComment, exportTypes, withRelation);
     })();
     yield* written.pipe(
-      Effect.mapError((error) => userError(`Failed to write ${output}: ${error.message}`)),
+      Effect.mapError((error) =>
+        userError(
+          error._tag === "MissingAnnotationError"
+            ? error.message
+            : `Failed to write ${output}: ${error.message}`,
+        ),
+      ),
     );
     const what =
       kind === "dbml"
