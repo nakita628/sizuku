@@ -297,3 +297,92 @@ export function makeDeleteStatement(input: z.infer<typeof MakeDeleteStatementInp
     params: where.params,
   };
 }
+
+const MakeExplainStatementInput = z
+  .object({
+    dialect: Dialect,
+    sql: z.string().meta({ description: "The statement to explain", example: "SELECT 1" }),
+  })
+  .readonly()
+  .meta({ description: "A statement and the dialect whose EXPLAIN syntax to use" });
+
+/** The EXPLAIN form each database answers with a machine-readable plan. */
+export function makeExplainStatement(input: z.infer<typeof MakeExplainStatementInput>) {
+  const body = input.sql.trim().replace(/;\s*$/u, "");
+  if (input.dialect === "postgresql") return `EXPLAIN (FORMAT JSON) ${body}`;
+  if (input.dialect === "mysql") return `EXPLAIN FORMAT=JSON ${body}`;
+  return `EXPLAIN QUERY PLAN ${body}`;
+}
+
+/** The type an enum column is stored as, per dialect. */
+const ENUM_COLUMN_TYPES = { postgresql: "text", mysql: "enum", sqlite: "TEXT" } as const;
+
+const MakeAnalysisSchemaInput = z
+  .object({
+    dialect: Dialect,
+    models: z
+      .array(
+        z
+          .object({
+            name: z.string().meta({ description: "The exported name", example: "user" }),
+            dbName: z.string().nullable().meta({ description: "The table name", example: "users" }),
+            fields: z
+              .array(
+                z
+                  .object({
+                    name: z
+                      .string()
+                      .meta({ description: "The property name", example: "authorId" }),
+                    dbName: z
+                      .string()
+                      .nullable()
+                      .optional()
+                      .meta({ description: "The column name", example: "author_id" }),
+                    kind: z
+                      .enum(["scalar", "object", "enum", "unsupported"])
+                      .meta({ description: "What the field holds" }),
+                    type: z
+                      .string()
+                      .meta({ description: "The column builder", example: "integer" }),
+                    isList: z.boolean().meta({ description: "Whether it is an array column" }),
+                    isRequired: z.boolean().meta({ description: "Whether it is NOT NULL" }),
+                  })
+                  .readonly(),
+              )
+              .readonly(),
+          })
+          .readonly(),
+      )
+      .readonly()
+      .meta({ description: "The tables of the schema" }),
+  })
+  .readonly()
+  .meta({ description: "The schema's tables and the dialect to read SQL in" });
+
+/**
+ * The tables the SQL analysis runs against, read off the schema: the names the database knows,
+ * and a column's type as SQL spells its builder (`doublePrecision` is `double precision`), an
+ * enum's as the dialect stores it, and an array's with `[]` on PostgreSQL.
+ */
+export function makeAnalysisSchema(input: z.infer<typeof MakeAnalysisSchemaInput>) {
+  const { dialect } = input;
+  return {
+    dialect,
+    tables: input.models.map((model) => ({
+      name: model.dbName ?? model.name,
+      columns: model.fields
+        .filter((field) => field.kind !== "object")
+        .map((field) => {
+          const base =
+            field.kind === "enum"
+              ? ENUM_COLUMN_TYPES[dialect]
+              : field.type.replaceAll(/([a-z])([A-Z])/gu, "$1 $2").toLowerCase();
+          return {
+            name: field.dbName ?? field.name,
+            dataType: field.isList && dialect === "postgresql" ? `${base}[]` : base,
+            nullable: !field.isRequired,
+          };
+        }),
+    })),
+  };
+}

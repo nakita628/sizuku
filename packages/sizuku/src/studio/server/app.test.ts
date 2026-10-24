@@ -221,6 +221,41 @@ describe("sizuku studio API", () => {
     expect((await bad.json()).detail).toContain("no such table");
   });
 
+  it("runs several statements with values bound, explains one and analyzes them", async () => {
+    const last = await (
+      await request("POST", "/api/db/sql", {
+        sql: "SELECT 1 AS a; SELECT name FROM users WHERE id = ?",
+        params: [1],
+      })
+    ).json();
+    expect(last).toMatchObject({ columns: ["name"], rows: [{ name: "Ada" }], rowCount: 1 });
+
+    const empty = await request("POST", "/api/db/sql", { sql: ";;" });
+    expect(empty.status).toBe(422);
+
+    const plan = await (
+      await request("POST", "/api/db/explain", {
+        sql: "SELECT * FROM users WHERE id = ?",
+        params: [1],
+      })
+    ).json();
+    expect(plan.dialect).toBe("sqlite");
+    expect(plan.nodes.length).toBeGreaterThan(0);
+
+    const analysis = await (
+      await request("POST", "/api/db/analyze", {
+        sql: "SELECT u.name, u.nmae FROM users u WHERE u.id = ?",
+      })
+    ).json();
+    const [statement] = analysis.statements;
+    expect(statement.kind).toBe("select");
+    expect(statement.tables[0]).toMatchObject({ name: "users", known: true });
+    expect(statement.parameters).toHaveLength(1);
+    expect(statement.diagnostics.map((d: { message: string }) => d.message).join()).toContain(
+      "nmae",
+    );
+  });
+
   it("answers 503 for the data routes without a database", async () => {
     const database = await Effect.runPromise(connectDatabase({ url: null, cwd: dir }));
     configureStudio({ schemaPath: file, cwd: dir, database });

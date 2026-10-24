@@ -6,6 +6,8 @@ import type {
   getDbRoute,
   getDbRowsTableNameRoute,
   patchDbRowsTableNameRoute,
+  postDbAnalyzeRoute,
+  postDbExplainRoute,
   postDbRowsTableNameRoute,
   postDbSqlRoute,
 } from "../routes";
@@ -456,13 +458,30 @@ export const deleteDbRowsTableNameRouteHandler: RouteHandler<typeof deleteDbRows
 };
 
 /** `POST /db/sql` handler. Runs one statement; one the database rejects is a 503 with its message. */
+/** `POST /db/sql` handler. Runs the statements one by one; the result is the last one's. */
 export const postDbSqlRouteHandler: RouteHandler<typeof postDbSqlRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
-    Effect.matchEffect(DbUseCase.runSql({ sql: data.sql }), {
+    Effect.matchEffect(DbUseCase.runSql({ sql: data.sql, params: data.params ?? [] }), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
+          Match.tag("InvalidInputError", ({ field, message }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/validation-failed",
+                  title: "Validation Failed",
+                  status: 422,
+                  detail: message,
+                  instance: c.req.path,
+                  errors: [{ field: field, message: message }],
+                } as const,
+                422,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
           Match.tag("DatabaseUnavailableError", ({ reason }) =>
             Effect.succeed(
               c.json(
@@ -490,6 +509,97 @@ export const postDbSqlRouteHandler: RouteHandler<typeof postDbSqlRoute> = (c) =>
                 } as const,
                 503,
                 { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.exhaustive,
+        ),
+    }),
+  );
+};
+
+/** `POST /db/explain` handler. The plan the database chooses for the first statement. */
+export const postDbExplainRouteHandler: RouteHandler<typeof postDbExplainRoute> = (c) => {
+  const data = c.req.valid("json");
+  return Effect.runPromise(
+    Effect.matchEffect(DbUseCase.explainSql({ sql: data.sql, params: data.params ?? [] }), {
+      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onFailure: (error) =>
+        Match.value(error).pipe(
+          Match.tag("InvalidInputError", ({ field, message }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/validation-failed",
+                  title: "Validation Failed",
+                  status: 422,
+                  detail: message,
+                  instance: c.req.path,
+                  errors: [{ field: field, message: message }],
+                } as const,
+                422,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("DatabaseUnavailableError", ({ reason }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable",
+                  title: "Service Unavailable",
+                  status: 503,
+                  detail: reason,
+                  instance: c.req.path,
+                } as const,
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("DatabaseError", ({ cause }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable",
+                  title: "Service Unavailable",
+                  status: 503,
+                  detail: cause,
+                  instance: c.req.path,
+                } as const,
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.exhaustive,
+        ),
+    }),
+  );
+};
+
+/** `POST /db/analyze` handler. The statements read against the saved schema's tables. */
+export const postDbAnalyzeRouteHandler: RouteHandler<typeof postDbAnalyzeRoute> = (c) => {
+  const data = c.req.valid("json");
+  return Effect.runPromise(
+    Effect.matchEffect(DbUseCase.analyzeSql({ sql: data.sql }), {
+      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onFailure: (error) =>
+        Match.value(error).pipe(
+          Match.tag("FileReadError", ({ path, cause }) =>
+            Effect.logError("cannot read the schema", path, cause).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error",
+                    title: "Internal Server Error",
+                    status: 500,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  } as const,
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
               ),
             ),
           ),

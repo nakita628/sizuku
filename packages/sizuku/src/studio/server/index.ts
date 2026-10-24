@@ -9,6 +9,8 @@ import {
   getSchemaEventsRoute,
   getSchemaRoute,
   patchDbRowsTableNameRoute,
+  postDbAnalyzeRoute,
+  postDbExplainRoute,
   postDbRowsTableNameRoute,
   postDbSqlRoute,
   postDiagramPngRoute,
@@ -34,6 +36,8 @@ import {
   getSchemaEventsRouteHandler,
   getSchemaRouteHandler,
   patchDbRowsTableNameRouteHandler,
+  postDbAnalyzeRouteHandler,
+  postDbExplainRouteHandler,
   postDbRowsTableNameRouteHandler,
   postDbSqlRouteHandler,
   postDiagramPngRouteHandler,
@@ -73,7 +77,9 @@ export const db = app
   .openapi(postDbRowsTableNameRoute, postDbRowsTableNameRouteHandler)
   .openapi(patchDbRowsTableNameRoute, patchDbRowsTableNameRouteHandler)
   .openapi(deleteDbRowsTableNameRoute, deleteDbRowsTableNameRouteHandler)
-  .openapi(postDbSqlRoute, postDbSqlRouteHandler);
+  .openapi(postDbSqlRoute, postDbSqlRouteHandler)
+  .openapi(postDbExplainRoute, postDbExplainRouteHandler)
+  .openapi(postDbAnalyzeRoute, postDbAnalyzeRouteHandler);
 
 export const language = app
   .openapi(getLanguageRoute, getLanguageRouteHandler)

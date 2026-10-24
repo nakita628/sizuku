@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
+  makeAnalysisSchema,
+  makeExplainStatement,
   makeCell,
   makeDeleteStatement,
   makeDialect,
@@ -125,5 +127,64 @@ describe("makeCell", () => {
     expect(makeCell({ a: 1 })).toBe('{"a":1}');
     expect(makeCell(undefined)).toBeNull();
     expect(makeCell(Number.NaN)).toBe("NaN");
+  });
+});
+
+describe("makeExplainStatement", () => {
+  it("asks each database for the plan in the form it reads best", () => {
+    expect(makeExplainStatement({ dialect: "sqlite", sql: "SELECT 1;" })).toBe(
+      "EXPLAIN QUERY PLAN SELECT 1",
+    );
+    expect(makeExplainStatement({ dialect: "postgresql", sql: "SELECT 1" })).toBe(
+      "EXPLAIN (FORMAT JSON) SELECT 1",
+    );
+    expect(makeExplainStatement({ dialect: "mysql", sql: "SELECT 1" })).toBe(
+      "EXPLAIN FORMAT=JSON SELECT 1",
+    );
+  });
+});
+
+describe("makeAnalysisSchema", () => {
+  it("names tables and columns as the database does and spells the builders as SQL types", () => {
+    const field = (name: string, type: string, extra = {}) => ({
+      name,
+      dbName: null,
+      kind: "scalar" as const,
+      type,
+      isList: false,
+      isRequired: true,
+      ...extra,
+    });
+    expect(
+      makeAnalysisSchema({
+        dialect: "postgresql",
+        models: [
+          {
+            name: "post",
+            dbName: "posts",
+            fields: [
+              field("authorId", "integer", { dbName: "author_id" }),
+              field("score", "doublePrecision", { isRequired: false }),
+              field("status", "status", { kind: "enum" }),
+              field("tags", "text", { isList: true }),
+              field("author", "user", { kind: "object" }),
+            ],
+          },
+        ],
+      }),
+    ).toStrictEqual({
+      dialect: "postgresql",
+      tables: [
+        {
+          name: "posts",
+          columns: [
+            { name: "author_id", dataType: "integer", nullable: false },
+            { name: "score", dataType: "double precision", nullable: true },
+            { name: "status", dataType: "text", nullable: false },
+            { name: "tags", dataType: "text[]", nullable: false },
+          ],
+        },
+      ],
+    });
   });
 });

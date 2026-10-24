@@ -1,11 +1,14 @@
 import { Effect } from "effect";
+import { analyze, paramsByStatement, splitStatements } from "../../../sql/index.js";
 import * as DocsDomain from "../domain/docs.js";
+import * as QueryDomain from "../domain/query.js";
 import * as SqlDomain from "../domain/sql.js";
 import type { CellValue } from "../domain/sql.js";
 import { DatabaseUnavailableError, InvalidInputError, UnknownTableError } from "../errors/index.js";
 import { NO_DATABASE_MESSAGE } from "../constants/index.js";
 import { readText } from "../services/file.js";
 import * as ParseService from "../services/parse.js";
+import * as PlanService from "../services/plan.js";
 import { getStudio } from "../services/studio.js";
 
 type Values = Readonly<Record<string, CellValue>>;
@@ -164,11 +167,29 @@ export function deleteRow(input: { readonly table: string; readonly where: Value
   });
 }
 
-export function runSql(input: { readonly sql: string }) {
+/** The statements of the text, or an InvalidInputError when it holds none. */
+function statementsOf(sql: string) {
+  const statements = splitStatements(sql);
+  return statements.length === 0
+    ? Effect.fail(new InvalidInputError({ field: "sql", message: "holds no statement" }))
+    : Effect.succeed(statements);
+}
+
+/**
+ * Runs the statements one by one, each with the values its own placeholders take, and returns
+ * the rows of the last, or the rows it changed for a write, with the time the whole took.
+ */
+export function runSql(input: { readonly sql: string; readonly params: readonly CellValue[] }) {
   return Effect.gen(function* () {
     const db = yield* driver();
+    const statements = yield* statementsOf(input.sql);
+    const params = input.params.map((value) => SqlDomain.makeParam({ dialect: db.dialect, value }));
+    const bound = paramsByStatement(statements, params);
     const started = performance.now();
-    const result = yield* db.query({ sql: input.sql, params: [] });
+    const results = yield* Effect.forEach(statements, (sql, index) =>
+      db.query({ sql, params: bound[index] ?? [] }),
+    );
+    const result = results.at(-1) ?? { columns: [], rows: [], rowCount: 0 };
     const columns = result.columns.length > 0 ? result.columns : Object.keys(result.rows[0] ?? {});
     return {
       columns: [...columns],
@@ -180,5 +201,48 @@ export function runSql(input: { readonly sql: string }) {
       rowCount: result.rowCount,
       durationMs: Math.round((performance.now() - started) * 100) / 100,
     };
+  });
+}
+
+/** The execution plan the database chooses for the first statement of the text. */
+export function explainSql(input: { readonly sql: string; readonly params: readonly CellValue[] }) {
+  return Effect.gen(function* () {
+    const db = yield* driver();
+    const [first = ""] = yield* statementsOf(input.sql);
+    const params = paramsByStatement(
+      [first],
+      input.params.map((value) => SqlDomain.makeParam({ dialect: db.dialect, value })),
+    )[0];
+    const { rows } = yield* db.query({
+      sql: SqlDomain.makeExplainStatement({ dialect: db.dialect, sql: first }),
+      params: params ?? [],
+    });
+    const plan =
+      db.dialect === "postgresql"
+        ? PlanService.makePostgresPlan({ document: rows[0]?.["QUERY PLAN"] ?? null })
+        : db.dialect === "mysql"
+          ? PlanService.makeMysqlPlan({ document: rows[0]?.["EXPLAIN"] ?? null })
+          : PlanService.makeSqlitePlan({ rows });
+    return { dialect: db.dialect, nodes: [...plan.nodes], raw: plan.raw };
+  });
+}
+
+/**
+ * Analyzes every statement of the text against the tables of the saved schema, in the connected
+ * database's dialect, or the one the schema is written for while none is connected.
+ */
+export function analyzeSql(input: { readonly sql: string }) {
+  return Effect.gen(function* () {
+    const source = yield* readText(getStudio().schemaPath);
+    const parses = ParseService.findSyntaxError(source) === null;
+    const dialect =
+      getStudio().database.status.dialect ?? QueryDomain.makeSchemaDialect({ source }) ?? "sqlite";
+    return analyze(
+      input.sql,
+      SqlDomain.makeAnalysisSchema({
+        dialect,
+        models: parses ? ParseService.readSchema(source).models : [],
+      }),
+    );
   });
 }

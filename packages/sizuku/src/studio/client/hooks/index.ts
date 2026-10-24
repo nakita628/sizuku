@@ -1068,6 +1068,108 @@ export function usePostDbSql<TError = DefaultError, TOnMutateResult = unknown>(
   );
 }
 
+export function getPostDbExplainMutationKey() {
+  return ["db", "/db/explain", "POST"] as const;
+}
+
+export function getPostDbExplainMutationOptions<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: ClientRequestOptions,
+) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<typeof parseResponse<Awaited<ReturnType<typeof dbClient.db.explain.$post>>>>
+    >,
+    TError,
+    InferRequestType<typeof dbClient.db.explain.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostDbExplainMutationKey(),
+    async mutationFn(args: InferRequestType<typeof dbClient.db.explain.$post>) {
+      return parseResponse(dbClient.db.explain.$post(args, options));
+    },
+  });
+}
+
+export function usePostDbExplain<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<typeof parseResponse<Awaited<ReturnType<typeof dbClient.db.explain.$post>>>>
+        >,
+        TError,
+        InferRequestType<typeof dbClient.db.explain.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostDbExplainMutationOptions<TError, TOnMutateResult>(clientOptions);
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}
+
+export function getPostDbAnalyzeMutationKey() {
+  return ["db", "/db/analyze", "POST"] as const;
+}
+
+export function getPostDbAnalyzeMutationOptions<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: ClientRequestOptions,
+) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<typeof parseResponse<Awaited<ReturnType<typeof dbClient.db.analyze.$post>>>>
+    >,
+    TError,
+    InferRequestType<typeof dbClient.db.analyze.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostDbAnalyzeMutationKey(),
+    async mutationFn(args: InferRequestType<typeof dbClient.db.analyze.$post>) {
+      return parseResponse(dbClient.db.analyze.$post(args, options));
+    },
+  });
+}
+
+export function usePostDbAnalyze<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<typeof parseResponse<Awaited<ReturnType<typeof dbClient.db.analyze.$post>>>>
+        >,
+        TError,
+        InferRequestType<typeof dbClient.db.analyze.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostDbAnalyzeMutationOptions<TError, TOnMutateResult>(clientOptions);
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}
+
 export function getLanguageQueryKey() {
   return ["language", "/language"] as const;
 }
