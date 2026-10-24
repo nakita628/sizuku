@@ -1,0 +1,148 @@
+@import "tailwindcss";
+@import "@heroui/react/styles";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Semantic palette: light values on :root, dark values on .dark. The values are the ER diagram's
+   own (src/constants/diagram.ts), so the page and the drawing on it agree. */
+:root {
+  --c-canvas: #f7f8fb;
+  --c-surface: #ffffff;
+  --c-surface-2: #fbfbfd;
+  --c-ink: #16181f;
+  --c-muted: #6b7084;
+  --c-faint: #9a9fb3;
+  --c-line: #e4e6ee;
+  --c-line-strong: #cfd3e0;
+  --c-accent: #4f46e5;
+  --c-accent-soft: #eef0ff;
+  --c-accent-text: #3f37c9;
+  --c-danger: #c2410c;
+  --c-danger-soft: #fff4ec;
+  --c-danger-line: #fed7aa;
+  --c-node: #1f2233;
+  --c-node-text: #f4f5fa;
+  --c-key: #b45309;
+  --c-unique: #0f766e;
+  --c-enum: #7c3aed;
+  --c-ok: #15803d;
+  --c-busy: #b45309;
+}
+
+.dark {
+  --c-canvas: #0f1117;
+  --c-surface: #171a23;
+  --c-surface-2: #1c202b;
+  --c-ink: #e6e8ef;
+  --c-muted: #9aa0b4;
+  --c-faint: #6b7189;
+  --c-line: #262b38;
+  --c-line-strong: #343a4a;
+  --c-accent: #7c74ff;
+  --c-accent-soft: #24264a;
+  --c-accent-text: #a5a0ff;
+  --c-danger: #fb923c;
+  --c-danger-soft: #2b1d14;
+  --c-danger-line: #5b3a1f;
+  --c-node: #2a2f45;
+  --c-node-text: #f4f5fa;
+  --c-key: #fbbf24;
+  --c-unique: #5eead4;
+  --c-enum: #c4b5fd;
+  --c-ok: #4ade80;
+  --c-busy: #fbbf24;
+}
+
+/* HeroUI reads its own variables; pointed at the palette above, its components follow the theme. */
+@layer base {
+  :root {
+    --background: var(--c-canvas);
+    --foreground: var(--c-ink);
+    --surface: var(--c-surface);
+    --surface-foreground: var(--c-ink);
+    --surface-secondary: var(--c-surface-2);
+    --surface-tertiary: var(--c-canvas);
+    --overlay: var(--c-surface);
+    --overlay-foreground: var(--c-ink);
+    --muted: var(--c-muted);
+    --accent: var(--c-accent);
+    --accent-foreground: #ffffff;
+    --default: var(--c-canvas);
+    --default-foreground: var(--c-ink);
+    --border: var(--c-line-strong);
+    --separator: var(--c-line);
+    --separator-secondary: var(--c-line);
+    --separator-tertiary: var(--c-line);
+    --focus: var(--c-accent);
+    --link: var(--c-accent-text);
+    --danger: var(--c-danger);
+    --success: var(--c-ok);
+    --warning: var(--c-busy);
+    --field-background: var(--c-surface);
+    --field-foreground: var(--c-ink);
+    --field-border: var(--c-line-strong);
+    --field-border-width: 1px;
+    --field-radius: 0.5rem;
+    --radius: 0.5rem;
+  }
+}
+
+@theme inline {
+  --color-canvas: var(--c-canvas);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-accent: var(--c-accent);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-accent-text: var(--c-accent-text);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-danger-line: var(--c-danger-line);
+  --color-node: var(--c-node);
+  --color-node-text: var(--c-node-text);
+  --color-key: var(--c-key);
+  --color-unique: var(--c-unique);
+  --color-enum: var(--c-enum);
+  --color-ok: var(--c-ok);
+  --color-busy: var(--c-busy);
+  --font-sans:
+    ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans CJK JP",
+    sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", "Noto Sans Mono CJK JP", monospace;
+
+  --text-meta: 11px;
+  --text-code: 12.5px;
+  --text-body: 13px;
+  --text-ui: 14px;
+  --text-section: 18px;
+  --text-title: 22px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--c-canvas);
+    color: var(--c-ink);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* The ER diagram pane: a dotted canvas the drawing is panned and zoomed on. */
+.diagram-canvas {
+  background-color: var(--c-canvas);
+  background-image: radial-gradient(var(--c-line-strong) 1px, transparent 1px);
+  background-size: 20px 20px;
+}

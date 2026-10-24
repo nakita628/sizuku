@@ -8,7 +8,8 @@ const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
 
 Usage:
   sizuku <input> -o <output> [options]
-  sizuku studio <input> [--port <port>]   Edit the schema with a live ER diagram
+  sizuku studio <input> [--port <port>] [--url <database-url>]
+                                    Edit the schema, its ER diagram, docs and data
 
 Options:
   -o <path>                         Output file path (.ts, .md, .dbml, .svg, .png)
@@ -22,6 +23,7 @@ Options:
   --no-with-relation                Do not generate relation schemas
   --theme <light|dark>              Colour scheme of the .svg / .png ER diagram
   --port <port>                     Port for sizuku studio (default: 4983)
+  --url <database-url>              Database for sizuku studio (default: $DATABASE_URL)
   -h, --help                        Display this help message`;
 
 // ============================================================================

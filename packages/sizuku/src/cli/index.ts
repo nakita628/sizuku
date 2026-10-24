@@ -8,14 +8,15 @@ import {
   sizukuZod,
 } from "../core/index.js";
 import { readFileSync } from "../fsp/index.js";
-import { startStudio } from "../studio/index.js";
+import { DEFAULT_PORT, startStudio } from "../studio/index.js";
 import { stripImports } from "../utils/index.js";
 
 const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
 
 Usage:
   sizuku <input> -o <output> [options]
-  sizuku studio <input> [--port <port>]   Edit the schema with a live ER diagram
+  sizuku studio <input> [--port <port>] [--url <database-url>]
+                                    Edit the schema, its ER diagram, docs and data
 
 Options:
   -o <path>                         Output file path (.ts, .md, .dbml, .svg, .png)
@@ -29,6 +30,7 @@ Options:
   --no-with-relation                Do not generate relation schemas
   --theme <light|dark>              Colour scheme of the .svg / .png ER diagram
   --port <port>                     Port for sizuku studio (default: 4983)
+  --url <database-url>              Database for sizuku studio (default: $DATABASE_URL)
   -h, --help                        Display this help message`;
 
 // The value of `--name value` or `--name=value`.
@@ -62,16 +64,20 @@ export async function sizuku() {
   if (args[0] === "studio") {
     const file = args[1];
     if (!file || file.startsWith("-")) {
-      return { ok: false, error: "Usage: sizuku studio <input> [--port <port>]" } as const;
+      return {
+        ok: false,
+        error: "Usage: sizuku studio <input> [--port <port>] [--url <database-url>]",
+      } as const;
     }
-    const port = Number(flagValue(args, "--port") ?? 4983);
+    const port = Number(flagValue(args, "--port") ?? DEFAULT_PORT);
     if (!Number.isInteger(port) || port < 0 || port > 65535) {
       return {
         ok: false,
         error: `--port takes a port number, not "${flagValue(args, "--port")}"`,
       } as const;
     }
-    return startStudio(file, port);
+    const url = flagValue(args, "--url") ?? process.env.DATABASE_URL ?? null;
+    return startStudio({ file, port, url });
   }
   const input = args[0];
   if (!input || input.startsWith("-")) {

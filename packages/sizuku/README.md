@@ -13,7 +13,7 @@
 - 📊 Creates [Mermaid](https://mermaid.js.org/) ER diagrams
 - 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files
 - 🖼️ Draws ER diagrams as **SVG** / **PNG** images (light and dark)
-- ✏️ `sizuku studio`: edit the schema in the browser with a live ER diagram
+- ✏️ `sizuku studio`: edit the schema in Monaco beside its live ER diagram, read its generated docs, and browse and edit the database's rows
 
 ## Installation
 
@@ -25,7 +25,7 @@ npm install -D sizuku
 
 ```
 sizuku <input> -o <output> [options]
-sizuku studio <input> [--port <port>]
+sizuku studio <input> [--port <port>] [--url <database-url>]
 ```
 
 ### Options
@@ -42,6 +42,7 @@ sizuku studio <input> [--port <port>]
 --no-with-relation                Do not generate relation schemas
 --theme <light|dark>              Colour scheme of the .svg / .png ER diagram
 --port <port>                     Port for sizuku studio (default: 4983)
+--url <database-url>              Database for sizuku studio (default: $DATABASE_URL)
 -h, --help                        Display help message
 ```
 
@@ -64,8 +65,8 @@ npx sizuku db/schema.ts -o docs/er.png --theme dark
 # Generate Mermaid ER diagram
 npx sizuku db/schema.ts -o docs/ER.md
 
-# Edit the schema with a live ER diagram
-npx sizuku studio db/schema.ts
+# Edit the schema, its ER diagram, docs and data in the browser
+npx sizuku studio db/schema.ts --url file:./dev.db
 ```
 
 ## Schema Annotations
@@ -308,18 +309,26 @@ an edge declared only by `/// @relation` is dashed, since nothing in the databas
 
 ```sh
 npx sizuku studio db/schema.ts
+npx sizuku studio db/schema.ts --url file:./dev.db          # SQLite (node:sqlite)
+npx sizuku studio db/schema.ts --url postgres://localhost/app # pg from your project
 ```
 
-Opens an editor at `http://127.0.0.1:4983` with the schema on the left and its ER diagram on the
-right, redrawn as you type. Syntax errors are reported with their line while the last good
-drawing stays on screen.
+Opens `http://127.0.0.1:4983` with four pages:
 
-- **Ctrl/Cmd + S** saves the file. A change made on disk by another editor is picked up, and
-  the studio asks before replacing unsaved work.
-- Drag to pan, scroll to zoom, **Fit** to see the whole diagram.
-- **Export SVG** / **Export PNG** download the drawing in the current theme.
+- **Schema**: the file in Monaco with its ER diagram beside it, redrawn as you type. Syntax errors
+  are underlined with their line while the last good drawing stays. Ctrl/Cmd + S saves,
+  **Format** runs oxfmt, and the diagram downloads as SVG or PNG.
+- **Docs**: every table, column, key, default, index, relation (both ways) and enum, with the
+  `///` descriptions.
+- **Data**: each table's rows, with adding, editing and deleting a row (composite keys included).
+- **SQL**: a console on the same database.
 
-The server listens on the loopback interface only.
+The formatter settings are saved to the project's `.oxfmtrc.json`, so `oxfmt` formats the file the
+same way; the editor settings (font size, word wrap, format on save, auto save, ...) stay in the
+browser. The server listens on `127.0.0.1` only.
+
+See [docs/studio.md](https://github.com/nakita628/sizuku/blob/main/packages/sizuku/docs/studio.md) for the full guide and
+[docs/studio-api.md](https://github.com/nakita628/sizuku/blob/main/packages/sizuku/docs/studio-api.md) for its API.
 
 ## Relation Detection
 

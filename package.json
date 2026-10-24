@@ -6,6 +6,7 @@
     "deps": "mkdir -p /tmp/pnpm-store && pnpm config set store-dir /tmp/pnpm-store &&rm -rf node_modules && rm -rf pnpm-lock.yaml && rm -rf ~/.pnpm-store && pnpm store prune && pnpm install --no-prefer-frozen-lockfile",
     "build": "pnpm -F sizuku build",
     "studio": "pnpm build && pnpm -F @examples/studio studio",
+    "studio:diagram": "pnpm build && pnpm -F @examples/studio studio:diagram",
     "example": "pnpm build && pnpm -F @examples/studio generate",
     "check": "vp check --fix",
     "test": "vp test",
