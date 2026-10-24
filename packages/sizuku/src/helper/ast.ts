@@ -23,13 +23,18 @@ export function textOf(text: string, node: { readonly start: number; readonly en
 }
 
 // The first declarator of every `export const ...` at the top level, with the
-// offset of the statement (the `export` keyword) its leading comments sit above.
+// offsets of the statement: `start` is the `export` keyword its leading comments
+// sit above.
 export function exportedDeclarations(program: ReturnType<typeof parseSource>["program"]) {
   return program.body.flatMap((stmt) => {
     if (stmt.type !== "ExportNamedDeclaration") return [];
     const decl = stmt.declaration;
     if (decl?.type !== "VariableDeclaration") return [];
-    return decl.declarations.map((declarator) => ({ declarator, start: stmt.start }));
+    return decl.declarations.map((declarator) => ({
+      declarator,
+      start: stmt.start,
+      end: stmt.end,
+    }));
   });
 }
 

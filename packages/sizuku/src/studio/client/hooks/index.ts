@@ -276,6 +276,64 @@ export function useSuspenseSchemaEvents<
   );
 }
 
+export function getPostDiagramSchemaMutationKey() {
+  return ["diagram", "/diagram/schema", "POST"] as const;
+}
+
+export function getPostDiagramSchemaMutationOptions<
+  TError = DefaultError,
+  TOnMutateResult = unknown,
+>(options?: ClientRequestOptions) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<
+        typeof parseResponse<Awaited<ReturnType<typeof diagramClient.diagram.schema.$post>>>
+      >
+    >,
+    TError,
+    InferRequestType<typeof diagramClient.diagram.schema.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostDiagramSchemaMutationKey(),
+    async mutationFn(args: InferRequestType<typeof diagramClient.diagram.schema.$post>) {
+      return parseResponse(diagramClient.diagram.schema.$post(args, options));
+    },
+  });
+}
+
+export function usePostDiagramSchema<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<
+            typeof parseResponse<Awaited<ReturnType<typeof diagramClient.diagram.schema.$post>>>
+          >
+        >,
+        TError,
+        InferRequestType<typeof diagramClient.diagram.schema.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostDiagramSchemaMutationOptions<TError, TOnMutateResult>(
+    clientOptions,
+  );
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}
+
 export function getPostDiagramSvgMutationKey() {
   return ["diagram", "/diagram/svg", "POST"] as const;
 }

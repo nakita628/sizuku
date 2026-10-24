@@ -183,6 +183,167 @@ This operation does not require authentication
 
 <h1 id="sizuku-studio-api-diagram">diagram</h1>
 
+## drawSchema
+
+<a id="opIddrawSchema"></a>
+
+> Code samples
+
+```bash
+curl http://127.0.0.1:4983/api/diagram/schema \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "source": "string",
+    "document": {}
+  }'
+```
+
+`POST /diagram/schema`
+
+The ER diagram of a schema as data: tables, relations, enums and where each table is declared.
+
+> Body parameter
+
+```json
+{
+  "source": "string",
+  "document": {}
+}
+```
+
+<h3 id="drawschema-parameters">Parameters</h3>
+
+| Name       | In   | Type                            | Required | Description                                          |
+| ---------- | ---- | ------------------------------- | -------- | ---------------------------------------------------- |
+| body       | body | [SourceBody](#schemasourcebody) | true     | none                                                 |
+| » source   | body | string                          | true     | The schema source, saved or not, or the query        |
+| » document | body | object                          | false    | Which editor it comes from; the schema when left out |
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "schema": {
+    "models": [
+      {
+        "name": "string",
+        "dbName": "string",
+        "documentation": "string",
+        "primaryKey": ["string"],
+        "fields": [
+          {
+            "name": "string",
+            "dbName": "string",
+            "kind": "scalar",
+            "type": "string",
+            "isList": true,
+            "isRequired": true,
+            "isId": true,
+            "isUnique": true,
+            "isForeignKey": true,
+            "documentation": "string",
+            "attributes": ["string"]
+          }
+        ],
+        "indexes": [
+          {
+            "type": "id",
+            "fields": ["string"]
+          }
+        ],
+        "lines": {
+          "start": 0,
+          "end": 0
+        }
+      }
+    ],
+    "relations": [
+      {
+        "id": "string",
+        "origin": "inferred",
+        "name": "string",
+        "onDelete": "string",
+        "onUpdate": "string",
+        "from": {
+          "model": "string",
+          "field": "string",
+          "cardinality": "one"
+        },
+        "to": {
+          "model": "string",
+          "field": "string",
+          "cardinality": "one"
+        }
+      }
+    ],
+    "enums": [
+      {
+        "name": "string",
+        "dbName": "string",
+        "documentation": "string",
+        "values": [
+          {
+            "name": "string",
+            "dbName": "string"
+          }
+        ]
+      }
+    ]
+  },
+  "parseError": {
+    "message": "Expected `)` but found `EOF`",
+    "line": 12,
+    "column": 3
+  }
+}
+```
+
+> 422 Response
+
+```json
+{
+  "type": "/problems/validation-failed",
+  "title": "Validation Failed",
+  "status": 422,
+  "detail": "string",
+  "instance": "string",
+  "errors": [
+    {
+      "field": "string",
+      "message": "string"
+    }
+  ]
+}
+```
+
+> 500 Response
+
+```json
+{
+  "type": "/problems/internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "string",
+  "instance": "string"
+}
+```
+
+<h3 id="drawschema-responses">Responses</h3>
+
+| Status | Meaning               | Description                                            | Schema                                                |
+| ------ | --------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| 200    | OK                    | The request has succeeded.                             | [DiagramData](#schemadiagramdata)                     |
+| 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)         |
+| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem) |
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
 ## drawSvg
 
 <a id="opIddrawSvg"></a>
@@ -529,6 +690,13 @@ The generated documentation of the saved schema.
           "origin": "string",
           "onDelete": "string",
           "onUpdate": "string"
+        }
+      ],
+      "queries": [
+        {
+          "name": "string",
+          "description": "string",
+          "code": "string"
         }
       ]
     }
@@ -2222,6 +2390,518 @@ Text to write to the schema file.
 | ------ | ------ | -------- | ------------ | -------------- |
 | source | string | true     | none         | The whole file |
 
+<h2 id="tocS_CanvasField">CanvasField</h2>
+<!-- backwards compatibility -->
+<a id="schemacanvasfield"></a>
+<a id="schema_CanvasField"></a>
+<a id="tocScanvasfield"></a>
+<a id="tocscanvasfield"></a>
+
+```json
+{
+  "name": "string",
+  "dbName": "string",
+  "kind": "scalar",
+  "type": "string",
+  "isList": true,
+  "isRequired": true,
+  "isId": true,
+  "isUnique": true,
+  "isForeignKey": true,
+  "documentation": "string",
+  "attributes": ["string"]
+}
+```
+
+A column as a row of a card.
+
+### Properties
+
+| Name          | Type           | Required | Restrictions | Description                                   |
+| ------------- | -------------- | -------- | ------------ | --------------------------------------------- |
+| name          | string         | true     | none         | The property name                             |
+| dbName        | string \| null | true     | none         | The database column name when it differs      |
+| kind          | string         | true     | none         | Whether it holds an enum                      |
+| type          | string         | true     | none         | The column builder, or the enum's name        |
+| isList        | boolean        | true     | none         | Whether it is an array column                 |
+| isRequired    | boolean        | true     | none         | Whether it is NOT NULL                        |
+| isId          | boolean        | true     | none         | Whether it is the primary key                 |
+| isUnique      | boolean        | true     | none         | Whether a unique constraint covers it alone   |
+| isForeignKey  | boolean        | true     | none         | Whether it references another table           |
+| documentation | string \| null | true     | none         | The `///` description                         |
+| attributes    | [string]       | true     | none         | Its defaults and generated values, as written |
+
+#### Enumerated Values
+
+| Property | Value  |
+| -------- | ------ |
+| kind     | scalar |
+| kind     | enum   |
+
+<h2 id="tocS_CanvasIndex">CanvasIndex</h2>
+<!-- backwards compatibility -->
+<a id="schemacanvasindex"></a>
+<a id="schema_CanvasIndex"></a>
+<a id="tocScanvasindex"></a>
+<a id="tocscanvasindex"></a>
+
+```json
+{
+  "type": "id",
+  "fields": ["string"]
+}
+```
+
+An index or constraint as the card lists it under its rows.
+
+### Properties
+
+| Name   | Type     | Required | Restrictions | Description           |
+| ------ | -------- | -------- | ------------ | --------------------- |
+| type   | string   | true     | none         | What kind it is       |
+| fields | [string] | true     | none         | The columns it covers |
+
+#### Enumerated Values
+
+| Property | Value    |
+| -------- | -------- |
+| type     | id       |
+| type     | unique   |
+| type     | normal   |
+| type     | fulltext |
+
+<h2 id="tocS_LineRange">LineRange</h2>
+<!-- backwards compatibility -->
+<a id="schemalinerange"></a>
+<a id="schema_LineRange"></a>
+<a id="tocSlinerange"></a>
+<a id="tocslinerange"></a>
+
+```json
+{
+  "start": 0,
+  "end": 0
+}
+```
+
+Lines of the source, 1-based and inclusive.
+
+### Properties
+
+| Name  | Type           | Required | Restrictions | Description    |
+| ----- | -------------- | -------- | ------------ | -------------- |
+| start | integer(int32) | true     | none         | The first line |
+| end   | integer(int32) | true     | none         | The last line  |
+
+<h2 id="tocS_CanvasModel">CanvasModel</h2>
+<!-- backwards compatibility -->
+<a id="schemacanvasmodel"></a>
+<a id="schema_CanvasModel"></a>
+<a id="tocScanvasmodel"></a>
+<a id="tocscanvasmodel"></a>
+
+```json
+{
+  "name": "string",
+  "dbName": "string",
+  "documentation": "string",
+  "primaryKey": ["string"],
+  "fields": [
+    {
+      "name": "string",
+      "dbName": "string",
+      "kind": "scalar",
+      "type": "string",
+      "isList": true,
+      "isRequired": true,
+      "isId": true,
+      "isUnique": true,
+      "isForeignKey": true,
+      "documentation": "string",
+      "attributes": ["string"]
+    }
+  ],
+  "indexes": [
+    {
+      "type": "id",
+      "fields": ["string"]
+    }
+  ],
+  "lines": {
+    "start": 0,
+    "end": 0
+  }
+}
+```
+
+A table as a card.
+
+### Properties
+
+| Name          | Type                                | Required | Restrictions | Description                                             |
+| ------------- | ----------------------------------- | -------- | ------------ | ------------------------------------------------------- |
+| name          | string                              | true     | none         | The exported name                                       |
+| dbName        | string \| null                      | true     | none         | The database table name when it differs                 |
+| documentation | string \| null                      | true     | none         | The `///` description                                   |
+| primaryKey    | [string]                            | true     | none         | The columns of a composite primary key                  |
+| fields        | [[CanvasField](#schemacanvasfield)] | true     | none         | A row per column                                        |
+| indexes       | [[CanvasIndex](#schemacanvasindex)] | true     | none         | Its indexes and constraints                             |
+| lines         | object                              | true     | none         | Where the table is declared, for the editor to point at |
+
+<h2 id="tocS_RelationEnd">RelationEnd</h2>
+<!-- backwards compatibility -->
+<a id="schemarelationend"></a>
+<a id="schema_RelationEnd"></a>
+<a id="tocSrelationend"></a>
+<a id="tocsrelationend"></a>
+
+```json
+{
+  "model": "string",
+  "field": "string",
+  "cardinality": "one"
+}
+```
+
+One end of a relation.
+
+### Properties
+
+| Name        | Type   | Required | Restrictions | Description                |
+| ----------- | ------ | -------- | ------------ | -------------------------- |
+| model       | string | true     | none         | The table                  |
+| field       | string | true     | none         | The column                 |
+| cardinality | string | true     | none         | How many rows this end has |
+
+#### Enumerated Values
+
+| Property    | Value     |
+| ----------- | --------- |
+| cardinality | one       |
+| cardinality | zero-one  |
+| cardinality | many      |
+| cardinality | zero-many |
+
+<h2 id="tocS_CanvasRelation">CanvasRelation</h2>
+<!-- backwards compatibility -->
+<a id="schemacanvasrelation"></a>
+<a id="schema_CanvasRelation"></a>
+<a id="tocScanvasrelation"></a>
+<a id="tocscanvasrelation"></a>
+
+```json
+{
+  "id": "string",
+  "origin": "inferred",
+  "name": "string",
+  "onDelete": "string",
+  "onUpdate": "string",
+  "from": {
+    "model": "string",
+    "field": "string",
+    "cardinality": "one"
+  },
+  "to": {
+    "model": "string",
+    "field": "string",
+    "cardinality": "one"
+  }
+}
+```
+
+A relation as an edge.
+
+### Properties
+
+| Name     | Type           | Required | Restrictions | Description                                                                            |
+| -------- | -------------- | -------- | ------------ | -------------------------------------------------------------------------------------- |
+| id       | string         | true     | none         | A key for the edge: `from.field->to.field`                                             |
+| origin   | string         | true     | none         | Where it was found: a foreign key (`inferred`) or a `/// @relation` note (`annotated`) |
+| name     | string \| null | true     | none         | Its name, when it has one                                                              |
+| onDelete | string \| null | true     | none         | The action on delete of the parent row                                                 |
+| onUpdate | string \| null | true     | none         | The action on update of the parent key                                                 |
+| from     | object         | true     | none         | The referenced end                                                                     |
+| to       | object         | true     | none         | The end that holds the foreign key                                                     |
+
+#### Enumerated Values
+
+| Property | Value                 |
+| -------- | --------------------- |
+| origin   | inferred              |
+| origin   | annotated             |
+| origin   | implicit-many-to-many |
+
+<h2 id="tocS_CanvasEnumValue">CanvasEnumValue</h2>
+<!-- backwards compatibility -->
+<a id="schemacanvasenumvalue"></a>
+<a id="schema_CanvasEnumValue"></a>
+<a id="tocScanvasenumvalue"></a>
+<a id="tocscanvasenumvalue"></a>
+
+```json
+{
+  "name": "string",
+  "dbName": "string"
+}
+```
+
+One value of an enum.
+
+### Properties
+
+| Name   | Type           | Required | Restrictions | Description                      |
+| ------ | -------------- | -------- | ------------ | -------------------------------- |
+| name   | string         | true     | none         | The value                        |
+| dbName | string \| null | true     | none         | The stored value when it differs |
+
+<h2 id="tocS_CanvasEnum">CanvasEnum</h2>
+<!-- backwards compatibility -->
+<a id="schemacanvasenum"></a>
+<a id="schema_CanvasEnum"></a>
+<a id="tocScanvasenum"></a>
+<a id="tocscanvasenum"></a>
+
+```json
+{
+  "name": "string",
+  "dbName": "string",
+  "documentation": "string",
+  "values": [
+    {
+      "name": "string",
+      "dbName": "string"
+    }
+  ]
+}
+```
+
+An enum as a card.
+
+### Properties
+
+| Name          | Type                                        | Required | Restrictions | Description                            |
+| ------------- | ------------------------------------------- | -------- | ------------ | -------------------------------------- |
+| name          | string                                      | true     | none         | The exported name                      |
+| dbName        | string \| null                              | true     | none         | The database type name when it differs |
+| documentation | string \| null                              | true     | none         | The `///` description                  |
+| values        | [[CanvasEnumValue](#schemacanvasenumvalue)] | true     | none         | Its values, in order                   |
+
+<h2 id="tocS_CanvasSchema">CanvasSchema</h2>
+<!-- backwards compatibility -->
+<a id="schemacanvasschema"></a>
+<a id="schema_CanvasSchema"></a>
+<a id="tocScanvasschema"></a>
+<a id="tocscanvasschema"></a>
+
+```json
+{
+  "models": [
+    {
+      "name": "string",
+      "dbName": "string",
+      "documentation": "string",
+      "primaryKey": ["string"],
+      "fields": [
+        {
+          "name": "string",
+          "dbName": "string",
+          "kind": "scalar",
+          "type": "string",
+          "isList": true,
+          "isRequired": true,
+          "isId": true,
+          "isUnique": true,
+          "isForeignKey": true,
+          "documentation": "string",
+          "attributes": ["string"]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "id",
+          "fields": ["string"]
+        }
+      ],
+      "lines": {
+        "start": 0,
+        "end": 0
+      }
+    }
+  ],
+  "relations": [
+    {
+      "id": "string",
+      "origin": "inferred",
+      "name": "string",
+      "onDelete": "string",
+      "onUpdate": "string",
+      "from": {
+        "model": "string",
+        "field": "string",
+        "cardinality": "one"
+      },
+      "to": {
+        "model": "string",
+        "field": "string",
+        "cardinality": "one"
+      }
+    }
+  ],
+  "enums": [
+    {
+      "name": "string",
+      "dbName": "string",
+      "documentation": "string",
+      "values": [
+        {
+          "name": "string",
+          "dbName": "string"
+        }
+      ]
+    }
+  ]
+}
+```
+
+A schema as the diagram canvas draws it.
+
+### Properties
+
+| Name      | Type                                      | Required | Restrictions | Description          |
+| --------- | ----------------------------------------- | -------- | ------------ | -------------------- |
+| models    | [[CanvasModel](#schemacanvasmodel)]       | true     | none         | A card per table     |
+| relations | [[CanvasRelation](#schemacanvasrelation)] | true     | none         | An edge per relation |
+| enums     | [[CanvasEnum](#schemacanvasenum)]         | true     | none         | A card per enum      |
+
+<h2 id="tocS_DiagramData">DiagramData</h2>
+<!-- backwards compatibility -->
+<a id="schemadiagramdata"></a>
+<a id="schema_DiagramData"></a>
+<a id="tocSdiagramdata"></a>
+<a id="tocsdiagramdata"></a>
+
+```json
+{
+  "schema": {
+    "models": [
+      {
+        "name": "string",
+        "dbName": "string",
+        "documentation": "string",
+        "primaryKey": ["string"],
+        "fields": [
+          {
+            "name": "string",
+            "dbName": "string",
+            "kind": "scalar",
+            "type": "string",
+            "isList": true,
+            "isRequired": true,
+            "isId": true,
+            "isUnique": true,
+            "isForeignKey": true,
+            "documentation": "string",
+            "attributes": ["string"]
+          }
+        ],
+        "indexes": [
+          {
+            "type": "id",
+            "fields": ["string"]
+          }
+        ],
+        "lines": {
+          "start": 0,
+          "end": 0
+        }
+      }
+    ],
+    "relations": [
+      {
+        "id": "string",
+        "origin": "inferred",
+        "name": "string",
+        "onDelete": "string",
+        "onUpdate": "string",
+        "from": {
+          "model": "string",
+          "field": "string",
+          "cardinality": "one"
+        },
+        "to": {
+          "model": "string",
+          "field": "string",
+          "cardinality": "one"
+        }
+      }
+    ],
+    "enums": [
+      {
+        "name": "string",
+        "dbName": "string",
+        "documentation": "string",
+        "values": [
+          {
+            "name": "string",
+            "dbName": "string"
+          }
+        ]
+      }
+    ]
+  },
+  "parseError": {
+    "message": "Expected `)` but found `EOF`",
+    "line": 12,
+    "column": 3
+  }
+}
+```
+
+The ER diagram as data, for the page to draw and lay out itself.
+
+### Properties
+
+| Name       | Type           | Required | Restrictions | Description                                                          |
+| ---------- | -------------- | -------- | ------------ | -------------------------------------------------------------------- |
+| schema     | object \| null | true     | none         | The tables, relations and enums; null when the source does not parse |
+| parseError | object \| null | true     | none         | The syntax error that stopped it                                     |
+
+<h2 id="tocS_DocumentKind">DocumentKind</h2>
+<!-- backwards compatibility -->
+<a id="schemadocumentkind"></a>
+<a id="schema_DocumentKind"></a>
+<a id="tocSdocumentkind"></a>
+<a id="tocsdocumentkind"></a>
+
+```json
+"schema"
+```
+
+Which editor a language request is about.
+
+<h2 id="tocS_SourceBody">SourceBody</h2>
+<!-- backwards compatibility -->
+<a id="schemasourcebody"></a>
+<a id="schema_SourceBody"></a>
+<a id="tocSsourcebody"></a>
+<a id="tocssourcebody"></a>
+
+```json
+{
+  "source": "string",
+  "document": {}
+}
+```
+
+A source to check.
+
+### Properties
+
+| Name     | Type   | Required | Restrictions | Description                                          |
+| -------- | ------ | -------- | ------------ | ---------------------------------------------------- |
+| source   | string | true     | none         | The schema source, saved or not, or the query        |
+| document | object | false    | none         | Which editor it comes from; the schema when left out |
+
 <h2 id="tocS_Diagram">Diagram</h2>
 <!-- backwards compatibility -->
 <a id="schemadiagram"></a>
@@ -2480,6 +3160,31 @@ A relation as seen from one table.
 | onDelete    | string \| null | true     | none         | The action on delete of the parent row                                             |
 | onUpdate    | string \| null | true     | none         | The action on update of the parent key                                             |
 
+<h2 id="tocS_DocQuery">DocQuery</h2>
+<!-- backwards compatibility -->
+<a id="schemadocquery"></a>
+<a id="schema_DocQuery"></a>
+<a id="tocSdocquery"></a>
+<a id="tocsdocquery"></a>
+
+```json
+{
+  "name": "string",
+  "description": "string",
+  "code": "string"
+}
+```
+
+A Drizzle query to try against a table, for the docs.
+
+### Properties
+
+| Name        | Type   | Required | Restrictions | Description                                            |
+| ----------- | ------ | -------- | ------------ | ------------------------------------------------------ |
+| name        | string | true     | none         | What it does, as a title: `Find by key`, `Insert`, ... |
+| description | string | true     | none         | A sentence about it                                    |
+| code        | string | true     | none         | The code, as the Query page runs it                    |
+
 <h2 id="tocS_DocTable">DocTable</h2>
 <!-- backwards compatibility -->
 <a id="schemadoctable"></a>
@@ -2537,6 +3242,13 @@ A relation as seen from one table.
       "onDelete": "string",
       "onUpdate": "string"
     }
+  ],
+  "queries": [
+    {
+      "name": "string",
+      "description": "string",
+      "code": "string"
+    }
   ]
 }
 ```
@@ -2554,6 +3266,7 @@ One table of the docs.
 | indexes      | [[DocIndex](#schemadocindex)]       | true     | none         | Its indexes and constraints                          |
 | references   | [[DocRelation](#schemadocrelation)] | true     | none         | The relations where this table holds the foreign key |
 | referencedBy | [[DocRelation](#schemadocrelation)] | true     | none         | The relations where another table points here        |
+| queries      | [[DocQuery](#schemadocquery)]       | true     | none         | Drizzle queries to start from                        |
 
 <h2 id="tocS_DocEnum">DocEnum</h2>
 <!-- backwards compatibility -->
@@ -2640,6 +3353,13 @@ One enum of the docs.
           "origin": "string",
           "onDelete": "string",
           "onUpdate": "string"
+        }
+      ],
+      "queries": [
+        {
+          "name": "string",
+          "description": "string",
+          "code": "string"
         }
       ]
     }
@@ -3235,19 +3955,6 @@ The completions at the cursor.
 | ----- | ----------------------------------------- | -------- | ------------ | -------------------------------- |
 | items | [[CompletionItem](#schemacompletionitem)] | true     | none         | The items, in TypeScript's order |
 
-<h2 id="tocS_DocumentKind">DocumentKind</h2>
-<!-- backwards compatibility -->
-<a id="schemadocumentkind"></a>
-<a id="schema_DocumentKind"></a>
-<a id="tocSdocumentkind"></a>
-<a id="tocsdocumentkind"></a>
-
-```json
-"schema"
-```
-
-Which editor a language request is about.
-
 <h2 id="tocS_PositionBody">PositionBody</h2>
 <!-- backwards compatibility -->
 <a id="schemapositionbody"></a>
@@ -3503,29 +4210,6 @@ The type errors of a source; its syntax errors come from the parser, with the di
 | Name        | Type                              | Required | Restrictions | Description                        |
 | ----------- | --------------------------------- | -------- | ------------ | ---------------------------------- |
 | diagnostics | [[Diagnostic](#schemadiagnostic)] | true     | none         | The problems, in order of position |
-
-<h2 id="tocS_SourceBody">SourceBody</h2>
-<!-- backwards compatibility -->
-<a id="schemasourcebody"></a>
-<a id="schema_SourceBody"></a>
-<a id="tocSsourcebody"></a>
-<a id="tocssourcebody"></a>
-
-```json
-{
-  "source": "string",
-  "document": {}
-}
-```
-
-A source to check.
-
-### Properties
-
-| Name     | Type   | Required | Restrictions | Description                                          |
-| -------- | ------ | -------- | ------------ | ---------------------------------------------------- |
-| source   | string | true     | none         | The schema source, saved or not, or the query        |
-| document | object | false    | none         | Which editor it comes from; the schema when left out |
 
 <h2 id="tocS_ExecutedStatement">ExecutedStatement</h2>
 <!-- backwards compatibility -->

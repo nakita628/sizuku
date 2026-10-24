@@ -1,51 +1,40 @@
 import { Button, Chip, Tooltip, toast } from "@heroui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { editor as MonacoEditor } from "monaco-editor/editor/editor.api.js";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { LuDownload, LuSave, LuSparkles } from "react-icons/lu";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LuSave, LuSparkles } from "react-icons/lu";
 import { SplitPane } from "../../components/split-pane.js";
 import {
   getSchemaQueryKey,
   useLanguage,
-  usePostDiagramPng,
-  usePostDiagramSvg,
+  usePostDiagramSchema,
   usePostFormat,
   usePostLanguageDiagnostics,
   usePutSchema,
   useSchema,
 } from "../../hooks/index.js";
 import { problemMessage } from "../../lib/problem.js";
-import { useUiStore } from "../../lib/store.js";
 import { CodeEditor } from "../editor/code-editor.js";
 import { SCHEMA_MODEL, setLanguageEnabled, setTypeMarkers } from "../editor/language.js";
 import { bindFormatter, setParseMarker } from "../editor/monaco.js";
-import { DiagramPane } from "./diagram-pane.js";
+import { SchemaCanvas } from "../diagram/canvas.js";
+import type { CanvasSchema } from "../diagram/types.js";
 
 type ParseError = { readonly message: string; readonly line: number; readonly column: number };
 
 const DRAW_DEBOUNCE_MS = 250;
 const CHECK_DEBOUNCE_MS = 500;
 
-function download(name: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 /**
- * The schema file in Monaco on the left and its ER diagram on the right, redrawn as you type.
+ * The schema file in Monaco on the left and its ER diagram on the right, redrawn as you type;
+ * the card of the table the cursor is in is selected.
  * The editor holds the text; `base` is the text on disk as far as the page knows. A change on
  * disk replaces a clean editor and waits behind a banner when there is unsaved work.
  */
 export function SchemaView() {
   const queryClient = useQueryClient();
   const snapshot = useSchema().data ?? null;
-  const theme = useUiStore((s) => s.theme);
-  const draw = usePostDiagramSvg();
-  const drawPng = usePostDiagramPng();
+  const draw = usePostDiagramSchema();
   const format = usePostFormat();
   const put = usePutSchema();
   const language = useLanguage().data ?? null;
@@ -55,7 +44,8 @@ export function SchemaView() {
   const [text, setText] = useState<string | null>(null);
   const [base, setBase] = useState<string | null>(null);
   const [onDisk, setOnDisk] = useState<string | null>(null);
-  const [svg, setSvg] = useState<string | null>(null);
+  const [diagram, setDiagram] = useState<CanvasSchema | null>(null);
+  const [cursorLine, setCursorLine] = useState(1);
   const [parseError, setParseError] = useState<ParseError | null>(null);
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   // The editor mounts after the text arrives; the type check waits for it.
@@ -89,18 +79,25 @@ export function SchemaView() {
     const seq = ++drawSeq.current;
     const timer = setTimeout(() => {
       draw.mutate(
-        { json: { source: text, theme } },
+        { json: { source: text } },
         {
           onSuccess: (result) => {
             if (seq !== drawSeq.current) return;
             setParseError(result.parseError);
-            if (result.svg !== null) setSvg(result.svg);
+            if (result.schema !== null) setDiagram(result.schema);
           },
         },
       );
     }, DRAW_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [text, theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [text]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const highlight = useMemo(
+    () =>
+      diagram?.models.find((m) => m.lines.start <= cursorLine && cursorLine <= m.lines.end)?.name ??
+      null,
+    [diagram, cursorLine],
+  );
 
   useEffect(() => {
     const model = editorRef.current?.getModel();
@@ -199,17 +196,6 @@ export function SchemaView() {
     return () => globalThis.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const exportPng = async () => {
-    if (text === null) return;
-    try {
-      const { base64 } = await drawPng.mutateAsync({ json: { source: text, theme } });
-      const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-      download("er.png", new Blob([bytes], { type: "image/png" }));
-    } catch (error) {
-      toast.danger(problemMessage(error));
-    }
-  };
-
   const status = parseError
     ? { label: `Line ${parseError.line}: syntax error`, color: "danger" as const }
     : put.isPending
@@ -248,24 +234,6 @@ export function SchemaView() {
         >
           <LuSparkles />
           Format
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          isDisabled={svg === null}
-          onPress={() => svg && download("er.svg", new Blob([svg], { type: "image/svg+xml" }))}
-        >
-          <LuDownload />
-          SVG
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          isDisabled={text === null || drawPng.isPending}
-          onPress={() => void exportPng()}
-        >
-          <LuDownload />
-          PNG
         </Button>
         <Button size="sm" onPress={() => void save()} isDisabled={!dirty || put.isPending}>
           <LuSave />
@@ -315,6 +283,9 @@ export function SchemaView() {
                 onMount={(editor) => {
                   editorRef.current = editor;
                   setEditorReady(true);
+                  editor.onDidChangeCursorPosition((event) =>
+                    setCursorLine(event.position.lineNumber),
+                  );
                   const model = editor.getModel();
                   if (model) setParseMarker(model, parseError);
                 }}
@@ -323,31 +294,33 @@ export function SchemaView() {
           </div>
         }
         second={
-          <DiagramPane
-            svg={svg}
-            placeholder={parseError ? "Fix the syntax error to draw the diagram." : "Drawing…"}
-            overlay={
-              parseError ? (
-                <button
-                  type="button"
-                  className="absolute right-3 bottom-3 left-3 rounded-lg border border-danger-line bg-danger-soft px-3 py-2 text-left font-mono text-code text-danger"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={() => {
-                    const editor = editorRef.current;
-                    if (editor === null) return;
-                    editor.setPosition({ lineNumber: parseError.line, column: parseError.column });
-                    editor.revealLineInCenter(parseError.line);
-                    editor.focus();
-                  }}
-                >
-                  Line {parseError.line}, column {parseError.column}: {parseError.message}
-                  <span className="ml-2 font-sans text-meta text-muted">
-                    (the last drawing is kept)
-                  </span>
-                </button>
-              ) : null
-            }
-          />
+          <div className="relative flex h-full min-h-0 flex-col">
+            {diagram === null || snapshot === null ? (
+              <div className="diagram-canvas flex flex-1 items-center justify-center text-body text-muted">
+                {parseError ? "Fix the syntax error to draw the diagram." : "Drawing…"}
+              </div>
+            ) : (
+              <SchemaCanvas schema={diagram} schemaPath={snapshot.file} highlight={highlight} />
+            )}
+            {parseError ? (
+              <button
+                type="button"
+                className="absolute right-3 bottom-3 left-3 z-10 rounded-lg border border-danger-line bg-danger-soft px-3 py-2 text-left font-mono text-code text-danger"
+                onClick={() => {
+                  const editor = editorRef.current;
+                  if (editor === null) return;
+                  editor.setPosition({ lineNumber: parseError.line, column: parseError.column });
+                  editor.revealLineInCenter(parseError.line);
+                  editor.focus();
+                }}
+              >
+                Line {parseError.line}, column {parseError.column}: {parseError.message}
+                <span className="ml-2 font-sans text-meta text-muted">
+                  (the last drawing is kept)
+                </span>
+              </button>
+            ) : null}
+          </div>
         }
       />
     </div>

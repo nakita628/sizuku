@@ -12,6 +12,7 @@ import {
   postDbRowsTableNameRoute,
   postDbSqlRoute,
   postDiagramPngRoute,
+  postDiagramSchemaRoute,
   postDiagramSvgRoute,
   postDrizzleRoute,
   postFormatRoute,
@@ -35,6 +36,7 @@ import {
   postDbRowsTableNameRouteHandler,
   postDbSqlRouteHandler,
   postDiagramPngRouteHandler,
+  postDiagramSchemaRouteHandler,
   postDiagramSvgRouteHandler,
   postDrizzleRouteHandler,
   postFormatRouteHandler,
@@ -54,6 +56,7 @@ export const schema = app
   .openapi(getSchemaEventsRoute, getSchemaEventsRouteHandler);
 
 export const diagram = app
+  .openapi(postDiagramSchemaRoute, postDiagramSchemaRouteHandler)
   .openapi(postDiagramSvgRoute, postDiagramSvgRouteHandler)
   .openapi(postDiagramPngRoute, postDiagramPngRouteHandler);
 

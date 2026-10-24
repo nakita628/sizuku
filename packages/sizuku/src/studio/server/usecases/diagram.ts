@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import { erPng, erSvg } from "../../../generator/index.js";
 import { stripImports } from "../../../utils/index.js";
+import * as CanvasDomain from "../domain/canvas.js";
 import * as ParseDomain from "../domain/parse.js";
 import { RenderError, SchemaParseError } from "../errors/index.js";
 
@@ -31,5 +32,15 @@ export function drawPng(input: { readonly source: string; readonly theme: Theme 
     if (parseError !== null) return yield* new SchemaParseError(parseError);
     const png = yield* render(() => erPng(stripImports(input.source), input.theme));
     return { base64: Buffer.from(png).toString("base64") };
+  });
+}
+
+/** The ER diagram as data for the canvas, or the syntax error that stopped it (the page keeps the last one). */
+export function drawSchema(input: { readonly source: string }) {
+  return Effect.gen(function* () {
+    const parseError = ParseDomain.makeParseError({ source: input.source });
+    if (parseError !== null) return { schema: null, parseError };
+    const schema = yield* render(() => CanvasDomain.makeCanvasSchema({ source: input.source }));
+    return { schema, parseError: null };
   });
 }

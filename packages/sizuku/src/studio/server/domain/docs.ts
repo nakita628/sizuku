@@ -1,6 +1,14 @@
-import { diagramSchema } from "../../../helper/index.js";
-import type { Cardinality, SchemaModel, SchemaRelation } from "../../../types/index.js";
+import { diagramSchema, extractRelationSchemas } from "../../../helper/index.js";
+import type {
+  Cardinality,
+  SchemaEnum,
+  SchemaField,
+  SchemaModel,
+  SchemaRelation,
+} from "../../../types/index.js";
 import { stripImports } from "../../../utils/index.js";
+import { makeSchemaDialect } from "./query.js";
+import type { Dialect } from "./sql.js";
 
 function isMany(cardinality: Cardinality) {
   return cardinality === "many" || cardinality === "zero-many";
@@ -49,8 +57,133 @@ function referencedByOf(name: string, relations: readonly SchemaRelation[]) {
  * The documentation of a Drizzle schema: every table with its columns, keys, defaults, indexes
  * and relations in both directions, and every enum, each with the `///` description it carries.
  */
+const NUMERIC =
+  /^(int|integer|smallint|bigint|tinyint|mediumint|serial|smallserial|bigserial|real|double|doublePrecision|float|numeric|decimal)$/u;
+const DATES = /^(timestamp|date|datetime|time)$/u;
+const GENERATED =
+  /^\.(?:default|defaultNow|defaultRandom|\$defaultFn|\$default|generatedAlwaysAs)\(/u;
+
+/** A value of the column's type to put in an example: a number, a date, an enum's first value, text. */
+function sampleValue(field: SchemaField, enums: readonly SchemaEnum[]) {
+  if (field.kind === "enum") {
+    const first = enums.find((e) => e.name === field.type)?.values[0]?.name;
+    return JSON.stringify(first ?? "value");
+  }
+  const value = NUMERIC.test(field.type)
+    ? "1"
+    : field.type === "boolean"
+      ? "true"
+      : DATES.test(field.type)
+        ? "new Date()"
+        : field.type === "json" || field.type === "jsonb"
+          ? "{}"
+          : JSON.stringify(field.name);
+  return field.isList ? `[${value}]` : value;
+}
+
+/** The columns a row needs a value for: not null, with no default, and not a numeric key the database counts up. */
+function requiredFields(model: SchemaModel) {
+  const key = new Set(model.primaryKey ?? []);
+  return model.fields.filter(
+    (field) =>
+      field.isRequired &&
+      !(field.attributes ?? []).some((attribute) => GENERATED.test(attribute)) &&
+      !((field.isId || key.has(field.name)) && NUMERIC.test(field.type) && !field.isForeignKey),
+  );
+}
+
+/**
+ * Drizzle queries to start from on the Query page: read a page, find a row by its key, count,
+ * read with its relations, and insert, update and delete one. Every one runs as written.
+ */
+function makeQueries(input: {
+  readonly model: SchemaModel;
+  readonly key: readonly string[];
+  readonly relationNames: readonly string[];
+  readonly enums: readonly SchemaEnum[];
+  readonly dialect: Dialect;
+}) {
+  const { model, key, enums } = input;
+  const t = model.name;
+  const field = (name: string) => model.fields.find((f) => f.name === name);
+  const condition = (() => {
+    const parts = key.flatMap((name) => {
+      const f = field(name);
+      return f ? [`eq(${t}.${name}, ${sampleValue(f, enums)})`] : [];
+    });
+    return parts.length === 1 ? parts[0] : `and(${parts.join(", ")})`;
+  })();
+  const values = requiredFields(model).map((f) => `    ${f.name}: ${sampleValue(f, enums)},`);
+  const returning = input.dialect === "mysql" ? "" : ".returning()";
+  const changeable = model.fields.find((f) => !key.includes(f.name) && !f.isForeignKey);
+  return [
+    {
+      name: "List",
+      description: `The first ten rows of ${t}.`,
+      code: `db.select().from(${t}).limit(10)`,
+    },
+    ...(condition === undefined
+      ? []
+      : [
+          {
+            name: "Find by key",
+            description: `One row of ${t}, found by ${key.join(" and ")}.`,
+            code: `db.select().from(${t}).where(${condition})`,
+          },
+        ]),
+    { name: "Count", description: `How many rows ${t} has.`, code: `db.$count(${t})` },
+    ...(input.relationNames.length === 0
+      ? []
+      : [
+          {
+            name: "With relations",
+            description: `Rows of ${t} with what they relate to, through the relational query API.`,
+            code: `db.query.${t}.findMany({\n  with: { ${input.relationNames.map((name) => `${name}: true`).join(", ")} },\n  limit: 10,\n})`,
+          },
+        ]),
+    {
+      name: "Insert",
+      description: `Add a row to ${t}; the columns left out take their defaults.`,
+      code: [
+        `db.insert(${t})`,
+        values.length === 0 ? "  .values({})" : ["  .values({", ...values, "  })"].join("\n"),
+        ...(returning === "" ? [] : [`  ${returning}`]),
+      ].join("\n"),
+    },
+    ...(changeable === undefined || condition === undefined
+      ? []
+      : [
+          {
+            name: "Update",
+            description: `Change ${changeable.name} of the row found by ${key.join(" and ")}.`,
+            code: `db.update(${t})\n  .set({ ${changeable.name}: ${sampleValue(changeable, enums)} })\n  .where(${condition})`,
+          },
+        ]),
+    ...(condition === undefined
+      ? []
+      : [
+          {
+            name: "Delete",
+            description: `Delete the row found by ${key.join(" and ")}.`,
+            code: `db.delete(${t}).where(${condition})`,
+          },
+        ]),
+  ];
+}
+
 export function makeDocs(input: { readonly source: string }) {
-  const { models, relations, enums } = diagramSchema(stripImports(input.source));
+  const code = stripImports(input.source);
+  const { models, relations, enums } = diagramSchema(code);
+  const dialect = makeSchemaDialect({ source: input.source }) ?? "postgresql";
+  const keys = new Map(makeDbTables({ source: input.source }).map((t) => [t.name, t.key]));
+  // The names `relations()` gives a table's relations, which `db.query.*.findMany({ with })` takes.
+  const relationNames = new Map<string, readonly string[]>();
+  for (const block of extractRelationSchemas(code, "zod")) {
+    relationNames.set(block.baseName, [
+      ...(relationNames.get(block.baseName) ?? []),
+      ...block.fields.map((f) => f.name),
+    ]);
+  }
   const tables = models.map((model) => {
     const primaryKey = new Set(model.primaryKey ?? []);
     return {
@@ -83,6 +216,13 @@ export function makeDocs(input: { readonly source: string }) {
       })),
       references: referencesOf(model.name, relations),
       referencedBy: referencedByOf(model.name, relations),
+      queries: makeQueries({
+        model,
+        key: keys.get(model.name) ?? [],
+        relationNames: relationNames.get(model.name) ?? [],
+        enums,
+        dialect,
+      }),
     };
   });
   return {

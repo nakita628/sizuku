@@ -1,9 +1,11 @@
 import { Chip } from "@heroui/react";
-import { Link } from "@tanstack/react-router";
-import { LuArrowRight, LuKey, LuLink, LuList, LuTable } from "react-icons/lu";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { LuArrowRight, LuKey, LuLink, LuList, LuPlay, LuTable } from "react-icons/lu";
 import type { z } from "@hono/zod-openapi";
 import type { DocsSchema } from "../../../server/routes/index.js";
+import { CodeBlock } from "../../components/code-block.js";
 import { useDocs } from "../../hooks/index.js";
+import { presetQuery } from "../query/query-view.js";
 
 type Docs = z.infer<typeof DocsSchema>;
 type Table = Docs["tables"][number];
@@ -155,6 +157,40 @@ function Relations({
   );
 }
 
+/** Drizzle queries to start from, each opened in the Query page as it is written. */
+function Queries({ queries }: { readonly queries: Table["queries"] }) {
+  const navigate = useNavigate();
+  if (queries.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <h4 className="text-meta font-semibold tracking-wide text-muted uppercase">Queries</h4>
+      <ul className="flex flex-col gap-2">
+        {queries.map((query) => (
+          <li key={query.name} className="rounded-lg border border-line bg-surface-2">
+            <div className="flex items-center gap-2 border-b border-line px-3 py-1.5">
+              <span className="text-body font-semibold">{query.name}</span>
+              <span className="truncate text-meta text-muted">{query.description}</span>
+              <span className="flex-1" />
+              <button
+                type="button"
+                className="inline-flex shrink-0 items-center gap-1 text-meta text-accent-text hover:underline"
+                onClick={() => {
+                  presetQuery(query.code);
+                  void navigate({ to: "/query" });
+                }}
+              >
+                <LuPlay size={12} />
+                Open in Query
+              </button>
+            </div>
+            <CodeBlock code={query.code} className="px-3 py-2" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function TableSection({
   table,
   enums,
@@ -208,6 +244,7 @@ function TableSection({
         ) : null}
         <Relations title="References" relations={table.references} reverse={false} />
         <Relations title="Referenced by" relations={table.referencedBy} reverse />
+        <Queries queries={table.queries} />
       </div>
     </section>
   );

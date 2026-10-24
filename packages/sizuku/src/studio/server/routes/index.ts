@@ -99,6 +99,215 @@ export const SaveBodySchema = z
   .openapi({ required: ["source"], description: "Text to write to the schema file." })
   .openapi("SaveBody");
 
+export const CanvasFieldSchema = z
+  .object({
+    name: z.string().openapi({ description: "The property name" }),
+    dbName: z
+      .string()
+      .nullable()
+      .openapi({ description: "The database column name when it differs" }),
+    kind: z.enum(["scalar", "enum"]).openapi({ description: "Whether it holds an enum" }),
+    type: z.string().openapi({ description: "The column builder, or the enum's name" }),
+    isList: z.boolean().openapi({ description: "Whether it is an array column" }),
+    isRequired: z.boolean().openapi({ description: "Whether it is NOT NULL" }),
+    isId: z.boolean().openapi({ description: "Whether it is the primary key" }),
+    isUnique: z.boolean().openapi({ description: "Whether a unique constraint covers it alone" }),
+    isForeignKey: z.boolean().openapi({ description: "Whether it references another table" }),
+    documentation: z.string().nullable().openapi({ description: "The `///` description" }),
+    attributes: z
+      .array(z.string())
+      .readonly()
+      .openapi({ description: "Its defaults and generated values, as written" }),
+  })
+  .readonly()
+  .openapi({
+    required: [
+      "name",
+      "dbName",
+      "kind",
+      "type",
+      "isList",
+      "isRequired",
+      "isId",
+      "isUnique",
+      "isForeignKey",
+      "documentation",
+      "attributes",
+    ],
+    description: "A column as a row of a card.",
+  })
+  .openapi("CanvasField");
+
+export const CanvasIndexSchema = z
+  .object({
+    type: z
+      .enum(["id", "unique", "normal", "fulltext"])
+      .openapi({ description: "What kind it is" }),
+    fields: z.array(z.string()).readonly().openapi({ description: "The columns it covers" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["type", "fields"],
+    description: "An index or constraint as the card lists it under its rows.",
+  })
+  .openapi("CanvasIndex");
+
+export const LineRangeSchema = z
+  .object({
+    start: z.int32().openapi({ description: "The first line" }),
+    end: z.int32().openapi({ description: "The last line" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["start", "end"],
+    description: "Lines of the source, 1-based and inclusive.",
+  })
+  .openapi("LineRange");
+
+export const CanvasModelSchema = z
+  .object({
+    name: z.string().openapi({ description: "The exported name" }),
+    dbName: z
+      .string()
+      .nullable()
+      .openapi({ description: "The database table name when it differs" }),
+    documentation: z.string().nullable().openapi({ description: "The `///` description" }),
+    primaryKey: z
+      .array(z.string())
+      .readonly()
+      .nullable()
+      .openapi({ description: "The columns of a composite primary key" }),
+    fields: z.array(CanvasFieldSchema).readonly().openapi({ description: "A row per column" }),
+    indexes: z
+      .array(CanvasIndexSchema)
+      .readonly()
+      .openapi({ description: "Its indexes and constraints" }),
+    lines: LineRangeSchema.openapi({
+      description: "Where the table is declared, for the editor to point at",
+    }),
+  })
+  .readonly()
+  .openapi({
+    required: ["name", "dbName", "documentation", "primaryKey", "fields", "indexes", "lines"],
+    description: "A table as a card.",
+  })
+  .openapi("CanvasModel");
+
+export const RelationEndSchema = z
+  .object({
+    model: z.string().openapi({ description: "The table" }),
+    field: z.string().openapi({ description: "The column" }),
+    cardinality: z
+      .enum(["one", "zero-one", "many", "zero-many"])
+      .openapi({ description: "How many rows this end has" }),
+  })
+  .readonly()
+  .openapi({ required: ["model", "field", "cardinality"], description: "One end of a relation." })
+  .openapi("RelationEnd");
+
+export const CanvasRelationSchema = z
+  .object({
+    id: z.string().openapi({ description: "A key for the edge: `from.field->to.field`" }),
+    origin: z.enum(["inferred", "annotated", "implicit-many-to-many"]).openapi({
+      description:
+        "Where it was found: a foreign key (`inferred`) or a `/// @relation` note (`annotated`)",
+    }),
+    name: z.string().nullable().openapi({ description: "Its name, when it has one" }),
+    onDelete: z
+      .string()
+      .nullable()
+      .openapi({ description: "The action on delete of the parent row" }),
+    onUpdate: z
+      .string()
+      .nullable()
+      .openapi({ description: "The action on update of the parent key" }),
+    from: RelationEndSchema.openapi({ description: "The referenced end" }),
+    to: RelationEndSchema.openapi({ description: "The end that holds the foreign key" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["id", "origin", "name", "onDelete", "onUpdate", "from", "to"],
+    description: "A relation as an edge.",
+  })
+  .openapi("CanvasRelation");
+
+export const CanvasEnumValueSchema = z
+  .object({
+    name: z.string().openapi({ description: "The value" }),
+    dbName: z.string().nullable().openapi({ description: "The stored value when it differs" }),
+  })
+  .readonly()
+  .openapi({ required: ["name", "dbName"], description: "One value of an enum." })
+  .openapi("CanvasEnumValue");
+
+export const CanvasEnumSchema = z
+  .object({
+    name: z.string().openapi({ description: "The exported name" }),
+    dbName: z
+      .string()
+      .nullable()
+      .openapi({ description: "The database type name when it differs" }),
+    documentation: z.string().nullable().openapi({ description: "The `///` description" }),
+    values: z
+      .array(CanvasEnumValueSchema)
+      .readonly()
+      .openapi({ description: "Its values, in order" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["name", "dbName", "documentation", "values"],
+    description: "An enum as a card.",
+  })
+  .openapi("CanvasEnum");
+
+export const CanvasSchemaSchema = z
+  .object({
+    models: z.array(CanvasModelSchema).readonly().openapi({ description: "A card per table" }),
+    relations: z
+      .array(CanvasRelationSchema)
+      .readonly()
+      .openapi({ description: "An edge per relation" }),
+    enums: z.array(CanvasEnumSchema).readonly().openapi({ description: "A card per enum" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["models", "relations", "enums"],
+    description: "A schema as the diagram canvas draws it.",
+  })
+  .openapi("CanvasSchema");
+
+export const DiagramDataSchema = z
+  .object({
+    schema: CanvasSchemaSchema.nullable().openapi({
+      description: "The tables, relations and enums; null when the source does not parse",
+    }),
+    parseError: ParseErrorSchema.nullable().openapi({
+      description: "The syntax error that stopped it",
+    }),
+  })
+  .readonly()
+  .openapi({
+    required: ["schema", "parseError"],
+    description: "The ER diagram as data, for the page to draw and lay out itself.",
+  })
+  .openapi("DiagramData");
+
+export const DocumentKindSchema = z
+  .enum(["schema", "query"])
+  .openapi({ description: "Which editor a language request is about." })
+  .openapi("DocumentKind");
+
+export const SourceBodySchema = z
+  .object({
+    source: z.string().openapi({ description: "The schema source, saved or not, or the query" }),
+    document: DocumentKindSchema.exactOptional().openapi({
+      description: "Which editor it comes from; the schema when left out",
+    }),
+  })
+  .readonly()
+  .openapi({ required: ["source"], description: "A source to check." })
+  .openapi("SourceBody");
+
 export const DiagramSchema = z
   .object({
     svg: z
@@ -254,6 +463,21 @@ export const DocRelationSchema = z
   })
   .openapi("DocRelation");
 
+export const DocQuerySchema = z
+  .object({
+    name: z
+      .string()
+      .openapi({ description: "What it does, as a title: `Find by key`, `Insert`, ..." }),
+    description: z.string().openapi({ description: "A sentence about it" }),
+    code: z.string().openapi({ description: "The code, as the Query page runs it" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["name", "description", "code"],
+    description: "A Drizzle query to try against a table, for the docs.",
+  })
+  .openapi("DocQuery");
+
 export const DocTableSchema = z
   .object({
     name: z.string().openapi({ description: "The exported name" }),
@@ -275,10 +499,23 @@ export const DocTableSchema = z
       .array(DocRelationSchema)
       .readonly()
       .openapi({ description: "The relations where another table points here" }),
+    queries: z
+      .array(DocQuerySchema)
+      .readonly()
+      .openapi({ description: "Drizzle queries to start from" }),
   })
   .readonly()
   .openapi({
-    required: ["name", "dbName", "description", "columns", "indexes", "references", "referencedBy"],
+    required: [
+      "name",
+      "dbName",
+      "description",
+      "columns",
+      "indexes",
+      "references",
+      "referencedBy",
+      "queries",
+    ],
     description: "One table of the docs.",
   })
   .openapi("DocTable");
@@ -615,11 +852,6 @@ export const CompletionsSchema = z
   .openapi({ required: ["items"], description: "The completions at the cursor." })
   .openapi("Completions");
 
-export const DocumentKindSchema = z
-  .enum(["schema", "query"])
-  .openapi({ description: "Which editor a language request is about." })
-  .openapi("DocumentKind");
-
 export const PositionBodySchema = z
   .object({
     source: z.string().openapi({ description: "The schema source, saved or not, or the query" }),
@@ -741,17 +973,6 @@ export const DiagnosticsSchema = z
   })
   .openapi("Diagnostics");
 
-export const SourceBodySchema = z
-  .object({
-    source: z.string().openapi({ description: "The schema source, saved or not, or the query" }),
-    document: DocumentKindSchema.exactOptional().openapi({
-      description: "Which editor it comes from; the schema when left out",
-    }),
-  })
-  .readonly()
-  .openapi({ required: ["source"], description: "A source to check." })
-  .openapi("SourceBody");
-
 export const ExecutedStatementSchema = z
   .object({
     sql: z.string().openapi({ description: "The SQL" }),
@@ -872,6 +1093,32 @@ export const getSchemaEventsRoute = createRoute({
     200: {
       description: "The request has succeeded.",
       content: { "text/event-stream": { schema: z.string() } },
+    },
+  },
+} as const);
+
+export const postDiagramSchemaRoute = createRoute({
+  method: "post",
+  path: "/diagram/schema",
+  tags: ["diagram"],
+  description:
+    "The ER diagram of a schema as data: tables, relations, enums and where each table is declared.",
+  operationId: "drawSchema",
+  request: {
+    body: { content: { "application/json": { schema: SourceBodySchema } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "The request has succeeded.",
+      content: { "application/json": { schema: DiagramDataSchema } },
+    },
+    422: {
+      description: "422 Unprocessable Content (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ValidationProblemSchema } },
+    },
+    500: {
+      description: "500 Internal Server Error (`application/problem+json`)",
+      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
     },
   },
 } as const);

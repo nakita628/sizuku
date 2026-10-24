@@ -105,6 +105,165 @@ model Diagram {
   parseError: ParseError | null;
 }
 
+/** The ER diagram as data, for the page to draw and lay out itself. */
+model DiagramData {
+  /** The tables, relations and enums; null when the source does not parse */
+  schema: CanvasSchema | null;
+
+  /** The syntax error that stopped it */
+  parseError: ParseError | null;
+}
+
+/** A schema as the diagram canvas draws it. */
+model CanvasSchema {
+  /** A card per table */
+  models: CanvasModel[];
+
+  /** An edge per relation */
+  relations: CanvasRelation[];
+
+  /** A card per enum */
+  enums: CanvasEnum[];
+}
+
+/** Lines of the source, 1-based and inclusive. */
+model LineRange {
+  /** The first line */
+  start: int32;
+
+  /** The last line */
+  end: int32;
+}
+
+/** A table as a card. */
+model CanvasModel {
+  /** The exported name */
+  name: string;
+
+  /** The database table name when it differs */
+  dbName: string | null;
+
+  /** The `///` description */
+  documentation: string | null;
+
+  /** The columns of a composite primary key */
+  primaryKey: string[] | null;
+
+  /** A row per column */
+  fields: CanvasField[];
+
+  /** Its indexes and constraints */
+  indexes: CanvasIndex[];
+
+  /** Where the table is declared, for the editor to point at */
+  lines: LineRange;
+}
+
+/** An index or constraint as the card lists it under its rows. */
+model CanvasIndex {
+  /** What kind it is */
+  type: "id" | "unique" | "normal" | "fulltext";
+
+  /** The columns it covers */
+  fields: string[];
+}
+
+/** A column as a row of a card. */
+model CanvasField {
+  /** The property name */
+  name: string;
+
+  /** The database column name when it differs */
+  dbName: string | null;
+
+  /** Whether it holds an enum */
+  kind: "scalar" | "enum";
+
+  /** The column builder, or the enum's name */
+  type: string;
+
+  /** Whether it is an array column */
+  isList: boolean;
+
+  /** Whether it is NOT NULL */
+  isRequired: boolean;
+
+  /** Whether it is the primary key */
+  isId: boolean;
+
+  /** Whether a unique constraint covers it alone */
+  isUnique: boolean;
+
+  /** Whether it references another table */
+  isForeignKey: boolean;
+
+  /** The `///` description */
+  documentation: string | null;
+
+  /** Its defaults and generated values, as written */
+  attributes: string[];
+}
+
+/** One end of a relation. */
+model RelationEnd {
+  /** The table */
+  `model`: string;
+
+  /** The column */
+  field: string;
+
+  /** How many rows this end has */
+  cardinality: "one" | "zero-one" | "many" | "zero-many";
+}
+
+/** A relation as an edge. */
+model CanvasRelation {
+  /** A key for the edge: `from.field->to.field` */
+  id: string;
+
+  /** Where it was found: a foreign key (`inferred`) or a `/// @relation` note (`annotated`) */
+  origin: "inferred" | "annotated" | "implicit-many-to-many";
+
+  /** Its name, when it has one */
+  name: string | null;
+
+  /** The action on delete of the parent row */
+  onDelete: string | null;
+
+  /** The action on update of the parent key */
+  onUpdate: string | null;
+
+  /** The referenced end */
+  from: RelationEnd;
+
+  /** The end that holds the foreign key */
+  to: RelationEnd;
+}
+
+/** One value of an enum. */
+model CanvasEnumValue {
+  /** The value */
+  name: string;
+
+  /** The stored value when it differs */
+  dbName: string | null;
+}
+
+/** An enum as a card. */
+model CanvasEnum {
+  /** The exported name */
+  name: string;
+
+  /** The database type name when it differs */
+  dbName: string | null;
+
+  /** The `///` description */
+  documentation: string | null;
+
+  /** Its values, in order */
+  values: CanvasEnumValue[];
+}
+
 /** The ER diagram rasterised to PNG at 2x. */
 model Png {
   /** The PNG file, base64-encoded */
@@ -209,6 +368,18 @@ model DocRelation {
   onUpdate: string | null;
 }
 
+/** A Drizzle query to try against a table, for the docs. */
+model DocQuery {
+  /** What it does, as a title: `Find by key`, `Insert`, ... */
+  name: string;
+
+  /** A sentence about it */
+  description: string;
+
+  /** The code, as the Query page runs it */
+  code: string;
+}
+
 /** One table of the docs. */
 model DocTable {
   /** The exported name */
@@ -231,6 +402,9 @@ model DocTable {
 
   /** The relations where another table points here */
   referencedBy: DocRelation[];
+
+  /** Drizzle queries to start from */
+  queries: DocQuery[];
 }
 
 /** One enum of the docs. */
@@ -763,6 +937,15 @@ namespace SchemaRoutes {
 @route("/diagram")
 @tag("diagram")
 namespace DiagramRoutes {
+  /** The ER diagram of a schema as data: tables, relations, enums and where each table is declared. */
+  @post
+  @route("/schema")
+  @operationId("drawSchema")
+  op schema(@body body: SourceBody):
+    | DiagramData
+    | ValidationProblemResponse
+    | InternalServerProblemResponse;
+
   /** The ER diagram of a schema as SVG. */
   @post
   @route("/svg")

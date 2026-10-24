@@ -66,9 +66,9 @@ describe("running Drizzle against the database", () => {
     const api = createStudioApi();
     request = (url, body) =>
       api.request(`${BASE}${url}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        method: body === undefined ? "GET" : "POST",
+        headers: body === undefined ? {} : { "content-type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
       });
   });
 
@@ -188,6 +188,136 @@ throw new Error("stop here");`);
       ).json();
       expect(diagnostics.map((d: { message: string }) => d.message).join("\n")).toContain("titel");
       expect(typo.slice(diagnostics[0].range.start, diagnostics[0].range.end)).toBe("titel");
+    },
+  );
+
+  it("draws the schema as canvas data, with the lines each table is declared on", async () => {
+    const { schema: canvas, parseError } = await (
+      await request("/api/diagram/schema", { source: schema })
+    ).json();
+    expect(parseError).toBeNull();
+    const lines = schema.split("\n");
+    const user = canvas.models.find((m: { name: string }) => m.name === "user");
+    expect(lines[user.lines.start - 1]).toBe('export const user = sqliteTable("users", {');
+    expect(lines[user.lines.end - 1]).toBe("});");
+    expect(canvas.relations.map((r: { id: string }) => r.id)).toContain("user.id->post.authorId");
+  });
+
+  // Every example the docs offer has to run as written: they are what the Query page starts from.
+  it("runs every query the docs offer", { timeout: 60_000 }, async () => {
+    const docs = await (await request("/api/docs", undefined)).json();
+    const queries = docs.tables.flatMap(
+      (table: { queries: { name: string; code: string }[] }) => table.queries,
+    );
+    // The ids here come from a helper in another file, so no primary key can be read off the
+    // schema: a row is found by all its columns, and with none left to change there is no Update.
+    expect(queries.map((q: { name: string }) => q.name)).toEqual(
+      expect.arrayContaining([
+        "List",
+        "Find by key",
+        "Count",
+        "With relations",
+        "Insert",
+        "Delete",
+      ]),
+    );
+    for (const query of queries) {
+      const out = await run(query.code);
+      expect({ code: query.code, error: out.error }).toStrictEqual({
+        code: query.code,
+        error: null,
+      });
+    }
+  });
+});
+
+describe("the docs' queries on a schema with plain keys", () => {
+  const keyed = `import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const user = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  isAdmin: integer("is_admin", { mode: "boolean" }).notNull().default(false),
+});
+
+export const tag = sqliteTable("tags", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+});
+
+export const userTag = sqliteTable(
+  "user_tags",
+  {
+    userId: integer("user_id").notNull().references(() => user.id),
+    tagId: integer("tag_id").notNull().references(() => tag.id),
+    note: text("note"),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.tagId] })],
+);
+`;
+  let dir: string;
+  let request: (url: string, body?: unknown) => Promise<Response>;
+
+  beforeAll(async () => {
+    dir = fs.mkdtempSync(path.join(import.meta.dirname, ".query-keys-"));
+    const file = path.join(dir, "schema.ts");
+    fs.writeFileSync(file, keyed);
+    const dbFile = path.join(dir, "dev.db");
+    const seed = new DatabaseSync(dbFile);
+    seed.exec(`
+      CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL, is_admin INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL);
+      CREATE TABLE user_tags (user_id INTEGER NOT NULL, tag_id INTEGER NOT NULL, note TEXT,
+        PRIMARY KEY (user_id, tag_id));
+    `);
+    seed.close();
+    const database = await Effect.runPromise(connectDatabase({ url: `file:${dbFile}`, cwd: dir }));
+    configureStudio({ schemaPath: file, cwd: dir, database });
+    const api = createStudioApi();
+    request = (url, body) =>
+      api.request(`${BASE}${url}`, {
+        method: body === undefined ? "GET" : "POST",
+        headers: body === undefined ? {} : { "content-type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+  });
+
+  afterAll(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it(
+    "finds rows by the primary key, composite keys with and(), and runs every one",
+    { timeout: 60_000 },
+    async () => {
+      const docs = await (await request("/api/docs")).json();
+      const byTable = Object.fromEntries(
+        docs.tables.map((t: { name: string; queries: { name: string; code: string }[] }) => [
+          t.name,
+          Object.fromEntries(t.queries.map((q) => [q.name, q.code])),
+        ]),
+      );
+      expect(byTable.user["Find by key"]).toBe("db.select().from(user).where(eq(user.id, 1))");
+      expect(byTable.user.Insert).toBe(
+        'db.insert(user)\n  .values({\n    email: "email",\n    name: "name",\n  })\n  .returning()',
+      );
+      expect(byTable.user.Update).toBe(
+        'db.update(user)\n  .set({ email: "email" })\n  .where(eq(user.id, 1))',
+      );
+      expect(byTable.userTag["Find by key"]).toBe(
+        "db.select().from(userTag).where(and(eq(userTag.userId, 1), eq(userTag.tagId, 1)))",
+      );
+      // In order: the inserts make the rows the finds, updates and deletes then work on.
+      for (const table of ["user", "tag", "userTag"]) {
+        for (const name of ["Insert", "List", "Find by key", "Count", "Update", "Delete"]) {
+          const code = byTable[table][name];
+          if (code === undefined) continue;
+          const out = await (await request("/api/drizzle", { code })).json();
+          expect({ table, name, error: out.error }).toStrictEqual({ table, name, error: null });
+        }
+      }
     },
   );
 });

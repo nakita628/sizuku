@@ -247,7 +247,7 @@ function extractRelationsFromRelationBlocks(program: Program, text: string) {
 // The exported `xxxTable("name", { ...columns }, constraints)` calls, with the
 // variable they are bound to.
 export function tableCalls(program: Program, text: string) {
-  return exportedDeclarations(program).flatMap(({ declarator, start }) => {
+  return exportedDeclarations(program).flatMap(({ declarator, start, end }) => {
     const varName = declaratorName(declarator);
     if (varName === null || varName.toLowerCase().includes("relation")) return [];
 
@@ -257,7 +257,7 @@ export function tableCalls(program: Program, text: string) {
     const callee = textOf(text, init.callee);
     if (!callee.endsWith("Table") || callee === "relations") return [];
 
-    return [{ varName, args: init.arguments, start }];
+    return [{ varName, args: init.arguments, start, end }];
   });
 }
 

@@ -22,7 +22,9 @@ Stop the server with **Ctrl+C**; the database connection is closed with it.
 
 The schema file in [Monaco](https://microsoft.github.io/monaco-editor/) on the left and its ER
 diagram on the right, redrawn about a quarter of a second after you stop typing — unsaved text
-included.
+included. The diagram is a canvas of cards, one per table and enum, drawn with
+[React Flow](https://reactflow.dev/); the card of the table the cursor is in is selected, and the
+relations it takes part in are picked out.
 
 - A syntax error is underlined in the editor and named under the diagram, with its line and
   column; click it to jump there. The last diagram that parsed stays on screen meanwhile.
@@ -33,9 +35,13 @@ included.
   [oxfmt](https://oxc.rs/docs/guide/usage/formatter) on the server, the way `oxfmt` formats the
   project: with its `.oxfmtrc.json` (or `.oxfmtrc.jsonc`) when it has one, oxfmt's defaults when
   not. The studio has no formatter settings of its own, and never writes that file.
-- **SVG** / **PNG** download the diagram in the current theme. The diagram is the same one
-  `sizuku db/schema.ts -o er.svg` writes.
-- Drag to pan, scroll to zoom around the pointer, and use the **−**, **+** and **⛶** (fit) buttons.
+- Cards can be dragged; where you leave them is remembered in the browser for that schema file.
+  **Auto layout** lays them out again. A new table is placed by the layout; one that left the
+  schema is forgotten.
+- Clicking a card selects it and picks out its relations. The arrow on a table's card opens its
+  rows on the Data page; on an enum's card, its place in the Docs.
+- **SVG** / **PNG** download the diagram as it is laid out on the canvas, in the current theme.
+- Drag the background to pan, scroll to zoom, and use the controls and the minimap in the corners.
   The divider between the panes can be dragged, or moved with the arrow keys.
 
 #### Completion and type errors
@@ -73,7 +79,11 @@ The documentation of the saved file, generated from the schema and its `///` com
 - relations in both directions (**References** and **Referenced by**), with their cardinality and
   `onDelete` / `onUpdate` actions. A relation declared only with `/// @relation` is marked, since
   no foreign key backs it;
-- every `pgEnum` and its values.
+- every `pgEnum` and its values;
+- Drizzle queries to start from for each table: **List**, **Find by key**, **Count**,
+  **With relations**, **Insert**, **Update** and **Delete**, written against its primary key (a
+  composite one with `and()`) and with a value for every column a row needs. **Open in Query**
+  puts one in the Query page's editor.
 
 ### Data
 

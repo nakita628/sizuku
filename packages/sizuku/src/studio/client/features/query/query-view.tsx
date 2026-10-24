@@ -20,6 +20,11 @@ import { asRows, ResultView } from "./result-view.js";
 const CODE_KEY = "sizuku-studio:query";
 const CHECK_DEBOUNCE_MS = 500;
 
+/** Puts code in the Query page's editor, for the page to open with: the docs' examples go there. */
+export function presetQuery(code: string) {
+  saveString(CODE_KEY, `${code}\n`);
+}
+
 function initialCode(firstTable: string | null) {
   const stored = loadString(CODE_KEY);
   if (stored !== null && stored.trim() !== "") return stored;
@@ -139,6 +144,8 @@ export function QueryView() {
               onMount={(editor) => {
                 editorRef.current = editor;
                 setEditorReady(true);
+                // The model outlives the page; code put in while it was away replaces what it held.
+                if (editor.getValue() !== text) editor.setValue(text);
               }}
             />
           </div>

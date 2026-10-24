@@ -1,6 +1,6 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { Effect, Match } from "effect";
-import type { postDiagramPngRoute, postDiagramSvgRoute } from "../routes";
+import type { postDiagramPngRoute, postDiagramSchemaRoute, postDiagramSvgRoute } from "../routes";
 import * as DiagramUseCase from "../usecases/diagram.js";
 
 /** `POST /diagram/svg` handler. A source that does not parse answers 200 with its error. */
@@ -86,5 +86,36 @@ export const postDiagramPngRouteHandler: RouteHandler<typeof postDiagramPngRoute
           ),
       },
     ),
+  );
+};
+
+/** `POST /diagram/schema` handler. The diagram as data; a source that does not parse answers 200 with its error. */
+export const postDiagramSchemaRouteHandler: RouteHandler<typeof postDiagramSchemaRoute> = (c) => {
+  const data = c.req.valid("json");
+  return Effect.runPromise(
+    Effect.matchEffect(DiagramUseCase.drawSchema({ source: data.source }), {
+      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onFailure: (error) =>
+        Match.value(error).pipe(
+          Match.tag("RenderError", ({ message }) =>
+            Effect.logError("cannot draw", message).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error",
+                    title: "Internal Server Error",
+                    status: 500,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  } as const,
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+          ),
+          Match.exhaustive,
+        ),
+    }),
   );
 };
