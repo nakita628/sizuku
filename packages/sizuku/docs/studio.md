@@ -166,9 +166,30 @@ saved. A query is stopped waiting after 30 seconds.
 
 ### SQL
 
-A SQL console on the same database: one statement at a time, **Ctrl/Cmd + Enter** to run it. A
-query shows its rows; a write shows how many rows it changed and refreshes the counts in the
-sidebar. The text is kept in the browser between visits.
+SQL against the same database, read as it is typed. The editor
+([CodeMirror](https://codemirror.net/)) completes the tables and columns of the schema by the
+names the database knows, and a hover over a name shows its columns or its type. About a quarter
+of a second after you stop typing, each statement is analyzed against the saved schema:
+
+- **Flow** — the statement as a data-flow picture: the tables, CTEs and subqueries it reads,
+  then each clause that changes the rows (join, WHERE, GROUP BY, the SELECT list, ORDER BY,
+  LIMIT), and the target of a write. Clicking a node picks out its clause in the editor.
+- **Columns** — every column of the result with the expression it is, and the table columns it
+  derives from (its lineage); the tables the statement touches with the columns it reads.
+- **Type** — the row type as TypeScript, and the type of the parameters.
+- **Result** — the rows the last statement returned, filtered and sorted in place, or the rows
+  a write changed. **Ctrl/Cmd + Enter** runs the text; several statements run one by one.
+- **Plan** — the plan the database chooses for the statement (`EXPLAIN QUERY PLAN`,
+  `EXPLAIN (FORMAT JSON)`, `EXPLAIN FORMAT=JSON`).
+
+Problems the analysis finds — a table or column the schema does not have, a type that does not
+fit — are underlined and listed under the editor; clicking one goes there. A statement with
+placeholders (`?`, `$1`) gets a field per value, typed by the column it is compared with. Beside
+the editor, the schema's diagram lights up the tables the statement touches and marks the
+columns it reads.
+
+A statement opened from the Query page (**Open in SQL**) arrives with the values it was bound
+with. A write refreshes the counts in the sidebar.
 
 ## Databases
 

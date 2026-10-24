@@ -326,7 +326,8 @@ Opens `http://127.0.0.1:4983` with five pages:
   `db.query.post.findMany({ with: { author: true } })`), with completion, the result as a table
   or JSON, the SQL it sent, and a diagram that lights up the tables the code touches.
 - **Data**: each table's rows, with adding, editing and deleting a row (composite keys included).
-- **SQL**: a console on the same database.
+- **SQL**: SQL read as it is typed — its data flow, the lineage and types of its columns, its
+  parameters, the problems in it and its plan — and run on the same database.
 
 **Format** follows the project's `.oxfmtrc.json` when it has one. The server listens on
 `127.0.0.1` only.

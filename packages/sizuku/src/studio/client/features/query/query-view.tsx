@@ -21,8 +21,6 @@ import { useSavedDiagram } from "../diagram/saved-diagram.js";
 import { CodeEditor } from "../editor/code-editor.js";
 import { QUERY_MODEL, setLanguageEnabled, setTypeMarkers } from "../editor/language.js";
 import { bindFormatter } from "../editor/monaco.js";
-import { presetSql } from "../sql/sql-view.js";
-import { inlineParams } from "./inline.js";
 import { ResultPane } from "./result-pane.js";
 import { QuerySchemaPane } from "./schema-pane.js";
 import { useTouched } from "./touched.js";
@@ -201,10 +199,19 @@ export function QueryView() {
       asJson={asJson}
       onAsJson={setAsJson}
       dialect={db.dialect}
-      // The SQL page runs a statement as it is typed, so the values it was bound with are written in.
+      // The SQL page opens the statement as it was sent, with the values it was bound with.
       onOpen={(statement) => {
-        presetSql(inlineParams(statement.sql, statement.params, db.dialect ?? "sqlite"));
-        void navigate({ to: "/sql" });
+        void navigate({
+          to: "/sql",
+          search: {
+            sql: statement.sql,
+            params: statement.params.map((value) =>
+              value === null || ["string", "number", "boolean"].includes(typeof value)
+                ? (value as string | number | boolean | null)
+                : JSON.stringify(value),
+            ),
+          },
+        });
       }}
     />
   );
