@@ -4,7 +4,6 @@ import { Effect, Match } from "effect";
 import { streamSSE } from "hono/streaming";
 import type { getSchemaEventsRoute, getSchemaRoute, putSchemaRoute } from "../routes";
 import { WATCH_INTERVAL_MS } from "../constants/index.js";
-import { internalError } from "../domain/respond.js";
 import { getStudio } from "../services/studio.js";
 import * as SchemaUseCase from "../usecases/schema.js";
 
@@ -16,7 +15,21 @@ export const getSchemaRouteHandler: RouteHandler<typeof getSchemaRoute> = (c) =>
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("FileReadError", ({ path, cause }) =>
-            internalError(c, "cannot read the schema", `${path}: ${cause}`),
+            Effect.logError("cannot read the schema", path, cause).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error" as const,
+                    title: "Internal Server Error" as const,
+                    status: 500 as const,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  },
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
           ),
           Match.exhaustive,
         ),
@@ -32,7 +45,21 @@ export const putSchemaRouteHandler: RouteHandler<typeof putSchemaRoute> = (c) =>
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("FileWriteError", ({ path, cause }) =>
-            internalError(c, "cannot write the schema", `${path}: ${cause}`),
+            Effect.logError("cannot write the schema", path, cause).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error" as const,
+                    title: "Internal Server Error" as const,
+                    status: 500 as const,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  },
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
           ),
           Match.exhaustive,
         ),
@@ -49,8 +76,9 @@ export const getSchemaEventsRouteHandler: RouteHandler<typeof getSchemaEventsRou
   streamSSE(c, async (stream) => {
     const file = getStudio().schemaPath;
     const listener = (current: fs.Stats, previous: fs.Stats) => {
-      if (current.mtimeMs !== previous.mtimeMs)
+      if (current.mtimeMs !== previous.mtimeMs) {
         void stream.writeSSE({ event: "change", data: "{}" });
+      }
     };
     fs.watchFile(file, { interval: WATCH_INTERVAL_MS }, listener);
     await stream.writeSSE({ event: "ready", data: "{}" });

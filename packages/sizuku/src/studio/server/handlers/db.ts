@@ -1,5 +1,4 @@
 import type { RouteHandler } from "@hono/zod-openapi";
-import type { Context } from "hono";
 import { Effect, Match } from "effect";
 import type {
   deleteDbRowsTableNameRoute,
@@ -10,102 +9,82 @@ import type {
   postDbRowsTableNameRoute,
   postDbSqlRoute,
 } from "../routes";
-import * as ProblemDomain from "../domain/problem.js";
-import { internalError } from "../domain/respond.js";
-import type {
-  DatabaseError,
-  DatabaseUnavailableError,
-  FileReadError,
-  InvalidInputError,
-  UnknownTableError,
-} from "../errors/index.js";
 import * as DbUseCase from "../usecases/db.js";
 
-function unavailable(c: Context, detail: string) {
-  return Effect.succeed(
-    c.json(
-      ProblemDomain.makeServiceUnavailableProblem({ instance: c.req.path, detail }),
-      503,
-      ProblemDomain.PROBLEM_HEADERS,
-    ),
-  );
-}
-
-/** The failures of a request on one table's rows, as problems. */
-function rowsFailure(
-  c: Context,
-  error:
-    | UnknownTableError
-    | InvalidInputError
-    | DatabaseUnavailableError
-    | DatabaseError
-    | FileReadError,
-) {
-  return Match.value(error).pipe(
-    Match.tag("UnknownTableError", ({ table }) =>
-      Effect.succeed(
-        c.json(
-          ProblemDomain.makeNotFoundProblem({
-            instance: c.req.path,
-            detail: `Unknown table "${table}".`,
-          }),
-          404,
-          ProblemDomain.PROBLEM_HEADERS,
-        ),
-      ),
-    ),
-    Match.tag("InvalidInputError", ({ field, message }) =>
-      Effect.succeed(
-        c.json(
-          ProblemDomain.makeValidationProblem({
-            instance: c.req.path,
-            detail: message,
-            errors: [{ field, message }],
-          }),
-          422,
-          ProblemDomain.PROBLEM_HEADERS,
-        ),
-      ),
-    ),
-    Match.tag("DatabaseUnavailableError", ({ reason }) => unavailable(c, reason)),
-    Match.tag("DatabaseError", ({ cause }) => unavailable(c, cause)),
-    Match.tag("FileReadError", ({ path, cause }) =>
-      internalError(c, "cannot read the schema", `${path}: ${cause}`),
-    ),
-    Match.exhaustive,
-  );
-}
-
 /** `GET /db` handler. The connection, and the tables of the saved schema. */
-export const getDbRouteHandler: RouteHandler<typeof getDbRoute> = (c) =>
-  Effect.runPromise(
+export const getDbRouteHandler: RouteHandler<typeof getDbRoute> = (c) => {
+  return Effect.runPromise(
     Effect.matchEffect(DbUseCase.readStatus(), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("FileReadError", ({ path, cause }) =>
-            internalError(c, "cannot read the schema", `${path}: ${cause}`),
+            Effect.logError("cannot read the schema", path, cause).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error" as const,
+                    title: "Internal Server Error" as const,
+                    status: 500 as const,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  },
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
           ),
           Match.exhaustive,
         ),
     }),
   );
+};
 
 /** `GET /db/counts` handler. Row counts by table. */
-export const getDbCountsRouteHandler: RouteHandler<typeof getDbCountsRoute> = (c) =>
-  Effect.runPromise(
+export const getDbCountsRouteHandler: RouteHandler<typeof getDbCountsRoute> = (c) => {
+  return Effect.runPromise(
     Effect.matchEffect(DbUseCase.readCounts(), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
-          Match.tag("DatabaseUnavailableError", ({ reason }) => unavailable(c, reason)),
+          Match.tag("DatabaseUnavailableError", ({ reason }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable" as const,
+                  title: "Service Unavailable" as const,
+                  status: 503 as const,
+                  detail: reason,
+                  instance: c.req.path,
+                },
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
           Match.tag("FileReadError", ({ path, cause }) =>
-            internalError(c, "cannot read the schema", `${path}: ${cause}`),
+            Effect.logError("cannot read the schema", path, cause).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error" as const,
+                    title: "Internal Server Error" as const,
+                    status: 500 as const,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  },
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
           ),
           Match.exhaustive,
         ),
     }),
   );
+};
 
 /** `GET /db/rows/{tableName}` handler. One page of rows. */
 export const getDbRowsTableNameRouteHandler: RouteHandler<typeof getDbRowsTableNameRoute> = (c) => {
@@ -115,7 +94,72 @@ export const getDbRowsTableNameRouteHandler: RouteHandler<typeof getDbRowsTableN
       DbUseCase.readRows({ table: data.tableName, skip: data.skip, take: data.take }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-        onFailure: (error) => rowsFailure(c, error),
+        onFailure: (error) =>
+          Match.value(error).pipe(
+            Match.tag("UnknownTableError", ({ table }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/not-found" as const,
+                    title: "Not Found" as const,
+                    status: 404 as const,
+                    detail: `Unknown table "${table}".`,
+                    instance: c.req.path,
+                  },
+                  404,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.tag("DatabaseUnavailableError", ({ reason }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/service-unavailable" as const,
+                    title: "Service Unavailable" as const,
+                    status: 503 as const,
+                    detail: reason,
+                    instance: c.req.path,
+                  },
+                  503,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.tag("DatabaseError", ({ cause }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/service-unavailable" as const,
+                    title: "Service Unavailable" as const,
+                    status: 503 as const,
+                    detail: cause,
+                    instance: c.req.path,
+                  },
+                  503,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.tag("FileReadError", ({ path, cause }) =>
+              Effect.logError("cannot read the schema", path, cause).pipe(
+                Effect.as(
+                  c.json(
+                    {
+                      type: "/problems/internal-server-error" as const,
+                      title: "Internal Server Error" as const,
+                      status: 500 as const,
+                      detail: "An unexpected error occurred.",
+                      instance: c.req.path,
+                    },
+                    500,
+                    { "Content-Type": "application/problem+json" },
+                  ),
+                ),
+              ),
+            ),
+            Match.exhaustive,
+          ),
       },
     ),
   );
@@ -129,7 +173,88 @@ export const postDbRowsTableNameRouteHandler: RouteHandler<typeof postDbRowsTabl
   return Effect.runPromise(
     Effect.matchEffect(DbUseCase.insertRow({ table: data.tableName, values: data.values }), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-      onFailure: (error) => rowsFailure(c, error),
+      onFailure: (error) =>
+        Match.value(error).pipe(
+          Match.tag("UnknownTableError", ({ table }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/not-found" as const,
+                  title: "Not Found" as const,
+                  status: 404 as const,
+                  detail: `Unknown table "${table}".`,
+                  instance: c.req.path,
+                },
+                404,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("InvalidInputError", ({ field, message }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/validation-failed" as const,
+                  title: "Validation Failed" as const,
+                  status: 422 as const,
+                  detail: message,
+                  instance: c.req.path,
+                  errors: [{ field: field, message: message }],
+                },
+                422,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("DatabaseUnavailableError", ({ reason }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable" as const,
+                  title: "Service Unavailable" as const,
+                  status: 503 as const,
+                  detail: reason,
+                  instance: c.req.path,
+                },
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("DatabaseError", ({ cause }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable" as const,
+                  title: "Service Unavailable" as const,
+                  status: 503 as const,
+                  detail: cause,
+                  instance: c.req.path,
+                },
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("FileReadError", ({ path, cause }) =>
+            Effect.logError("cannot read the schema", path, cause).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error" as const,
+                    title: "Internal Server Error" as const,
+                    status: 500 as const,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  },
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+          ),
+          Match.exhaustive,
+        ),
     }),
   );
 };
@@ -144,7 +269,88 @@ export const patchDbRowsTableNameRouteHandler: RouteHandler<typeof patchDbRowsTa
       DbUseCase.updateRow({ table: data.tableName, where: data.where, values: data.values }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-        onFailure: (error) => rowsFailure(c, error),
+        onFailure: (error) =>
+          Match.value(error).pipe(
+            Match.tag("UnknownTableError", ({ table }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/not-found" as const,
+                    title: "Not Found" as const,
+                    status: 404 as const,
+                    detail: `Unknown table "${table}".`,
+                    instance: c.req.path,
+                  },
+                  404,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.tag("InvalidInputError", ({ field, message }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/validation-failed" as const,
+                    title: "Validation Failed" as const,
+                    status: 422 as const,
+                    detail: message,
+                    instance: c.req.path,
+                    errors: [{ field: field, message: message }],
+                  },
+                  422,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.tag("DatabaseUnavailableError", ({ reason }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/service-unavailable" as const,
+                    title: "Service Unavailable" as const,
+                    status: 503 as const,
+                    detail: reason,
+                    instance: c.req.path,
+                  },
+                  503,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.tag("DatabaseError", ({ cause }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/service-unavailable" as const,
+                    title: "Service Unavailable" as const,
+                    status: 503 as const,
+                    detail: cause,
+                    instance: c.req.path,
+                  },
+                  503,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.tag("FileReadError", ({ path, cause }) =>
+              Effect.logError("cannot read the schema", path, cause).pipe(
+                Effect.as(
+                  c.json(
+                    {
+                      type: "/problems/internal-server-error" as const,
+                      title: "Internal Server Error" as const,
+                      status: 500 as const,
+                      detail: "An unexpected error occurred.",
+                      instance: c.req.path,
+                    },
+                    500,
+                    { "Content-Type": "application/problem+json" },
+                  ),
+                ),
+              ),
+            ),
+            Match.exhaustive,
+          ),
       },
     ),
   );
@@ -158,7 +364,88 @@ export const deleteDbRowsTableNameRouteHandler: RouteHandler<typeof deleteDbRows
   return Effect.runPromise(
     Effect.matchEffect(DbUseCase.deleteRow({ table: data.tableName, where: data.where }), {
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-      onFailure: (error) => rowsFailure(c, error),
+      onFailure: (error) =>
+        Match.value(error).pipe(
+          Match.tag("UnknownTableError", ({ table }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/not-found" as const,
+                  title: "Not Found" as const,
+                  status: 404 as const,
+                  detail: `Unknown table "${table}".`,
+                  instance: c.req.path,
+                },
+                404,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("InvalidInputError", ({ field, message }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/validation-failed" as const,
+                  title: "Validation Failed" as const,
+                  status: 422 as const,
+                  detail: message,
+                  instance: c.req.path,
+                  errors: [{ field: field, message: message }],
+                },
+                422,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("DatabaseUnavailableError", ({ reason }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable" as const,
+                  title: "Service Unavailable" as const,
+                  status: 503 as const,
+                  detail: reason,
+                  instance: c.req.path,
+                },
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("DatabaseError", ({ cause }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable" as const,
+                  title: "Service Unavailable" as const,
+                  status: 503 as const,
+                  detail: cause,
+                  instance: c.req.path,
+                },
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("FileReadError", ({ path, cause }) =>
+            Effect.logError("cannot read the schema", path, cause).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error" as const,
+                    title: "Internal Server Error" as const,
+                    status: 500 as const,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  },
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+          ),
+          Match.exhaustive,
+        ),
     }),
   );
 };
@@ -171,8 +458,36 @@ export const postDbSqlRouteHandler: RouteHandler<typeof postDbSqlRoute> = (c) =>
       onSuccess: (value) => Effect.succeed(c.json(value, 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
-          Match.tag("DatabaseUnavailableError", ({ reason }) => unavailable(c, reason)),
-          Match.tag("DatabaseError", ({ cause }) => unavailable(c, cause)),
+          Match.tag("DatabaseUnavailableError", ({ reason }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable" as const,
+                  title: "Service Unavailable" as const,
+                  status: 503 as const,
+                  detail: reason,
+                  instance: c.req.path,
+                },
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("DatabaseError", ({ cause }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable" as const,
+                  title: "Service Unavailable" as const,
+                  status: 503 as const,
+                  detail: cause,
+                  instance: c.req.path,
+                },
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
           Match.exhaustive,
         ),
     }),

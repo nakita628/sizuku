@@ -1,5 +1,4 @@
 import type { RouteHandler } from "@hono/zod-openapi";
-import type { Context } from "hono";
 import { Effect, Match } from "effect";
 import type {
   getLanguageRoute,
@@ -9,25 +8,7 @@ import type {
   postLanguageHoverRoute,
   postLanguageSignatureRoute,
 } from "../routes";
-import * as ProblemDomain from "../domain/problem.js";
-import type { LanguageUnavailableError } from "../errors/index.js";
 import * as LanguageUseCase from "../usecases/language.js";
-
-/** No TypeScript to ask: the editor goes on without completion, and the reason says why. */
-function unavailable(c: Context, error: LanguageUnavailableError) {
-  return Match.value(error).pipe(
-    Match.tag("LanguageUnavailableError", ({ reason }) =>
-      Effect.succeed(
-        c.json(
-          ProblemDomain.makeServiceUnavailableProblem({ instance: c.req.path, detail: reason }),
-          503,
-          ProblemDomain.PROBLEM_HEADERS,
-        ),
-      ),
-    ),
-    Match.exhaustive,
-  );
-}
 
 /** `GET /language` handler. The project's TypeScript version, or why there is none. */
 export const getLanguageRouteHandler: RouteHandler<typeof getLanguageRoute> = (c) =>
@@ -49,7 +30,25 @@ export const postLanguageCompleteRouteHandler: RouteHandler<typeof postLanguageC
       }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-        onFailure: (error) => unavailable(c, error),
+        onFailure: (error) =>
+          Match.value(error).pipe(
+            Match.tag("LanguageUnavailableError", ({ reason }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/service-unavailable" as const,
+                    title: "Service Unavailable" as const,
+                    status: 503 as const,
+                    detail: reason,
+                    instance: c.req.path,
+                  },
+                  503,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.exhaustive,
+          ),
       },
     ),
   );
@@ -70,7 +69,25 @@ export const postLanguageCompleteDetailRouteHandler: RouteHandler<
       }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-        onFailure: (error) => unavailable(c, error),
+        onFailure: (error) =>
+          Match.value(error).pipe(
+            Match.tag("LanguageUnavailableError", ({ reason }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/service-unavailable" as const,
+                    title: "Service Unavailable" as const,
+                    status: 503 as const,
+                    detail: reason,
+                    instance: c.req.path,
+                  },
+                  503,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.exhaustive,
+          ),
       },
     ),
   );
@@ -88,7 +105,25 @@ export const postLanguageHoverRouteHandler: RouteHandler<typeof postLanguageHove
       }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-        onFailure: (error) => unavailable(c, error),
+        onFailure: (error) =>
+          Match.value(error).pipe(
+            Match.tag("LanguageUnavailableError", ({ reason }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/service-unavailable" as const,
+                    title: "Service Unavailable" as const,
+                    status: 503 as const,
+                    detail: reason,
+                    instance: c.req.path,
+                  },
+                  503,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.exhaustive,
+          ),
       },
     ),
   );
@@ -108,7 +143,25 @@ export const postLanguageSignatureRouteHandler: RouteHandler<typeof postLanguage
       }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-        onFailure: (error) => unavailable(c, error),
+        onFailure: (error) =>
+          Match.value(error).pipe(
+            Match.tag("LanguageUnavailableError", ({ reason }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/service-unavailable" as const,
+                    title: "Service Unavailable" as const,
+                    status: 503 as const,
+                    detail: reason,
+                    instance: c.req.path,
+                  },
+                  503,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.exhaustive,
+          ),
       },
     ),
   );
@@ -124,7 +177,25 @@ export const postLanguageDiagnosticsRouteHandler: RouteHandler<
       LanguageUseCase.diagnostics({ document: data.document ?? "schema", source: data.source }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-        onFailure: (error) => unavailable(c, error),
+        onFailure: (error) =>
+          Match.value(error).pipe(
+            Match.tag("LanguageUnavailableError", ({ reason }) =>
+              Effect.succeed(
+                c.json(
+                  {
+                    type: "/problems/service-unavailable" as const,
+                    title: "Service Unavailable" as const,
+                    status: 503 as const,
+                    detail: reason,
+                    instance: c.req.path,
+                  },
+                  503,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+            Match.exhaustive,
+          ),
       },
     ),
   );

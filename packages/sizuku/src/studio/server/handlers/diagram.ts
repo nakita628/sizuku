@@ -1,8 +1,6 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { Effect, Match } from "effect";
 import type { postDiagramPngRoute, postDiagramSvgRoute } from "../routes";
-import * as ProblemDomain from "../domain/problem.js";
-import { internalError } from "../domain/respond.js";
 import * as DiagramUseCase from "../usecases/diagram.js";
 
 /** `POST /diagram/svg` handler. A source that does not parse answers 200 with its error. */
@@ -15,7 +13,23 @@ export const postDiagramSvgRouteHandler: RouteHandler<typeof postDiagramSvgRoute
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
         onFailure: (error) =>
           Match.value(error).pipe(
-            Match.tag("RenderError", ({ message }) => internalError(c, "cannot draw", message)),
+            Match.tag("RenderError", ({ message }) =>
+              Effect.logError("cannot draw", message).pipe(
+                Effect.as(
+                  c.json(
+                    {
+                      type: "/problems/internal-server-error" as const,
+                      title: "Internal Server Error" as const,
+                      status: 500 as const,
+                      detail: "An unexpected error occurred.",
+                      instance: c.req.path,
+                    },
+                    500,
+                    { "Content-Type": "application/problem+json" },
+                  ),
+                ),
+              ),
+            ),
             Match.exhaustive,
           ),
       },
@@ -36,19 +50,38 @@ export const postDiagramPngRouteHandler: RouteHandler<typeof postDiagramPngRoute
             Match.tag("SchemaParseError", ({ message, line, column }) =>
               Effect.succeed(
                 c.json(
-                  ProblemDomain.makeValidationProblem({
-                    instance: c.req.path,
+                  {
+                    type: "/problems/validation-failed" as const,
+                    title: "Validation Failed" as const,
+                    status: 422 as const,
                     detail: "The schema does not parse.",
+                    instance: c.req.path,
                     errors: [
                       { field: "source", message: `${message} (line ${line}, column ${column})` },
                     ],
-                  }),
+                  },
                   422,
-                  ProblemDomain.PROBLEM_HEADERS,
+                  { "Content-Type": "application/problem+json" },
                 ),
               ),
             ),
-            Match.tag("RenderError", ({ message }) => internalError(c, "cannot draw", message)),
+            Match.tag("RenderError", ({ message }) =>
+              Effect.logError("cannot draw", message).pipe(
+                Effect.as(
+                  c.json(
+                    {
+                      type: "/problems/internal-server-error" as const,
+                      title: "Internal Server Error" as const,
+                      status: 500 as const,
+                      detail: "An unexpected error occurred.",
+                      instance: c.req.path,
+                    },
+                    500,
+                    { "Content-Type": "application/problem+json" },
+                  ),
+                ),
+              ),
+            ),
             Match.exhaustive,
           ),
       },

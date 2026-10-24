@@ -5,7 +5,6 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { Effect } from "effect";
 import { createMiddleware } from "hono/factory";
 import { FORBIDDEN_HOST_MESSAGE } from "./constants/index.js";
-import * as ProblemDomain from "./domain/problem.js";
 import api from "./index.js";
 
 function isLoopbackHostname(hostname: string) {
@@ -67,16 +66,19 @@ const validationProblems = createMiddleware(async (c, next) => {
   );
   if (issues === null) return;
   c.res = c.json(
-    ProblemDomain.makeValidationProblem({
-      instance: c.req.path,
+    {
+      type: "/problems/validation-failed" as const,
+      title: "Validation Failed" as const,
+      status: 422 as const,
       detail: "The request failed validation. See `errors` for the offending fields.",
+      instance: c.req.path,
       errors: issues.map((issue) => ({
         field: issue.path.map(String).join("."),
         message: issue.message,
       })),
-    }),
+    },
     422,
-    ProblemDomain.PROBLEM_HEADERS,
+    { "Content-Type": "application/problem+json" },
   );
 });
 
@@ -88,9 +90,15 @@ export function createStudioApi() {
   app.onError((error, c) => {
     Effect.runSync(Effect.logError("unhandled error", error));
     return c.json(
-      ProblemDomain.makeInternalServerProblem({ instance: c.req.path }),
+      {
+        type: "/problems/internal-server-error" as const,
+        title: "Internal Server Error" as const,
+        status: 500 as const,
+        detail: "An unexpected error occurred.",
+        instance: c.req.path,
+      },
       500,
-      ProblemDomain.PROBLEM_HEADERS,
+      { "Content-Type": "application/problem+json" },
     );
   });
   return app.route("/", api).doc("/api/openapi.json", {

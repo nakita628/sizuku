@@ -1,39 +1,9 @@
 import type { RouteHandler } from "@hono/zod-openapi";
-import type { Context } from "hono";
 import { Effect, Match } from "effect";
 import type { postDrizzleRoute } from "../routes";
-import * as ProblemDomain from "../domain/problem.js";
-import { internalError } from "../domain/respond.js";
 import * as QueryUseCase from "../usecases/query.js";
 
-function invalid(c: Context, field: string, detail: string, message: string) {
-  return Effect.succeed(
-    c.json(
-      ProblemDomain.makeValidationProblem({
-        instance: c.req.path,
-        detail,
-        errors: [{ field, message }],
-      }),
-      422,
-      ProblemDomain.PROBLEM_HEADERS,
-    ),
-  );
-}
-
-function unavailable(c: Context, detail: string) {
-  return Effect.succeed(
-    c.json(
-      ProblemDomain.makeServiceUnavailableProblem({ instance: c.req.path, detail }),
-      503,
-      ProblemDomain.PROBLEM_HEADERS,
-    ),
-  );
-}
-
-/**
- * `POST /drizzle` handler. Runs Drizzle code; what it throws comes back in the result, while
- * code or a schema that does not parse is a 422 and a missing database or TypeScript a 503.
- */
+/** `POST /drizzle` handler. Runs Drizzle code; what it throws comes back in the result, while code or a schema that does not parse is a 422 and a missing database or TypeScript a 503. */
 export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
@@ -42,20 +12,85 @@ export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("QueryError", ({ message, line, column }) =>
-            invalid(
-              c,
-              "code",
-              "The query does not parse.",
-              `${message} (line ${line}, column ${column})`,
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/validation-failed" as const,
+                  title: "Validation Failed" as const,
+                  status: 422 as const,
+                  detail: "The query does not parse.",
+                  instance: c.req.path,
+                  errors: [
+                    { field: "code", message: `${message} (line ${line}, column ${column})` },
+                  ],
+                },
+                422,
+                { "Content-Type": "application/problem+json" },
+              ),
             ),
           ),
           Match.tag("SchemaParseError", ({ message, line }) =>
-            invalid(c, "schema", "The saved schema does not parse.", `${message} (line ${line})`),
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/validation-failed" as const,
+                  title: "Validation Failed" as const,
+                  status: 422 as const,
+                  detail: "The saved schema does not parse.",
+                  instance: c.req.path,
+                  errors: [{ field: "schema", message: `${message} (line ${line})` }],
+                },
+                422,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
           ),
-          Match.tag("DatabaseUnavailableError", ({ reason }) => unavailable(c, reason)),
-          Match.tag("LanguageUnavailableError", ({ reason }) => unavailable(c, reason)),
+          Match.tag("DatabaseUnavailableError", ({ reason }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable" as const,
+                  title: "Service Unavailable" as const,
+                  status: 503 as const,
+                  detail: reason,
+                  instance: c.req.path,
+                },
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
+          Match.tag("LanguageUnavailableError", ({ reason }) =>
+            Effect.succeed(
+              c.json(
+                {
+                  type: "/problems/service-unavailable" as const,
+                  title: "Service Unavailable" as const,
+                  status: 503 as const,
+                  detail: reason,
+                  instance: c.req.path,
+                },
+                503,
+                { "Content-Type": "application/problem+json" },
+              ),
+            ),
+          ),
           Match.tag("FileReadError", ({ path, cause }) =>
-            internalError(c, "cannot read the schema", `${path}: ${cause}`),
+            Effect.logError("cannot read the schema", path, cause).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error" as const,
+                    title: "Internal Server Error" as const,
+                    status: 500 as const,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  },
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
           ),
           Match.exhaustive,
         ),
