@@ -1,15 +1,7 @@
 import { Config, Console, Effect, Option } from "effect";
 import { Argument, CliError, Command, Flag } from "effect/cli";
 import { version } from "../../package.json" with { type: "json" };
-import {
-  sizukuArktype,
-  sizukuDbml,
-  sizukuEffect,
-  sizukuER,
-  sizukuMermaidER,
-  sizukuValibot,
-  sizukuZod,
-} from "../core/index.js";
+import { sizukuDbml, sizukuER, sizukuMermaidER } from "../core/index.js";
 import { exists, readFile } from "../file/index.js";
 import { DEFAULT_PORT } from "../studio/server/constants/index.js";
 import { stripImports } from "../utils/index.js";
@@ -21,16 +13,8 @@ export function outputKind(output: string) {
   if (output.endsWith(".dbml")) return "dbml" as const;
   if (output.endsWith(".png") || output.endsWith(".svg")) return "diagram" as const;
   if (output.endsWith(".md")) return "mermaid" as const;
-  if (output.endsWith(".ts")) return "typescript" as const;
   return null;
 }
-
-const LIBRARIES = [
-  { flag: "zod", label: "Zod" },
-  { flag: "valibot", label: "Valibot" },
-  { flag: "arktype", label: "ArkType" },
-  { flag: "effect", label: "Effect" },
-] as const;
 
 const generateFlags = {
   input: Argument.String("input").pipe(
@@ -39,41 +23,9 @@ const generateFlags = {
   ),
   output: Flag.String("output").pipe(
     Flag.withAlias("o"),
-    Flag.withDescription("Output file path (.ts, .md, .dbml, .svg, .png)"),
+    Flag.withDescription("Output file path (.md, .dbml, .svg, .png)"),
     Flag.withMetavar("path"),
     Flag.optional,
-  ),
-  zod: Flag.Boolean("zod").pipe(
-    Flag.withDescription("Generate Zod validation schema"),
-    Flag.withDefault(false),
-  ),
-  valibot: Flag.Boolean("valibot").pipe(
-    Flag.withDescription("Generate Valibot validation schema"),
-    Flag.withDefault(false),
-  ),
-  arktype: Flag.Boolean("arktype").pipe(
-    Flag.withDescription("Generate ArkType validation schema"),
-    Flag.withDefault(false),
-  ),
-  effect: Flag.Boolean("effect").pipe(
-    Flag.withDescription("Generate Effect Schema validation schema"),
-    Flag.withDefault(false),
-  ),
-  zodVersion: Flag.Literals("zod-version", ["v4", "mini", "@hono/zod-openapi"]).pipe(
-    Flag.withDescription("Zod variant"),
-    Flag.withDefault("v4"),
-  ),
-  exportTypes: Flag.Boolean("export-types").pipe(
-    Flag.withDescription("Export inferred types (--no-export-types to leave them out)"),
-    Flag.withDefault(true),
-  ),
-  withComment: Flag.Boolean("with-comment").pipe(
-    Flag.withDescription("Add JSDoc comments (--no-with-comment to leave them out)"),
-    Flag.withDefault(true),
-  ),
-  withRelation: Flag.Boolean("with-relation").pipe(
-    Flag.withDescription("Generate relation schemas (--no-with-relation to leave them out)"),
-    Flag.withDefault(true),
   ),
   theme: Flag.Literals("theme", ["light", "dark"]).pipe(
     Flag.withDescription("Colour scheme of the .svg / .png ER diagram"),
@@ -114,47 +66,25 @@ export function generate(args: GenerateArgs) {
     const kind = outputKind(output);
     if (kind === null) {
       return yield* userError(
-        `Unsupported output format: ${output}. Supported: .dbml, .svg, .png, .md, .ts`,
+        `Unsupported output format: ${output}. Supported: .dbml, .svg, .png, .md`,
       );
     }
-    const library = LIBRARIES.find((entry) => args[entry.flag]) ?? null;
-    if (kind === "typescript" && library === null) {
-      return yield* userError("Specify --zod, --valibot, --arktype, or --effect for .ts output");
-    }
     const code = yield* readSchema(input);
-    const written = (() => {
-      if (kind === "dbml") return sizukuDbml(code, output);
-      if (kind === "diagram") return sizukuER(code, output, args.theme);
-      if (kind === "mermaid") return sizukuMermaidER(code, output);
-      const { withComment, exportTypes, withRelation } = args;
-      if (library?.flag === "zod") {
-        return sizukuZod(code, output, withComment, exportTypes, args.zodVersion, withRelation);
-      }
-      if (library?.flag === "valibot") {
-        return sizukuValibot(code, output, withComment, exportTypes, withRelation);
-      }
-      if (library?.flag === "arktype") {
-        return sizukuArktype(code, output, withComment, exportTypes, withRelation);
-      }
-      return sizukuEffect(code, output, withComment, exportTypes, withRelation);
-    })();
+    const written =
+      kind === "dbml"
+        ? sizukuDbml(code, output)
+        : kind === "diagram"
+          ? sizukuER(code, output, args.theme)
+          : sizukuMermaidER(code, output);
     yield* written.pipe(
-      Effect.mapError((error) =>
-        userError(
-          error._tag === "MissingAnnotationError"
-            ? error.message
-            : `Failed to write ${output}: ${error.message}`,
-        ),
-      ),
+      Effect.mapError((error) => userError(`Failed to write ${output}: ${error.message}`)),
     );
     const what =
       kind === "dbml"
         ? "DBML"
         : kind === "mermaid"
           ? "Mermaid ER"
-          : kind === "diagram"
-            ? `${output.endsWith(".png") ? "PNG" : "SVG"} ER diagram`
-            : `${library?.label ?? ""} schema`;
+          : `${output.endsWith(".png") ? "PNG" : "SVG"} ER diagram`;
     yield* Console.log(`💧 Generated ${what} at: ${output}`);
   });
 }

@@ -6,8 +6,8 @@ import type {
   SchemaModel,
   SchemaRelation,
 } from "../types/index.js";
-import { extractFieldComments, parseFieldComments } from "../utils/index.js";
 import {
+  descriptionBefore,
   declaratorName,
   exportedDeclarations,
   isCall,
@@ -141,8 +141,7 @@ function readConstraints(arg: CallExpression["arguments"][number] | undefined) {
 }
 
 // `export const role = pgEnum('role', ['admin', 'member'])`.
-function readEnums(program: Program, code: readonly string[]) {
-  const text = code.join("\n");
+function readEnums(program: Program, source: Parameters<typeof descriptionBefore>[0]) {
   return exportedDeclarations(program).flatMap(({ declarator, start }): SchemaEnum[] => {
     const name = declaratorName(declarator);
     const init = declarator.init;
@@ -155,8 +154,7 @@ function readEnums(program: Program, code: readonly string[]) {
       {
         name,
         dbName: literal !== null && literal !== name ? literal : null,
-        documentation:
-          parseFieldComments(extractFieldComments(text, start), "@z.").description ?? null,
+        documentation: descriptionBefore(source, start),
         values: values.elements
           .map((e) => stringLiteral(e ?? undefined))
           .filter((v): v is string => v !== null)
@@ -169,11 +167,13 @@ function readEnums(program: Program, code: readonly string[]) {
 /**
  * The Drizzle schema as the ER diagram draws it: a card per table with a row
  * per column, a card per `pgEnum`, and the relations `mergeRelations` finds
- * (foreign keys, `relations()` blocks and `/// @relation` annotations).
+ * (foreign keys, `relations()` blocks and `@relation` comments); a table, column or enum is
+ * described by the comment written above it.
  */
 export function diagramSchema(code: readonly string[]) {
-  const { program, text } = parseSource(code);
-  const enums = readEnums(program, code);
+  const source = parseSource(code);
+  const { program, text } = source;
+  const enums = readEnums(program, source);
   const enumNames = new Set(enums.map((e) => e.name));
   const merged = mergeRelations(code);
   const foreignKeys = new Set(merged.map((r) => `${r.to.model}.${r.to.field}`));
@@ -212,8 +212,7 @@ export function diagramSchema(code: readonly string[]) {
             isId,
             isUnique: has("unique"),
             isForeignKey: references !== undefined || foreignKeys.has(`${varName}.${name}`),
-            documentation:
-              parseFieldComments(extractFieldComments(text, prop.start), "@z.").description ?? null,
+            documentation: descriptionBefore(source, prop.start),
             attributes: fieldNotes(chain.methods, text),
           },
         ];
@@ -224,8 +223,7 @@ export function diagramSchema(code: readonly string[]) {
       {
         name: varName,
         dbName: tableName !== null && tableName !== varName ? tableName : null,
-        documentation:
-          parseFieldComments(extractFieldComments(text, start), "@z.").description ?? null,
+        documentation: descriptionBefore(source, start),
         primaryKey: compositeKey,
         fields,
         indexes: indexes.filter((i) => i.type !== "id" || i.fields.length > 1),

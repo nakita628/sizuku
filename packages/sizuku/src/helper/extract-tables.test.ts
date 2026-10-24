@@ -51,6 +51,7 @@ describe("parseTableInfo", () => {
     const expected = [
       {
         name: "user",
+        description: null,
         fields: [
           {
             name: "id",
@@ -68,6 +69,7 @@ describe("parseTableInfo", () => {
       },
       {
         name: "post",
+        description: null,
         fields: [
           {
             name: "id",
@@ -109,6 +111,7 @@ describe("parseTableInfo", () => {
     expect(result).toStrictEqual([
       {
         name: "order",
+        description: null,
         fields: [
           { name: "id", type: "serial", keyType: "PK", description: null },
           { name: "userId", type: "integer", keyType: "FK", description: null },
@@ -127,6 +130,7 @@ describe("parseTableInfo", () => {
     expect(result).toStrictEqual([
       {
         name: "config",
+        description: null,
         fields: [
           { name: "key", type: "text", keyType: "PK", description: null },
           { name: "value", type: "text", keyType: null, description: null },

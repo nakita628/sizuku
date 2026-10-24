@@ -1,46 +1,22 @@
 import { relations } from "drizzle-orm";
 import { mysqlTable, varchar } from "drizzle-orm/mysql-core";
 
-/// @relation user.id post.userId one-to-zero-many
+/** @relation user.id post.userId one-to-zero-many */
 export const user = mysqlTable("user", {
-  /// Primary key
-  /// @z.uuid()
-  /// @v.pipe(v.string(), v.uuid())
-  /// @a."string.uuid"
-  /// @e.Schema.UUID
+  /** Primary key */
   id: varchar("id", { length: 36 }).primaryKey(),
-  /// Display name
-  /// @z.string().min(1).max(50)
-  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))
-  /// @a."1 <= string <= 50"
-  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50))
+  /** Display name */
   name: varchar("name", { length: 50 }).notNull(),
 });
 
 export const post = mysqlTable("post", {
-  /// Primary key
-  /// @z.uuid()
-  /// @v.pipe(v.string(), v.uuid())
-  /// @a."string.uuid"
-  /// @e.Schema.UUID
+  /** Primary key */
   id: varchar("id", { length: 36 }).primaryKey(),
-  /// Article title
-  /// @z.string().min(1).max(100)
-  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))
-  /// @a."1 <= string <= 100"
-  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))
+  /** Article title */
   title: varchar("title", { length: 100 }).notNull(),
-  /// Body content (no length limit)
-  /// @z.string().min(1).max(65535)
-  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(65535))
-  /// @a."1 <= string <= 65535"
-  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(65535))
+  /** Body content (no length limit) */
   content: varchar("content", { length: 65535 }).notNull(),
-  /// Foreign key referencing User.id
-  /// @z.uuid()
-  /// @v.pipe(v.string(), v.uuid())
-  /// @a."string.uuid"
-  /// @e.Schema.UUID
+  /** Foreign key referencing User.id */
   userId: varchar("user_id", { length: 36 })
     .notNull()
     .references(() => user.id),

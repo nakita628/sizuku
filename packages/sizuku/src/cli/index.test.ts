@@ -193,7 +193,7 @@ describe("outputKind", () => {
       "diagram",
       "diagram",
       "mermaid",
-      "typescript",
+      null,
       null,
     ]);
   });
@@ -206,8 +206,9 @@ describe("sizuku --help and --version", () => {
       const { out, printed } = await cli(args);
       expect(printed).not.toContain("ERROR");
       expect(out).toContain("USAGE");
-      expect(out).toContain("--zod-version");
-      expect(out).toContain("--no-export-types");
+      expect(out).toContain("--output");
+      expect(out).toContain("--theme");
+      expect(out).not.toContain("--zod");
       expect(out).toContain("studio");
     }
   });
@@ -227,10 +228,10 @@ describe("sizuku rejects a command line it cannot run", () => {
   const cases = [
     [["schema.ts"], "Missing -o flag. Usage: sizuku <input> -o <output>"],
     [["schema.ts", "-o", "output.txt"], "Unsupported output format: output.txt"],
-    [["schema.ts", "-o", "output.ts"], "Specify --zod, --valibot, --arktype, or --effect"],
+    [["schema.ts", "-o", "output.ts"], "Unsupported output format: output.ts"],
     [["/tmp/nonexistent-schema-file.ts", "-o", "/tmp/out.dbml"], "does not exist"],
     [["schema.ts", "-o", "a.svg", "--theme", "blue"], 'Expected: "light" | "dark"'],
-    [["schema.ts", "-o", "a.ts", "--zod", "--zod-version", "v3"], "--zod-version"],
+    [["schema.ts", "-o", "a.dbml", "--zod"], "--zod"],
     [["studio"], "Missing required argument: input"],
     [["studio", "schema.ts", "--port", "70000"], "a port from 1 to 65535"],
   ] as const;
@@ -241,97 +242,6 @@ describe("sizuku rejects a command line it cannot run", () => {
       expect(printed).toContain(message);
     });
   }
-});
-
-// ============================================================================
-// Generating from a schema on disk
-// ============================================================================
-
-const annotatedSchema = `import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
-
-export const user = mysqlTable('user', {
-  /// @z.string().uuid()
-  /// @v.pipe(v.string(), v.uuid())
-  /// @a."string.uuid"
-  /// @e.Schema.UUID
-  id: varchar('id', { length: 36 }).primaryKey(),
-  /// @z.string().min(1)
-  /// @v.pipe(v.string(), v.minLength(1))
-  /// @a."string>=1"
-  /// @e.Schema.String.pipe(Schema.minLength(1))
-  name: varchar('name', { length: 50 }).notNull(),
-})`;
-
-describe("sizuku <input> -o <output>", () => {
-  let tmpdir: string;
-  let schemaPath: string;
-
-  beforeEach(() => {
-    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-cli-"));
-    schemaPath = path.join(tmpdir, "schema.ts");
-    fs.writeFileSync(schemaPath, annotatedSchema, "utf-8");
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmpdir, { recursive: true, force: true });
-  });
-
-  const libraries = [
-    ["--zod", "Zod", "from 'zod'"],
-    ["--valibot", "Valibot", "from 'valibot'"],
-    ["--arktype", "ArkType", "from 'arktype'"],
-    ["--effect", "Effect", "from 'effect'"],
-  ] as const;
-
-  for (const [flag, label, from] of libraries) {
-    it(`generates the ${label} schema with ${flag}`, async () => {
-      const output = path.join(tmpdir, "out", `${label}.ts`);
-      const { exit, out } = await cli([schemaPath, "-o", output, flag]);
-      expect(Exit.isSuccess(exit)).toBe(true);
-      expect(out).toBe(`💧 Generated ${label} schema at: ${output}`);
-      const content = fs.readFileSync(output, "utf-8");
-      expect(content).toContain(from);
-      expect(content).toContain("UserSchema");
-    });
-  }
-
-  it("refuses a schema whose columns are not annotated, naming them, and writes nothing", async () => {
-    const bare = path.join(tmpdir, "bare.ts");
-    fs.writeFileSync(
-      bare,
-      "export const tag = mysqlTable('tag', {\n  /// @z.number()\n  id: int('id').primaryKey(),\n  name: varchar('name', { length: 50 }),\n})",
-      "utf-8",
-    );
-    const output = path.join(tmpdir, "tag.ts");
-    const { exit, printed } = await cli([bare, "-o", output, "--zod"]);
-    expect(Exit.isFailure(exit)).toBe(true);
-    expect(printed).toContain(
-      "1 column has no /// @z. annotation, so the Zod schema cannot be written: tag.name.",
-    );
-    expect(printed).toContain("for example /// @z.string()");
-    expect(fs.existsSync(output)).toBe(false);
-  });
-
-  it("takes the flags in any order, before the input too", async () => {
-    const output = path.join(tmpdir, "first.ts");
-    const { exit } = await cli(["--zod", "-o", output, schemaPath]);
-    expect(Exit.isSuccess(exit)).toBe(true);
-    expect(fs.readFileSync(output, "utf-8")).toContain("UserSchema");
-  });
-
-  it("leaves the types out with --no-export-types and the comments with --no-with-comment", async () => {
-    const output = path.join(tmpdir, "bare.ts");
-    await cli([schemaPath, "-o", output, "--zod", "--no-export-types", "--no-with-comment"]);
-    const content = fs.readFileSync(output, "utf-8");
-    expect(content).toContain("UserSchema");
-    expect(content).not.toContain("export type User");
-  });
-
-  it("writes zod/mini with --zod-version mini", async () => {
-    const output = path.join(tmpdir, "mini.ts");
-    await cli([schemaPath, "-o", output, "--zod", "--zod-version", "mini"]);
-    expect(fs.readFileSync(output, "utf-8")).toContain("from 'zod/mini'");
-  });
 });
 
 describe("sizuku writes DBML, Mermaid and the ER diagram", () => {
@@ -346,6 +256,33 @@ describe("sizuku writes DBML, Mermaid and the ER diagram", () => {
 
   afterEach(() => {
     fs.rmSync(tmpdir, { recursive: true, force: true });
+  });
+
+  it("takes the flags in any order, before the input too", async () => {
+    const output = path.join(tmpdir, "first.dbml");
+    const { exit } = await cli(["-o", output, schemaPath]);
+    expect(Exit.isSuccess(exit)).toBe(true);
+    expect(fs.readFileSync(output, "utf-8")).toContain("Table user {");
+  });
+
+  it("describes tables and columns from their JSDoc and // comments", async () => {
+    const described = path.join(tmpdir, "described.ts");
+    fs.writeFileSync(
+      described,
+      [
+        "/** Everyone who can sign in */",
+        "export const user = pgTable('user', {",
+        "  // The key",
+        "  id: uuid('id').primaryKey(),",
+        "})",
+      ].join("\n"),
+      "utf-8",
+    );
+    const output = path.join(tmpdir, "described.dbml");
+    await cli([described, "-o", output]);
+    const content = fs.readFileSync(output, "utf-8");
+    expect(content).toContain("id uuid [pk, note: 'The key']");
+    expect(content).toContain("Everyone who can sign in");
   });
 
   it("generates DBML", async () => {

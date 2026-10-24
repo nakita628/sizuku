@@ -106,7 +106,7 @@ const MakeDocsInput = z
 
 /**
  * The documentation of a Drizzle schema: every table with its columns, keys, defaults, indexes
- * and relations in both directions, every enum, each with the `///` description it carries, and
+ * and relations in both directions, every enum, each with the comment written above it, and
  * Drizzle queries to start from for every table.
  */
 export function makeDocs(input: z.infer<typeof MakeDocsInput>) {

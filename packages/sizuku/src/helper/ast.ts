@@ -14,8 +14,59 @@ import { parseSync } from "oxc-parser";
 // node's own text, as ts-morph's `getText()` was.
 export function parseSource(code: readonly string[]) {
   const text = code.join("\n");
-  const { program } = parseSync("temp.ts", text, { lang: "ts", sourceType: "module" });
-  return { program, text };
+  const { program, comments } = parseSync("temp.ts", text, { lang: "ts", sourceType: "module" });
+  return { program, text, comments };
+}
+
+type Source = Pick<ReturnType<typeof parseSource>, "text" | "comments">;
+
+// The lines a comment says, without its markers: `// a` and `/// a` are `a`; a block's lines
+// lose the ` * ` a JSDoc block starts each of them with.
+function commentLines(comment: Source["comments"][number]) {
+  const lines =
+    comment.type === "Line"
+      ? [comment.value.replace(/^\/+/u, "")]
+      : comment.value
+          .replace(/^\*/u, "")
+          .split("\n")
+          .map((line) => line.replace(/^\s*\*?/u, ""));
+  return lines.map((line) => line.trim()).filter((line) => line !== "");
+}
+
+/** Every line the comments of the source say, in order: where `@relation` tags are looked for. */
+export function allCommentLines(source: Source) {
+  return source.comments.flatMap(commentLines);
+}
+
+/**
+ * The comments written directly above `start`, oldest first: a JSDoc or block comment, or a run
+ * of `//` lines, with nothing but whitespace between them and the code — a blank line ends the
+ * run, so a file header is not taken for the first table's comment, and a comment that ends a
+ * line of code is that line's.
+ */
+export function commentsBefore(source: Source, start: number) {
+  const found: Source["comments"][number][] = [];
+  let at = start;
+  for (const comment of [...source.comments].reverse()) {
+    if (comment.end > at) continue;
+    const gap = source.text.slice(comment.end, at);
+    if (gap.trim() !== "" || (gap.match(/\n/gu)?.length ?? 0) > 1) break;
+    // One that ends a line of code (`id: int(), // ...`) belongs to that line, not to this one.
+    const lineStart = source.text.lastIndexOf("\n", comment.start - 1) + 1;
+    if (source.text.slice(lineStart, comment.start).trim() !== "") break;
+    found.unshift(comment);
+    at = comment.start;
+  }
+  return found.flatMap(commentLines);
+}
+
+/**
+ * What the comment above `start` says of the table or column, on one line; the `@` lines are
+ * tags (`@relation`), not description. Null when there is no comment, or only tags.
+ */
+export function descriptionBefore(source: Source, start: number) {
+  const lines = commentsBefore(source, start).filter((line) => !line.startsWith("@"));
+  return lines.length === 0 ? null : lines.join(" ");
 }
 
 export function textOf(text: string, node: { readonly start: number; readonly end: number }) {

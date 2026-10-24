@@ -1,5 +1,7 @@
-// Parses `/// @relation Model.field Model.field type` annotation lines from
-// Drizzle schema code into a structured relation with a cardinality on each
+import { allCommentLines, parseSource } from "./ast.js";
+
+// Parses `@relation Model.field Model.field type` tags — in a `/** */` block or a `//` line, as
+// any comment — from Drizzle schema code into a structured relation with a cardinality on each
 // side. Rendering to Mermaid crow's-foot symbols or DBML operators is the
 // responsibility of each generator's output boundary, not this parser
 // (Codegen: "emit entries, not strings").
@@ -19,8 +21,7 @@ const RELATION_RE = new RegExp(
 );
 
 export function parseRelation(line: string) {
-  const stripped = line.trim().replace(/^\/\/\/\s*/, "");
-  const match = stripped.match(RELATION_RE);
+  const match = line.trim().match(RELATION_RE);
   if (!match) return null;
   const [, fromModel, fromField, toModel, toField, type] = match;
   return { fromModel, fromField, toModel, toField, type };
@@ -43,7 +44,7 @@ function splitCardinality(type: string) {
 }
 
 export function extractRelationsFromAnnotations(code: readonly string[]) {
-  return code.flatMap((line) => {
+  return allCommentLines(parseSource(code)).flatMap((line) => {
     const r = parseRelation(line);
     if (r === null) return [];
     const card = splitCardinality(r.type);

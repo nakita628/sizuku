@@ -1,6 +1,7 @@
 import type { CallExpression, Expression, ObjectProperty, Program } from "oxc-parser";
 import {
   arrowObject,
+  descriptionBefore,
   callsIn,
   declaratorName,
   exportedDeclarations,
@@ -24,31 +25,6 @@ function extractKeyType(initText: string) {
   if (initText.includes(".primaryKey()")) return "PK" as const;
   if (initText.includes(".references(")) return "FK" as const;
   return null;
-}
-
-function findImmediateComment(code: readonly string[], lineIdx: number) {
-  return (
-    code
-      .slice(0, lineIdx)
-      .reverse()
-      .find((line) => {
-        const t = line.trim();
-        return (
-          t.startsWith("///") &&
-          !t.includes("@z.") &&
-          !t.includes("@v.") &&
-          !t.includes("@a.") &&
-          !t.includes("@e.") &&
-          !t.includes("@relation")
-        );
-      })
-      ?.replace(/^\s*\/\/\/\s*/, "") ?? ""
-  );
-}
-
-// The 1-based line a source offset falls on.
-function lineOf(text: string, offset: number) {
-  return text.slice(0, offset).split("\n").length;
 }
 
 // The name of a `key: value` property when the key is a plain identifier.
@@ -84,7 +60,8 @@ function isFieldRequired(initText: string) {
   return initText.includes(".notNull()");
 }
 
-function extractFieldInfo(prop: ObjectProperty, code: readonly string[], text: string) {
+function extractFieldInfo(prop: ObjectProperty, source: Parameters<typeof descriptionBefore>[0]) {
+  const { text } = source;
   const fieldName = identifierKey(prop);
   if (fieldName === null) return null;
 
@@ -93,16 +70,14 @@ function extractFieldInfo(prop: ObjectProperty, code: readonly string[], text: s
 
   const fieldType = baseBuilderName(initExpr, text);
   const initText = textOf(text, initExpr);
-  const lineIdx = lineOf(text, prop.start) - 1;
-
-  const immediateComment = findImmediateComment(code, lineIdx);
+  const description = descriptionBefore(source, prop.start);
   const keyType = extractKeyType(initText);
 
   return {
     name: fieldName,
     type: fieldType,
     keyType,
-    description: immediateComment || null,
+    description,
   };
 }
 
@@ -262,18 +237,19 @@ export function tableCalls(program: Program, text: string) {
 }
 
 export function parseTableInfo(code: readonly string[]) {
-  const { program, text } = parseSource(code);
+  const source = parseSource(code);
+  const { program, text } = source;
 
-  return tableCalls(program, text).flatMap(({ varName, args }) => {
+  return tableCalls(program, text).flatMap(({ varName, args, start }) => {
     const objLit = args[1];
     if (!isObject(objLit)) return [];
 
     const fields = objLit.properties
       .filter(isPropertyAssignment)
-      .map((prop) => extractFieldInfo(prop, code, text))
+      .map((prop) => extractFieldInfo(prop, source))
       .filter((f): f is NonNullable<typeof f> => f !== null);
 
-    return [{ name: varName, fields }];
+    return [{ name: varName, description: descriptionBefore(source, start), fields }];
   });
 }
 

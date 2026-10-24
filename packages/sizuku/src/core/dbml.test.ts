@@ -147,7 +147,7 @@ describe("dbml relations", () => {
   // note is sourced from the nearest single `///` line, so even stacked `///`
   // comments collapse to one line; an apostrophe is escaped, and non-ASCII text
   // (full-width parens) passes through verbatim.
-  it("collapses stacked doc comments to a single-line single-quoted note", () => {
+  it("joins a comment of several lines into one single-quoted note", () => {
     const code = [
       "export const user = pgTable('user', {",
       "  /// first comment line",
@@ -159,7 +159,7 @@ describe("dbml relations", () => {
     ];
     expect(dbml(code)).toBe(
       `Table user {
-  id uuid [pk, note: 'second comment line']
+  id uuid [pk, note: 'first comment line second comment line']
   email varchar [note: 'User\\'s email （連絡先）']
 }`,
     );

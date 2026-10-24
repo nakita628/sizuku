@@ -3,7 +3,7 @@ import { extractRelationsFromAnnotations, parseRelation } from "./parse-relation
 
 describe("parseRelation", () => {
   it("parses full one-to-one form", () => {
-    expect(parseRelation("/// @relation User.id Profile.user_id one-to-one")).toStrictEqual({
+    expect(parseRelation("@relation User.id Profile.user_id one-to-one")).toStrictEqual({
       fromModel: "User",
       fromField: "id",
       toModel: "Profile",
@@ -13,7 +13,7 @@ describe("parseRelation", () => {
   });
 
   it("parses full one-to-many form", () => {
-    expect(parseRelation("/// @relation User.id Post.userId one-to-many")).toStrictEqual({
+    expect(parseRelation("@relation User.id Post.userId one-to-many")).toStrictEqual({
       fromModel: "User",
       fromField: "id",
       toModel: "Post",
@@ -24,7 +24,7 @@ describe("parseRelation", () => {
 
   it("parses zero-one-to-many-optional", () => {
     expect(
-      parseRelation("/// @relation User.id Profile.user_id zero-one-to-many-optional"),
+      parseRelation("@relation User.id Profile.user_id zero-one-to-many-optional"),
     ).toStrictEqual({
       fromModel: "User",
       fromField: "id",
@@ -34,7 +34,7 @@ describe("parseRelation", () => {
     });
   });
 
-  it("accepts lines without leading /// prefix", () => {
+  it("reads the tag as the comment says it, without its markers", () => {
     expect(parseRelation("@relation Team.id TeamMember.team_id one-to-many")).toStrictEqual({
       fromModel: "Team",
       fromField: "id",
@@ -45,7 +45,7 @@ describe("parseRelation", () => {
   });
 
   it("returns null for short form (cardinality only)", () => {
-    expect(parseRelation("/// @relation one-to-many")).toBeNull();
+    expect(parseRelation("@relation one-to-many")).toBeNull();
   });
 
   it("returns null for non-annotation lines", () => {
@@ -54,6 +54,22 @@ describe("parseRelation", () => {
 });
 
 describe("extractRelationsFromAnnotations", () => {
+  it("finds the tag in a JSDoc block and a // line alike", () => {
+    const code = [
+      "/**",
+      " * Who wrote the post.",
+      " * @relation User.id Post.userId one-to-many",
+      " */",
+      "export const post = pgTable('post', {})",
+      "// @relation User.id Profile.userId one-to-one",
+    ];
+    expect(
+      extractRelationsFromAnnotations(code).map(
+        (r) => `${r.fromModel}.${r.fromField}->${r.toModel}.${r.toField}`,
+      ),
+    ).toStrictEqual(["User.id->Post.userId", "User.id->Profile.userId"]);
+  });
+
   it("extracts structured cardinality from valid annotations", () => {
     const code = [
       "/// @relation User.id Post.userId one-to-many",

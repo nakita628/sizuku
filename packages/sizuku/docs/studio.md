@@ -77,14 +77,15 @@ TypeScript 7 has no language service API yet. Without one, the header says **No 
 
 ### Docs
 
-The documentation of the saved file, generated from the schema and its `///` comments:
+The documentation of the saved file, generated from the schema and the comments above its tables,
+columns and enums (`/** … */` or `//`):
 
 - every table with its database name and description;
 - each column's type, `PK` / `UNIQUE` / `NOT NULL`, its defaults (`.default()`, `.defaultNow()`,
   `$defaultFn()`, ...), its description and the column it references;
 - indexes, unique and composite keys;
 - relations in both directions (**References** and **Referenced by**), with their cardinality and
-  `onDelete` / `onUpdate` actions. A relation declared only with `/// @relation` is marked, since
+  `onDelete` / `onUpdate` actions. A relation declared only with an `@relation` tag is marked, since
   no foreign key backs it;
 - every `pgEnum` and its values;
 - Drizzle queries to start from for each table, with nothing to fill in: **Select**
@@ -108,7 +109,7 @@ One page per table of the schema, listed in the sidebar with its row count, with
   - **Export** downloads the page as CSV or JSON, or copies it. **Columns** folds columns away
     (remembered per table); copies and exports take what is shown.
 - **Columns** — the columns as the schema declares them: type, key, uniqueness, defaults, the
-  column a foreign key references, and the `///` description.
+  column a foreign key references, and the description from its comment.
 
 The details panel beside either (the **i** button) lists the columns, the relations to and from
 the table and its indexes. An enum's page lists its values and the columns that hold it.

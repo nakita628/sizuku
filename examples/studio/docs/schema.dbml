@@ -2,45 +2,51 @@ Table user {
   id uuid [pk, note: '主キー']
   email varchar [note: 'ログインに使うメールアドレス']
   name varchar [note: '表示名']
-  createdAt timestamp [note: '表示名']
-  updatedAt timestamp [note: '表示名']
+  createdAt timestamp
+  updatedAt timestamp
+  Note: 'サインインするユーザー'
 }
 
 Table organization {
-  id uuid [pk, note: 'ユーザーが所属する組織']
+  id uuid [pk]
   slug varchar [note: 'URL に使う識別子']
-  name text [note: 'URL に使う識別子']
+  name text
+  Note: 'ユーザーが所属する組織'
 }
 
 Table member {
-  userId uuid [note: 'ユーザーと組織の所属（複合主キー）']
-  organizationId uuid [note: 'ユーザーと組織の所属（複合主キー）']
-  role memberRole [note: 'ユーザーと組織の所属（複合主キー）']
+  userId uuid
+  organizationId uuid
+  role memberRole
+  Note: 'ユーザーと組織の所属（複合主キー）'
 }
 
 Table post {
-  id uuid [pk, note: '記事']
+  id uuid [pk]
   authorId uuid [note: '書いたユーザー（退会すると null）']
-  organizationId uuid [note: '書いたユーザー（退会すると null）']
-  title varchar [note: '書いたユーザー（退会すると null）']
-  body text [note: '書いたユーザー（退会すると null）']
-  published boolean [note: '書いたユーザー（退会すると null）']
-  tags text [note: '書いたユーザー（退会すると null）']
+  organizationId uuid
+  title varchar
+  body text
+  published boolean
+  tags text
+  Note: '記事'
 }
 
 Table comment {
-  id uuid [pk, note: '記事へのコメント（返信は親コメントを指す）']
-  postId uuid [note: '記事へのコメント（返信は親コメントを指す）']
+  id uuid [pk]
+  postId uuid
   parentId uuid [note: '返信先のコメント']
-  body text [note: '返信先のコメント']
-  likes integer [note: '返信先のコメント']
+  body text
+  likes integer
+  Note: '記事へのコメント（返信は親コメントを指す）'
 }
 
 Table auditLog {
-  id uuid [pk, note: '操作の記録。外部キーは張らず、関係は注釈で示す']
+  id uuid [pk]
   actorId uuid [note: '操作したユーザー（外部キーなし）']
-  action varchar [note: '操作したユーザー（外部キーなし）']
-  at timestamp [note: '操作したユーザー（外部キーなし）']
+  action varchar
+  at timestamp
+  Note: '操作の記録。外部キーは張らず、関係は注釈で示す'
 }
 
 Ref member_userId_user_id_fk: member.userId > user.id

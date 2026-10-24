@@ -1,13 +1,13 @@
 {
   "name": "sizuku",
   "version": "0.8.0",
-  "description": "Sizuku is a tool that generates validation schemas for Zod and Valibot, as well as ER diagrams and DBML, from Drizzle schemas annotated with comments.",
+  "description": "Sizuku reads a Drizzle schema, with its comments as descriptions, into ER diagrams (SVG, PNG, Mermaid) and DBML, and opens it in sizuku studio: the diagram, docs, data, Drizzle queries and SQL.",
   "keywords": [
     "dbml",
     "drizzle",
+    "er-diagram",
     "mermaid",
-    "valibot",
-    "zod"
+    "studio"
   ],
   "homepage": "https://github.com/nakita628/sizuku",
   "bugs": {
@@ -87,7 +87,6 @@
     "tailwindcss": "^4.3.3",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
-    "valibot": "1.4.1",
     "zustand": "^5.0.16"
   }
 }

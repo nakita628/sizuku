@@ -147,7 +147,7 @@ function Relations({
             ) : null}
             {relation.origin === "annotated" ? (
               <Chip size="sm" color="accent" variant="soft">
-                {reverse ? "/// @relation" : "/// @relation (no foreign key)"}
+                {reverse ? "@relation" : "@relation (no foreign key)"}
               </Chip>
             ) : null}
           </li>
@@ -332,7 +332,8 @@ export function DocsView() {
           ) : null}
           <p className="text-body text-muted">
             {docs.tables.length} tables, {docs.enums.length} enums. Generated from the saved file;
-            descriptions come from <code className="font-mono">///</code> comments.
+            descriptions come from the comment above each table and column (
+            <code className="font-mono">/** … */</code> or <code className="font-mono">//</code>).
           </p>
           {docs.tables.map((table) => (
             <TableSection key={table.name} table={table} enums={enums} />
