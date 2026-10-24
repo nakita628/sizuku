@@ -5,7 +5,6 @@ import {
   getDbRoute,
   getDbRowsTableNameRoute,
   getDocsRoute,
-  getFormatSettingsRoute,
   getLanguageRoute,
   getSchemaEventsRoute,
   getSchemaRoute,
@@ -14,13 +13,13 @@ import {
   postDbSqlRoute,
   postDiagramPngRoute,
   postDiagramSvgRoute,
+  postDrizzleRoute,
   postFormatRoute,
   postLanguageCompleteDetailRoute,
   postLanguageCompleteRoute,
   postLanguageDiagnosticsRoute,
   postLanguageHoverRoute,
   postLanguageSignatureRoute,
-  putFormatSettingsRoute,
   putSchemaRoute,
 } from "./routes";
 import {
@@ -29,7 +28,6 @@ import {
   getDbRouteHandler,
   getDbRowsTableNameRouteHandler,
   getDocsRouteHandler,
-  getFormatSettingsRouteHandler,
   getLanguageRouteHandler,
   getSchemaEventsRouteHandler,
   getSchemaRouteHandler,
@@ -38,13 +36,13 @@ import {
   postDbSqlRouteHandler,
   postDiagramPngRouteHandler,
   postDiagramSvgRouteHandler,
+  postDrizzleRouteHandler,
   postFormatRouteHandler,
   postLanguageCompleteDetailRouteHandler,
   postLanguageCompleteRouteHandler,
   postLanguageDiagnosticsRouteHandler,
   postLanguageHoverRouteHandler,
   postLanguageSignatureRouteHandler,
-  putFormatSettingsRouteHandler,
   putSchemaRouteHandler,
 } from "./handlers";
 
@@ -59,10 +57,7 @@ export const diagram = app
   .openapi(postDiagramSvgRoute, postDiagramSvgRouteHandler)
   .openapi(postDiagramPngRoute, postDiagramPngRouteHandler);
 
-export const format = app
-  .openapi(postFormatRoute, postFormatRouteHandler)
-  .openapi(getFormatSettingsRoute, getFormatSettingsRouteHandler)
-  .openapi(putFormatSettingsRoute, putFormatSettingsRouteHandler);
+export const format = app.openapi(postFormatRoute, postFormatRouteHandler);
 
 export const docs = app.openapi(getDocsRoute, getDocsRouteHandler);
 
@@ -82,5 +77,7 @@ export const language = app
   .openapi(postLanguageHoverRoute, postLanguageHoverRouteHandler)
   .openapi(postLanguageSignatureRoute, postLanguageSignatureRouteHandler)
   .openapi(postLanguageDiagnosticsRoute, postLanguageDiagnosticsRouteHandler);
+
+export const drizzle = app.openapi(postDrizzleRoute, postDrizzleRouteHandler);
 
 export default app;

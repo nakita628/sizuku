@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from "./routes/__root";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as DocsRouteImport } from "./routes/docs";
+import { Route as QueryRouteImport } from "./routes/query";
 import { Route as SqlRouteImport } from "./routes/sql";
 import { Route as DataTableRouteImport } from "./routes/data.$table";
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const DocsRoute = DocsRouteImport.update({
   id: "/docs",
   path: "/docs",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const QueryRoute = QueryRouteImport.update({
+  id: "/query",
+  path: "/query",
   getParentRoute: () => rootRouteImport,
 } as any);
 const SqlRoute = SqlRouteImport.update({
@@ -38,12 +44,14 @@ const DataTableRoute = DataTableRouteImport.update({
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/docs": typeof DocsRoute;
+  "/query": typeof QueryRoute;
   "/sql": typeof SqlRoute;
   "/data/$table": typeof DataTableRoute;
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/docs": typeof DocsRoute;
+  "/query": typeof QueryRoute;
   "/sql": typeof SqlRoute;
   "/data/$table": typeof DataTableRoute;
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
   "/docs": typeof DocsRoute;
+  "/query": typeof QueryRoute;
   "/sql": typeof SqlRoute;
   "/data/$table": typeof DataTableRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/docs" | "/sql" | "/data/$table";
+  fullPaths: "/" | "/docs" | "/query" | "/sql" | "/data/$table";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/docs" | "/sql" | "/data/$table";
-  id: "__root__" | "/" | "/docs" | "/sql" | "/data/$table";
+  to: "/" | "/docs" | "/query" | "/sql" | "/data/$table";
+  id: "__root__" | "/" | "/docs" | "/query" | "/sql" | "/data/$table";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   DocsRoute: typeof DocsRoute;
+  QueryRoute: typeof QueryRoute;
   SqlRoute: typeof SqlRoute;
   DataTableRoute: typeof DataTableRoute;
 }
@@ -83,6 +93,13 @@ declare module "@tanstack/react-router" {
       path: "/docs";
       fullPath: "/docs";
       preLoaderRoute: typeof DocsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/query": {
+      id: "/query";
+      path: "/query";
+      fullPath: "/query";
+      preLoaderRoute: typeof QueryRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/sql": {
@@ -105,6 +122,7 @@ declare module "@tanstack/react-router" {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
+  QueryRoute: QueryRoute,
   SqlRoute: SqlRoute,
   DataTableRoute: DataTableRoute,
 };

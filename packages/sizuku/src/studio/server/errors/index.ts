@@ -50,3 +50,10 @@ export class ServerListenError extends Data.TaggedError("ServerListenError")<{
 export class LanguageUnavailableError extends Data.TaggedError("LanguageUnavailableError")<{
   readonly reason: string;
 }> {}
+
+/** A query that does not parse, with where in its own text. */
+export class QueryError extends Data.TaggedError("QueryError")<{
+  readonly message: string;
+  readonly line: number;
+  readonly column: number;
+}> {}

@@ -90,56 +90,36 @@ describe("sizuku studio API", () => {
     expect(png.headers.get("content-type")).toContain("application/problem+json");
   });
 
-  it("formats with the given options and saves them to .oxfmtrc.json", async () => {
+  it("formats with oxfmt's defaults when the project has no config", async () => {
     const formatted = await (
-      await request("POST", "/api/format", {
-        source: "export const a = {b:1}",
-        options: { semi: false, bracketSpacing: false },
-      })
+      await request("POST", "/api/format", { source: "export const a = {b:'x'}" })
     ).json();
-    expect(formatted.source).toBe("export const a = {b: 1}\n");
-
-    const empty = await (await request("GET", "/api/format/settings")).json();
-    expect(empty.options).toStrictEqual({});
-
-    const saved = await (
-      await request("PUT", "/api/format/settings", {
-        options: { singleQuote: true, printWidth: 80 },
-      })
-    ).json();
-    expect(saved.configPath).toBe(path.join(dir, ".oxfmtrc.json"));
-    expect(JSON.parse(fs.readFileSync(saved.configPath, "utf-8"))).toStrictEqual({
-      singleQuote: true,
-      printWidth: 80,
-    });
-
-    const withSaved = await (
-      await request("POST", "/api/format", { source: 'const a = "x"' })
-    ).json();
-    expect(withSaved.source).toBe("const a = 'x';\n");
+    expect(formatted.source).toBe('export const a = { b: "x" };\n');
   });
 
-  it("keeps the other keys of an existing JSONC config", async () => {
-    fs.writeFileSync(
-      path.join(dir, ".oxfmtrc.jsonc"),
-      '{\n  // keep me\n  "ignorePatterns": ["dist"],\n  "semi": false,\n}\n',
-    );
-    const read = await (await request("GET", "/api/format/settings")).json();
-    expect(read.options).toStrictEqual({ semi: false });
-
-    await request("PUT", "/api/format/settings", { options: { semi: true } });
-    expect(JSON.parse(fs.readFileSync(path.join(dir, ".oxfmtrc.jsonc"), "utf-8"))).toStrictEqual({
-      ignorePatterns: ["dist"],
-      semi: true,
-    });
+  it("formats as the project's .oxfmtrc.jsonc says, and never writes it", async () => {
+    const config = path.join(dir, ".oxfmtrc.jsonc");
+    const text = '{\n  // the project\'s own\n  "semi": false,\n  "singleQuote": true,\n}\n';
+    fs.writeFileSync(config, text);
+    const formatted = await (
+      await request("POST", "/api/format", { source: 'export const a = {b:"x"}' })
+    ).json();
+    expect(formatted.source).toBe("export const a = { b: 'x' }\n");
+    expect(fs.readFileSync(config, "utf-8")).toBe(text);
   });
 
-  it("rejects an option out of range with a 422 problem", async () => {
-    const res = await request("PUT", "/api/format/settings", { options: { printWidth: 5 } });
+  it("answers a syntax error with a 422 problem", async () => {
+    const res = await request("POST", "/api/format", { source: "export const = (" });
+    expect(res.status).toBe(422);
+    expect((await res.json()).errors[0].field).toBe("source");
+  });
+
+  it("rejects a body that fails validation with a 422 problem", async () => {
+    const res = await request("PUT", "/api/schema", { source: 42 });
     expect(res.status).toBe(422);
     const body = await res.json();
     expect(body.type).toBe("/problems/validation-failed");
-    expect(body.errors[0].field).toBe("options.printWidth");
+    expect(body.errors[0].field).toBe("source");
   });
 
   it("documents tables, columns and relations both ways", async () => {

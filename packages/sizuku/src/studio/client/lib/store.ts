@@ -1,6 +1,4 @@
 import { create } from "zustand";
-import { loadEditorSettings, saveEditorSettings } from "./settings.js";
-import type { EditorSettings } from "./settings.js";
 import { loadString, saveString } from "./storage.js";
 
 export type Theme = "light" | "dark";
@@ -30,19 +28,13 @@ function initialTheme(): Theme {
 type UiStore = {
   readonly theme: Theme;
   readonly sidebarOpen: boolean;
-  readonly settingsOpen: boolean;
-  readonly editor: EditorSettings;
   readonly toggleTheme: () => void;
   readonly toggleSidebar: () => void;
-  readonly setSettingsOpen: (open: boolean) => void;
-  readonly setEditor: (patch: Partial<EditorSettings>) => void;
 };
 
 export const useUiStore = create<UiStore>()((set, get) => ({
   theme: initialTheme(),
   sidebarOpen: loadString(SIDEBAR_KEY) !== "closed",
-  settingsOpen: false,
-  editor: loadEditorSettings(),
   toggleTheme: () => {
     const theme = get().theme === "dark" ? "light" : "dark";
     saveString(THEME_KEY, theme);
@@ -53,11 +45,5 @@ export const useUiStore = create<UiStore>()((set, get) => ({
     const sidebarOpen = !get().sidebarOpen;
     saveString(SIDEBAR_KEY, sidebarOpen ? "open" : "closed");
     set({ sidebarOpen });
-  },
-  setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
-  setEditor: (patch) => {
-    const editor = { ...get().editor, ...patch };
-    saveEditorSettings(editor);
-    set({ editor });
   },
 }));

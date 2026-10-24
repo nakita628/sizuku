@@ -11,15 +11,13 @@ export type EditorCommand = {
 };
 
 /**
- * A Monaco editor in the studio's theme and with the editor settings of this browser. `path`
- * names its model, so two editors (the schema, the SQL console) never share an undo history.
+ * A Monaco editor in the studio's theme. `path` names its model, so two editors (the schema,
+ * the SQL console) never share an undo history.
  */
 export function CodeEditor({
   path,
   language,
   value,
-  tabSize = 2,
-  insertSpaces = true,
   commands = [],
   onChange,
   onMount,
@@ -27,25 +25,17 @@ export function CodeEditor({
   readonly path: string;
   readonly language: "typescript" | "sql";
   readonly value: string;
-  readonly tabSize?: number;
-  readonly insertSpaces?: boolean;
   readonly commands?: readonly EditorCommand[];
   readonly onChange: (text: string) => void;
   readonly onMount?: (editor: MonacoEditor.IStandaloneCodeEditor) => void;
 }) {
   const monaco = setupMonaco();
   const theme = useUiStore((s) => s.theme);
-  const settings = useUiStore((s) => s.editor);
-  const mounted = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   // The commands are bound once on mount; they call through this, so they run the latest closures.
   const latest = useRef(commands);
   useEffect(() => {
     latest.current = commands;
   });
-
-  useEffect(() => {
-    mounted.current?.getModel()?.updateOptions({ tabSize, insertSpaces });
-  }, [tabSize, insertSpaces]);
 
   return (
     <Editor
@@ -53,20 +43,10 @@ export function CodeEditor({
       language={language}
       value={value}
       theme={themeName(theme)}
-      options={{
-        ...BASE_OPTIONS,
-        fontSize: settings.fontSize,
-        lineHeight: Math.round(settings.fontSize * 1.6),
-        minimap: { enabled: settings.minimap },
-        wordWrap: settings.wordWrap ? "on" : "off",
-        tabSize,
-        insertSpaces,
-      }}
+      options={BASE_OPTIONS}
       keepCurrentModel
       loading={<div className="p-4 text-code text-muted">Loading editor…</div>}
       onMount={(editor) => {
-        mounted.current = editor;
-        editor.getModel()?.updateOptions({ tabSize, insertSpaces });
         const bind = (keys: EditorCommand["keys"], keybinding: number) =>
           editor.addCommand(keybinding, () => latest.current.find((c) => c.keys === keys)?.run());
         bind("save", monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS);

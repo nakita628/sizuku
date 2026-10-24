@@ -147,82 +147,15 @@ export const FormattedSchema = z
   .openapi({ required: ["source"], description: "The formatted text." })
   .openapi("Formatted");
 
-export const FormatOptionsSchema = z
-  .object({
-    printWidth: z
-      .int32()
-      .min(20)
-      .max(400)
-      .exactOptional()
-      .openapi({ description: "The line length the printer wraps at" }),
-    tabWidth: z
-      .int32()
-      .min(1)
-      .max(16)
-      .exactOptional()
-      .openapi({ description: "Spaces per indentation level" }),
-    useTabs: z
-      .boolean()
-      .exactOptional()
-      .openapi({ description: "Indent with tabs instead of spaces" }),
-    semi: z.boolean().exactOptional().openapi({ description: "End statements with a semicolon" }),
-    singleQuote: z
-      .boolean()
-      .exactOptional()
-      .openapi({ description: "Use single quotes for strings" }),
-    trailingComma: z
-      .enum(["all", "es5", "none"])
-      .exactOptional()
-      .openapi({ description: "Trailing commas where valid" }),
-    bracketSpacing: z
-      .boolean()
-      .exactOptional()
-      .openapi({ description: "Spaces inside object braces" }),
-    arrowParens: z
-      .enum(["always", "avoid"])
-      .exactOptional()
-      .openapi({ description: "Parentheses around a sole arrow function parameter" }),
-  })
-  .readonly()
-  .openapi({
-    required: [],
-    description: "oxfmt options (a subset of Prettier's), as `.oxfmtrc.json` holds them.",
-  })
-  .openapi("FormatOptions");
-
 export const FormatBodySchema = z
-  .object({
-    source: z.string().openapi({ description: "The schema source" }),
-    options: FormatOptionsSchema.exactOptional().openapi({
-      description: "Options for this run; the saved settings when left out",
-    }),
-  })
+  .object({ source: z.string().openapi({ description: "The schema source" }) })
   .readonly()
-  .openapi({ required: ["source"], description: "Text to format." })
+  .openapi({
+    required: ["source"],
+    description:
+      "Text to format, with the project's `.oxfmtrc.json` when it has one and oxfmt's defaults when not.",
+  })
   .openapi("FormatBody");
-
-export const FormatSettingsSchema = z
-  .object({
-    options: FormatOptionsSchema.openapi({ description: "The options the formatter runs with" }),
-    configPath: z.string().nullable().openapi({
-      description: "The `.oxfmtrc.json` they were read from, null when there is none yet",
-    }),
-  })
-  .readonly()
-  .openapi({
-    required: ["options", "configPath"],
-    description: "The formatter settings in effect, and the file they come from.",
-  })
-  .openapi("FormatSettings");
-
-export const FormatSettingsBodySchema = z
-  .object({ options: FormatOptionsSchema.openapi({ description: "The options to save" }) })
-  .readonly()
-  .openapi({
-    required: ["options"],
-    description: "Options to write to the project's `.oxfmtrc.json`.",
-  })
-  .openapi("FormatSettingsBody");
 
 export const ColumnReferenceSchema = z
   .object({
@@ -682,9 +615,17 @@ export const CompletionsSchema = z
   .openapi({ required: ["items"], description: "The completions at the cursor." })
   .openapi("Completions");
 
+export const DocumentKindSchema = z
+  .enum(["schema", "query"])
+  .openapi({ description: "Which editor a language request is about." })
+  .openapi("DocumentKind");
+
 export const PositionBodySchema = z
   .object({
-    source: z.string().openapi({ description: "The schema source, saved or not" }),
+    source: z.string().openapi({ description: "The schema source, saved or not, or the query" }),
+    document: DocumentKindSchema.exactOptional().openapi({
+      description: "Which editor it comes from; the schema when left out",
+    }),
     offset: z.int32().min(0).openapi({ description: "The UTF-16 offset of the cursor" }),
   })
   .readonly()
@@ -705,7 +646,10 @@ export const CompletionDetailSchema = z
 
 export const CompletionDetailBodySchema = z
   .object({
-    source: z.string().openapi({ description: "The schema source, saved or not" }),
+    source: z.string().openapi({ description: "The schema source, saved or not, or the query" }),
+    document: DocumentKindSchema.exactOptional().openapi({
+      description: "Which editor it comes from; the schema when left out",
+    }),
     offset: z.int32().min(0).openapi({ description: "The UTF-16 offset of the cursor" }),
     name: z.string().openapi({ description: "The name of the completion" }),
   })
@@ -798,10 +742,60 @@ export const DiagnosticsSchema = z
   .openapi("Diagnostics");
 
 export const SourceBodySchema = z
-  .object({ source: z.string().openapi({ description: "The schema source, saved or not" }) })
+  .object({
+    source: z.string().openapi({ description: "The schema source, saved or not, or the query" }),
+    document: DocumentKindSchema.exactOptional().openapi({
+      description: "Which editor it comes from; the schema when left out",
+    }),
+  })
   .readonly()
   .openapi({ required: ["source"], description: "A source to check." })
   .openapi("SourceBody");
+
+export const ExecutedStatementSchema = z
+  .object({
+    sql: z.string().openapi({ description: "The SQL" }),
+    params: z.array(z.any()).readonly().openapi({ description: "Its parameters" }),
+    rowCount: z.int32().openapi({ description: "Rows returned, or changed by a write" }),
+    durationMs: z.float64().openapi({ description: "How long it took" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["sql", "params", "rowCount", "durationMs"],
+    description: "One statement Drizzle sent to the database.",
+  })
+  .openapi("ExecutedStatement");
+
+export const QueryResultSchema = z
+  .object({
+    result: z.any().openapi({ description: "The value of the query, as JSON; null when it threw" }),
+    error: z
+      .string()
+      .nullable()
+      .openapi({ description: "The message it threw, null when it did not" }),
+    statements: z
+      .array(ExecutedStatementSchema)
+      .readonly()
+      .openapi({ description: "The statements, in the order they ran" }),
+    durationMs: z.float64().openapi({ description: "How long the query took in all" }),
+  })
+  .readonly()
+  .openapi({
+    required: ["result", "error", "statements", "durationMs"],
+    description: "What a query gave, and what the database was asked on the way.",
+  })
+  .openapi("QueryResult");
+
+export const QueryBodySchema = z
+  .object({
+    code: z.string().min(1).openapi({
+      description:
+        "The body of an async function with `db`, the schema's exports and drizzle-orm's operators\nin scope; its last expression is the result.",
+    }),
+  })
+  .readonly()
+  .openapi({ required: ["code"], description: "Drizzle code to run." })
+  .openapi("QueryBody");
 
 const RowsQuerySkipParamsSchema = SkipSchema.openapi({
   param: {
@@ -945,49 +939,6 @@ export const postFormatRoute = createRoute({
     200: {
       description: "The request has succeeded.",
       content: { "application/json": { schema: FormattedSchema } },
-    },
-    422: {
-      description: "422 Unprocessable Content (`application/problem+json`)",
-      content: { "application/problem+json": { schema: ValidationProblemSchema } },
-    },
-    500: {
-      description: "500 Internal Server Error (`application/problem+json`)",
-      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
-    },
-  },
-} as const);
-
-export const getFormatSettingsRoute = createRoute({
-  method: "get",
-  path: "/format/settings",
-  tags: ["format"],
-  description: "The formatter settings in effect.",
-  operationId: "readFormatSettings",
-  responses: {
-    200: {
-      description: "The request has succeeded.",
-      content: { "application/json": { schema: FormatSettingsSchema } },
-    },
-    500: {
-      description: "500 Internal Server Error (`application/problem+json`)",
-      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
-    },
-  },
-} as const);
-
-export const putFormatSettingsRoute = createRoute({
-  method: "put",
-  path: "/format/settings",
-  tags: ["format"],
-  description: "Save the formatter settings to the project's `.oxfmtrc.json`.",
-  operationId: "writeFormatSettings",
-  request: {
-    body: { content: { "application/json": { schema: FormatSettingsBodySchema } }, required: true },
-  },
-  responses: {
-    200: {
-      description: "The request has succeeded.",
-      content: { "application/json": { schema: FormatSettingsSchema } },
     },
     422: {
       description: "422 Unprocessable Content (`application/problem+json`)",
@@ -1407,6 +1358,36 @@ export const postLanguageDiagnosticsRoute = createRoute({
     200: {
       description: "The request has succeeded.",
       content: { "application/json": { schema: DiagnosticsSchema } },
+    },
+    422: {
+      description: "422 Unprocessable Content (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ValidationProblemSchema } },
+    },
+    500: {
+      description: "500 Internal Server Error (`application/problem+json`)",
+      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
+    },
+    503: {
+      description: "503 Service Unavailable (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ServiceUnavailableProblemSchema } },
+    },
+  },
+} as const);
+
+export const postDrizzleRoute = createRoute({
+  method: "post",
+  path: "/drizzle",
+  tags: ["drizzle"],
+  description:
+    "Run Drizzle code against the connected database. Code that does not parse, or a schema that\ndoes not, is a 422; an error the code throws is reported in the result with the statements\nthat ran before it.",
+  operationId: "runQuery",
+  request: {
+    body: { content: { "application/json": { schema: QueryBodySchema } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "The request has succeeded.",
+      content: { "application/json": { schema: QueryResultSchema } },
     },
     422: {
       description: "422 Unprocessable Content (`application/problem+json`)",

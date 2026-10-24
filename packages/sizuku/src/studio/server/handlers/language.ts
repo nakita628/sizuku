@@ -3,11 +3,11 @@ import type { Context } from "hono";
 import { Effect, Match } from "effect";
 import type {
   getLanguageRoute,
-  postLanguageCompleteRoute,
   postLanguageCompleteDetailRoute,
+  postLanguageCompleteRoute,
+  postLanguageDiagnosticsRoute,
   postLanguageHoverRoute,
   postLanguageSignatureRoute,
-  postLanguageDiagnosticsRoute,
 } from "../routes";
 import * as ProblemDomain from "../domain/problem.js";
 import type { LanguageUnavailableError } from "../errors/index.js";
@@ -41,10 +41,17 @@ export const postLanguageCompleteRouteHandler: RouteHandler<typeof postLanguageC
 ) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
-    Effect.matchEffect(LanguageUseCase.complete({ source: data.source, offset: data.offset }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-      onFailure: (error) => unavailable(c, error),
-    }),
+    Effect.matchEffect(
+      LanguageUseCase.complete({
+        document: data.document ?? "schema",
+        source: data.source,
+        offset: data.offset,
+      }),
+      {
+        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+        onFailure: (error) => unavailable(c, error),
+      },
+    ),
   );
 };
 
@@ -55,7 +62,12 @@ export const postLanguageCompleteDetailRouteHandler: RouteHandler<
   const data = c.req.valid("json");
   return Effect.runPromise(
     Effect.matchEffect(
-      LanguageUseCase.completeDetail({ source: data.source, offset: data.offset, name: data.name }),
+      LanguageUseCase.completeDetail({
+        document: data.document ?? "schema",
+        source: data.source,
+        offset: data.offset,
+        name: data.name,
+      }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
         onFailure: (error) => unavailable(c, error),
@@ -68,10 +80,17 @@ export const postLanguageCompleteDetailRouteHandler: RouteHandler<
 export const postLanguageHoverRouteHandler: RouteHandler<typeof postLanguageHoverRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
-    Effect.matchEffect(LanguageUseCase.hover({ source: data.source, offset: data.offset }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-      onFailure: (error) => unavailable(c, error),
-    }),
+    Effect.matchEffect(
+      LanguageUseCase.hover({
+        document: data.document ?? "schema",
+        source: data.source,
+        offset: data.offset,
+      }),
+      {
+        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+        onFailure: (error) => unavailable(c, error),
+      },
+    ),
   );
 };
 
@@ -81,10 +100,17 @@ export const postLanguageSignatureRouteHandler: RouteHandler<typeof postLanguage
 ) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
-    Effect.matchEffect(LanguageUseCase.signature({ source: data.source, offset: data.offset }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-      onFailure: (error) => unavailable(c, error),
-    }),
+    Effect.matchEffect(
+      LanguageUseCase.signature({
+        document: data.document ?? "schema",
+        source: data.source,
+        offset: data.offset,
+      }),
+      {
+        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+        onFailure: (error) => unavailable(c, error),
+      },
+    ),
   );
 };
 
@@ -94,9 +120,12 @@ export const postLanguageDiagnosticsRouteHandler: RouteHandler<
 > = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
-    Effect.matchEffect(LanguageUseCase.diagnostics({ source: data.source }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
-      onFailure: (error) => unavailable(c, error),
-    }),
+    Effect.matchEffect(
+      LanguageUseCase.diagnostics({ document: data.document ?? "schema", source: data.source }),
+      {
+        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+        onFailure: (error) => unavailable(c, error),
+      },
+    ),
   );
 };

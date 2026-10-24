@@ -13,7 +13,7 @@
 - 📊 Creates [Mermaid](https://mermaid.js.org/) ER diagrams
 - 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files
 - 🖼️ Draws ER diagrams as **SVG** / **PNG** images (light and dark)
-- ✏️ `sizuku studio`: edit the schema in Monaco beside its live ER diagram, read its generated docs, and browse and edit the database's rows
+- ✏️ `sizuku studio`: edit the schema in Monaco beside its live ER diagram, read its generated docs, run Drizzle queries, and browse and edit the database's rows
 
 ## Installation
 
@@ -313,7 +313,7 @@ npx sizuku studio db/schema.ts --url file:./dev.db          # SQLite (node:sqlit
 npx sizuku studio db/schema.ts --url postgres://localhost/app # pg from your project
 ```
 
-Opens `http://127.0.0.1:4983` with four pages:
+Opens `http://127.0.0.1:4983` with five pages:
 
 - **Schema**: the file in Monaco with its ER diagram beside it, redrawn as you type. Completion,
   hovers, signature help and type errors come from the project's TypeScript and drizzle-orm's
@@ -321,12 +321,14 @@ Opens `http://127.0.0.1:4983` with four pages:
   Ctrl/Cmd + S saves, **Format** runs oxfmt, and the diagram downloads as SVG or PNG.
 - **Docs**: every table, column, key, default, index, relation (both ways) and enum, with the
   `///` descriptions.
+- **Query**: Drizzle against the database (`db.select().from(post)`,
+  `db.query.post.findMany({ with: { author: true } })`), with completion, the result as a table
+  or JSON, and the SQL it sent.
 - **Data**: each table's rows, with adding, editing and deleting a row (composite keys included).
 - **SQL**: a console on the same database.
 
-The formatter settings are saved to the project's `.oxfmtrc.json`, so `oxfmt` formats the file the
-same way; the editor settings (font size, word wrap, format on save, auto save, ...) stay in the
-browser. The server listens on `127.0.0.1` only.
+**Format** follows the project's `.oxfmtrc.json` when it has one. The server listens on
+`127.0.0.1` only.
 
 See [docs/studio.md](https://github.com/nakita628/sizuku/blob/main/packages/sizuku/docs/studio.md) for the full guide and
 [docs/studio-api.md](https://github.com/nakita628/sizuku/blob/main/packages/sizuku/docs/studio-api.md) for its API.

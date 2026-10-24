@@ -3,10 +3,9 @@ import { Outlet } from "@tanstack/react-router";
 import { LuPanelLeft } from "react-icons/lu";
 import { useSchemaFileEvents } from "../../lib/events.js";
 import { useUiStore } from "../../lib/store.js";
-import { SettingsDialog } from "../settings/settings-dialog.js";
 import { Sidebar } from "./sidebar.js";
 
-/** The frame around every page: the sidebar, the routed page and the settings dialog. */
+/** The frame around every page: the sidebar and the routed page. */
 export function Shell() {
   useSchemaFileEvents();
   const open = useUiStore((s) => s.sidebarOpen);
@@ -34,7 +33,6 @@ export function Shell() {
       <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
         <Outlet />
       </main>
-      <SettingsDialog />
     </div>
   );
 }

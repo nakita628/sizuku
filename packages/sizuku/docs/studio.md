@@ -1,7 +1,7 @@
 # sizuku studio
 
 A local web app for a Drizzle schema: edit it in Monaco with its ER diagram beside it, read its
-generated docs, and browse and edit the rows of the database it describes.
+generated docs, run Drizzle queries, and browse and edit the rows of the database it describes.
 
 ```sh
 npx sizuku studio db/schema.ts
@@ -30,7 +30,9 @@ included.
   editor takes it at once, and with unsaved edits a banner asks whether to load the file or keep
   your edits.
 - **Format** (Shift + Alt + F, or _Format Document_ in the context menu) runs
-  [oxfmt](https://oxc.rs/docs/guide/usage/formatter) on the server with the project's settings.
+  [oxfmt](https://oxc.rs/docs/guide/usage/formatter) on the server, the way `oxfmt` formats the
+  project: with its `.oxfmtrc.json` (or `.oxfmtrc.jsonc`) when it has one, oxfmt's defaults when
+  not. The studio has no formatter settings of its own, and never writes that file.
 - **SVG** / **PNG** download the diagram in the current theme. The diagram is the same one
   `sizuku db/schema.ts -o er.svg` writes.
 - Drag to pan, scroll to zoom around the pointer, and use the **−**, **+** and **⛶** (fit) buttons.
@@ -87,6 +89,45 @@ A row is identified by its primary key — a composite one included — or, with
 unique columns, or else by all of its columns. Columns are written by their database names
 (`author_id`), while the page shows the schema's property names (`authorId`).
 
+### Query
+
+Drizzle against the connected database. Write a query, run it with **Ctrl/Cmd + Enter**, and see
+its value and every statement it sent:
+
+```ts
+db.select().from(post).where(eq(post.published, true)).orderBy(desc(post.id));
+```
+
+```ts
+db.query.post.findMany({ with: { author: true }, limit: 10 });
+```
+
+```ts
+const [added] = await db.insert(tag).values({ name: "drizzle" }).returning();
+return { added, total: await db.$count(tag) };
+```
+
+- `db` is Drizzle over the studio's own connection, with the schema, so the relational API
+  (`db.query.*`) works. The schema's exports (tables, relations) and drizzle-orm's operators
+  (`eq`, `and`, `or`, `not`, `inArray`, `like`, `isNull`, `asc`, `desc`, `sql`, `count`, `sum`,
+  ...) are in scope without an import.
+- The code is the body of an async function: `await` works, and the last expression is the
+  result (or `return` one).
+- **Result** shows rows as a table (one object is one row); **JSON** shows the value as is;
+  **SQL** lists the statements with their parameters, row counts and times. When the code
+  throws, the message (with the database's own words) is shown with the statements that ran
+  before it.
+- Completion, hovers, signature help and type errors work as in the schema editor, with `db`
+  typed by the schema: `db.query.` offers the tables, `post.` their columns.
+- A write refreshes the row counts in the sidebar. The code is kept in the browser.
+
+The query runs against the **saved** schema, in the studio's process, as Drizzle's proxy driver
+for the database's dialect (`drizzle-orm/sqlite-proxy`, `pg-proxy` or `mysql-proxy`) — the
+drizzle-orm and TypeScript of your project are used, nothing else is installed. The schema is
+loaded the way a bundler would: its `.ts` files are transpiled with your TypeScript, and imports
+without an extension find their `.ts` file. Changes to the schema are picked up when it is
+saved. A query is stopped waiting after 30 seconds.
+
 ### SQL
 
 A SQL console on the same database: one statement at a time, **Ctrl/Cmd + Enter** to run it. A
@@ -108,45 +149,18 @@ path is resolved from the directory the studio was started in.
 When the connection fails, the studio still starts: the Schema and Docs pages work, and the
 sidebar shows why the database is not connected.
 
-## Settings
+## Theme
 
-The gear at the bottom of the sidebar opens the settings.
-
-### Formatter
-
-The options oxfmt formats the schema with. They belong to the project, not to the browser:
-**Save formatter settings** writes them to the `.oxfmtrc.json` (or `.oxfmtrc.jsonc`) oxfmt itself
-reads — the nearest one above the schema — so `oxfmt` on the command line and your editor format
-the file the same way. Other keys of that file (`ignorePatterns`, ...) are kept. Without one,
-a new `.oxfmtrc.json` is created in the working directory.
-
-| Option            | Default  |
-| ----------------- | -------- |
-| Print width       | `100`    |
-| Tab width         | `2`      |
-| Indent with tabs  | off      |
-| Semicolons        | on       |
-| Single quotes     | off      |
-| Spaces in braces  | on       |
-| Trailing commas   | `all`    |
-| Arrow parentheses | `always` |
-
-The editor indents with the tab width and tabs setting from here as well.
-
-### Editor
-
-Kept in the browser and applied at once: font size, word wrap, minimap, **Format on save** (run
-the formatter before every save) and **Auto save** (save a second after you stop typing, as long
-as the schema parses).
-
-The theme switch (sun / moon) is beside the gear; the first visit follows the system setting.
+The sun / moon button at the bottom of the sidebar switches between light and dark; the first
+visit follows the system setting.
 
 ## Security
 
 The API is unauthenticated, so the server listens on `127.0.0.1` only and refuses any request
 whose host name is not `localhost`, `127.0.0.1` or `[::1]` — a page on another site cannot reach
 it even through a DNS name that resolves to your machine. It reads and writes the schema file it
-was started with, the formatter config, and the database you pass.
+was started with and the database you pass, and runs the Drizzle code you write on the Query
+page in its own process — as the SQL console runs your SQL.
 
 ## API
 
@@ -167,13 +181,13 @@ into the `@hono/zod-openapi` routes (`src/studio/server/routes`), the typed `hc`
 TanStack Query hooks (`src/studio/client/api`, `hooks`) and [studio-api.md](studio-api.md), with
 [hono-takibi](https://www.npmjs.com/package/hono-takibi). Handlers it has already written are kept.
 
-| Path                         | What it is                                                                     |
-| ---------------------------- | ------------------------------------------------------------------------------ |
-| `src/studio/server/handlers` | One Hono handler per route: runs a use case, maps its errors to problems       |
-| `src/studio/server/usecases` | What each route does, as [Effect](https://effect.website) programs             |
-| `src/studio/server/services` | The schema file, the formatter, the project's TypeScript, the database drivers |
-| `src/studio/server/domain`   | Pure functions: docs, SQL statements, parse errors, problems                   |
-| `src/studio/client`          | React + TanStack Router / Query + HeroUI + Tailwind + Monaco, built by Vite    |
+| Path                         | What it is                                                                                               |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `src/studio/server/handlers` | One Hono handler per route: runs a use case, maps its errors to problems                                 |
+| `src/studio/server/usecases` | What each route does, as [Effect](https://effect.website) programs                                       |
+| `src/studio/server/services` | The schema file, the formatter, the project's TypeScript, the Drizzle query runner, the database drivers |
+| `src/studio/server/domain`   | Pure functions: docs, SQL statements, parse errors, problems                                             |
+| `src/studio/client`          | React + TanStack Router / Query + HeroUI + Tailwind + Monaco, built by Vite                              |
 
 ```sh
 pnpm -F sizuku studio:dev   # Vite with hot reload and the API, on examples/studio/db/schema.ts

@@ -18,7 +18,10 @@ const current: { studio: Studio | null; language: Language | null } = {
 export function configureStudio(studio: Studio) {
   current.studio = studio;
   // The editor's TypeScript belongs to the schema; it is loaded on its first use.
-  current.language = createLanguage({ schemaPath: studio.schemaPath });
+  current.language = createLanguage({
+    schemaPath: studio.schemaPath,
+    dialect: studio.database.status.dialect,
+  });
 }
 
 export function getLanguage() {

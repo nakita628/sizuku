@@ -7,10 +7,10 @@ import {
   LuFileCode,
   LuMoon,
   LuPanelLeft,
-  LuSettings,
   LuSun,
   LuTable,
   LuTerminal,
+  LuZap,
 } from "react-icons/lu";
 import { useDb, useDbCounts, useSchema } from "../../hooks/index.js";
 import { useUiStore } from "../../lib/store.js";
@@ -30,7 +30,7 @@ function NavLink({
   icon,
   children,
 }: {
-  readonly to: "/" | "/docs" | "/sql";
+  readonly to: "/" | "/docs" | "/query" | "/sql";
   readonly icon: ReactNode;
   readonly children: ReactNode;
 }) {
@@ -71,7 +71,6 @@ export function Sidebar() {
   const theme = useUiStore((s) => s.theme);
   const toggleTheme = useUiStore((s) => s.toggleTheme);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
-  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   return (
     <aside className="flex min-h-0 flex-col border-r border-line bg-surface">
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
@@ -97,6 +96,9 @@ export function Sidebar() {
         </NavLink>
         <NavLink to="/docs" icon={<LuBook />}>
           Docs
+        </NavLink>
+        <NavLink to="/query" icon={<LuZap />}>
+          Query
         </NavLink>
         <NavLink to="/sql" icon={<LuTerminal />}>
           SQL
@@ -141,15 +143,6 @@ export function Sidebar() {
                 "Start the studio with --url, or set DATABASE_URL, to browse and edit rows.")}
           </Tooltip.Content>
         </Tooltip>
-        <Button
-          variant="ghost"
-          isIconOnly
-          size="sm"
-          aria-label="Settings"
-          onPress={() => setSettingsOpen(true)}
-        >
-          <LuSettings />
-        </Button>
         <Button
           variant="ghost"
           isIconOnly

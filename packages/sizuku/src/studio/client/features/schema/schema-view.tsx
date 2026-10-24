@@ -6,7 +6,6 @@ import { LuDownload, LuSave, LuSparkles } from "react-icons/lu";
 import { SplitPane } from "../../components/split-pane.js";
 import {
   getSchemaQueryKey,
-  useFormatSettings,
   useLanguage,
   usePostDiagramPng,
   usePostDiagramSvg,
@@ -16,10 +15,9 @@ import {
   useSchema,
 } from "../../hooks/index.js";
 import { problemMessage } from "../../lib/problem.js";
-import { FORMAT_DEFAULTS } from "../../lib/settings.js";
 import { useUiStore } from "../../lib/store.js";
 import { CodeEditor } from "../editor/code-editor.js";
-import { setLanguageEnabled, setTypeMarkers } from "../editor/language.js";
+import { SCHEMA_MODEL, setLanguageEnabled, setTypeMarkers } from "../editor/language.js";
 import { bindFormatter, setParseMarker } from "../editor/monaco.js";
 import { DiagramPane } from "./diagram-pane.js";
 
@@ -27,7 +25,6 @@ type ParseError = { readonly message: string; readonly line: number; readonly co
 
 const DRAW_DEBOUNCE_MS = 250;
 const CHECK_DEBOUNCE_MS = 500;
-const AUTO_SAVE_MS = 1000;
 
 function download(name: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
@@ -46,9 +43,7 @@ function download(name: string, blob: Blob) {
 export function SchemaView() {
   const queryClient = useQueryClient();
   const snapshot = useSchema().data ?? null;
-  const formatSettings = useFormatSettings().data ?? null;
   const theme = useUiStore((s) => s.theme);
-  const editorSettings = useUiStore((s) => s.editor);
   const draw = usePostDiagramSvg();
   const drawPng = usePostDiagramPng();
   const format = usePostFormat();
@@ -171,7 +166,6 @@ export function SchemaView() {
     if (editor === null || saving.current) return;
     saving.current = true;
     try {
-      if (useUiStore.getState().editor.formatOnSave) await formatDocument();
       const source = editor.getValue();
       const saved = await put.mutateAsync({ json: { source } });
       // The save is what the next change event will report; with it in the cache already, the
@@ -198,13 +192,6 @@ export function SchemaView() {
     return () => globalThis.removeEventListener("keydown", onKeyDown);
   }, [save]);
 
-  // Auto save waits for a pause in typing, and for a schema that parses.
-  useEffect(() => {
-    if (!editorSettings.autoSave || !dirty || parseError !== null) return;
-    const timer = setTimeout(() => void save(), AUTO_SAVE_MS);
-    return () => clearTimeout(timer);
-  }, [text, dirty, parseError, editorSettings.autoSave, save]);
-
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -223,8 +210,6 @@ export function SchemaView() {
     }
   };
 
-  const tabSize = formatSettings?.options.tabWidth ?? FORMAT_DEFAULTS.tabWidth;
-  const useTabs = formatSettings?.options.useTabs ?? FORMAT_DEFAULTS.useTabs;
   const status = parseError
     ? { label: `Line ${parseError.line}: syntax error`, color: "danger" as const }
     : put.isPending
@@ -322,11 +307,9 @@ export function SchemaView() {
           <div className="min-h-0 min-w-0 bg-surface">
             {text === null ? null : (
               <CodeEditor
-                path="schema.ts"
+                path={SCHEMA_MODEL}
                 language="typescript"
                 value={text}
-                tabSize={tabSize}
-                insertSpaces={!useTabs}
                 commands={[{ keys: "save", run: () => void save() }]}
                 onChange={setText}
                 onMount={(editor) => {

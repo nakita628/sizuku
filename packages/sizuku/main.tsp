@@ -115,59 +115,10 @@ model Png {
 // Format
 // ---------------------------------------------------------------------------
 
-/** oxfmt options (a subset of Prettier's), as `.oxfmtrc.json` holds them. */
-model FormatOptions {
-  /** The line length the printer wraps at */
-  @minValue(20)
-  @maxValue(400)
-  printWidth?: int32;
-
-  /** Spaces per indentation level */
-  @minValue(1)
-  @maxValue(16)
-  tabWidth?: int32;
-
-  /** Indent with tabs instead of spaces */
-  useTabs?: boolean;
-
-  /** End statements with a semicolon */
-  semi?: boolean;
-
-  /** Use single quotes for strings */
-  singleQuote?: boolean;
-
-  /** Trailing commas where valid */
-  trailingComma?: "all" | "es5" | "none";
-
-  /** Spaces inside object braces */
-  bracketSpacing?: boolean;
-
-  /** Parentheses around a sole arrow function parameter */
-  arrowParens?: "always" | "avoid";
-}
-
-/** The formatter settings in effect, and the file they come from. */
-model FormatSettings {
-  /** The options the formatter runs with */
-  options: FormatOptions;
-
-  /** The `.oxfmtrc.json` they were read from, null when there is none yet */
-  configPath: string | null;
-}
-
-/** Options to write to the project's `.oxfmtrc.json`. */
-model FormatSettingsBody {
-  /** The options to save */
-  options: FormatOptions;
-}
-
-/** Text to format. */
+/** Text to format, with the project's `.oxfmtrc.json` when it has one and oxfmt's defaults when not. */
 model FormatBody {
   /** The schema source */
   source: string;
-
-  /** Options for this run; the saved settings when left out */
-  options?: FormatOptions;
 }
 
 /** The formatted text. */
@@ -456,10 +407,22 @@ model LanguageStatus {
   reason: string | null;
 }
 
+/** Which editor a language request is about. */
+enum DocumentKind {
+  /** The schema file, as the Schema page has it */
+  schema,
+
+  /** A query on the Query page, checked against the saved schema */
+  query,
+}
+
 /** The editor buffer and a place in it. */
 model PositionBody {
-  /** The schema source, saved or not */
+  /** The schema source, saved or not, or the query */
   source: string;
+
+  /** Which editor it comes from; the schema when left out */
+  document?: DocumentKind;
 
   /** The UTF-16 offset of the cursor */
   @minValue(0)
@@ -560,8 +523,11 @@ model SignatureHelp {
 
 /** A source to check. */
 model SourceBody {
-  /** The schema source, saved or not */
+  /** The schema source, saved or not, or the query */
   source: string;
+
+  /** Which editor it comes from; the schema when left out */
+  document?: DocumentKind;
 }
 
 /** One problem TypeScript found. */
@@ -580,6 +546,50 @@ model Diagnostic {
 model Diagnostics {
   /** The problems, in order of position */
   diagnostics: Diagnostic[];
+}
+
+// ---------------------------------------------------------------------------
+// Query (Drizzle over the connected database)
+// ---------------------------------------------------------------------------
+
+/** Drizzle code to run. */
+model QueryBody {
+  /**
+   * The body of an async function with `db`, the schema's exports and drizzle-orm's operators
+   * in scope; its last expression is the result.
+   */
+  @minLength(1)
+  code: string;
+}
+
+/** One statement Drizzle sent to the database. */
+model ExecutedStatement {
+  /** The SQL */
+  sql: string;
+
+  /** Its parameters */
+  params: unknown[];
+
+  /** Rows returned, or changed by a write */
+  rowCount: int32;
+
+  /** How long it took */
+  durationMs: float64;
+}
+
+/** What a query gave, and what the database was asked on the way. */
+model QueryResult {
+  /** The value of the query, as JSON; null when it threw */
+  result: unknown;
+
+  /** The message it threw, null when it did not */
+  error: string | null;
+
+  /** The statements, in the order they ran */
+  statements: ExecutedStatement[];
+
+  /** How long the query took in all */
+  durationMs: float64;
 }
 
 // ---------------------------------------------------------------------------
@@ -782,21 +792,6 @@ namespace FormatRoutes {
     | Formatted
     | ValidationProblemResponse
     | InternalServerProblemResponse;
-
-  /** The formatter settings in effect. */
-  @get
-  @route("/settings")
-  @operationId("readFormatSettings")
-  op settings(): FormatSettings | InternalServerProblemResponse;
-
-  /** Save the formatter settings to the project's `.oxfmtrc.json`. */
-  @put
-  @route("/settings")
-  @operationId("writeFormatSettings")
-  op writeSettings(@body body: FormatSettingsBody):
-    | FormatSettings
-    | ValidationProblemResponse
-    | InternalServerProblemResponse;
 }
 
 @route("/docs")
@@ -931,6 +926,23 @@ namespace LanguageRoutes {
   @operationId("diagnostics")
   op diagnostics(@body body: SourceBody):
     | Diagnostics
+    | ValidationProblemResponse
+    | ServiceUnavailableProblemResponse
+    | InternalServerProblemResponse;
+}
+
+@route("/drizzle")
+@tag("drizzle")
+namespace DrizzleRoutes {
+  /**
+   * Run Drizzle code against the connected database. Code that does not parse, or a schema that
+   * does not, is a 422; an error the code throws is reported in the result with the statements
+   * that ran before it.
+   */
+  @post
+  @operationId("runQuery")
+  op run(@body body: QueryBody):
+    | QueryResult
     | ValidationProblemResponse
     | ServiceUnavailableProblemResponse
     | InternalServerProblemResponse;

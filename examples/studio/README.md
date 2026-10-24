@@ -4,7 +4,7 @@ Two Drizzle schemas to try `sizuku studio` on:
 
 - [sqlite/schema.ts](sqlite/schema.ts) — a small blog (users, posts, comments, tags and a
   composite-key join table) with a seeded SQLite database, so every page of the studio works,
-  rows and SQL included.
+  rows, Drizzle queries and SQL included.
 - [db/schema.ts](db/schema.ts) — a PostgreSQL schema that uses everything the ER diagram draws:
   a `pgEnum`, a composite primary key, unique and plain indexes, `foreignKey()` and
   `.references()` with `onDelete` / `onUpdate`, a self reference, an array column, defaults,
@@ -16,7 +16,7 @@ From the repository root:
 
 ```sh
 pnpm install
-pnpm studio            # sqlite/schema.ts with sqlite/dev.db: Schema, Docs, Data and SQL
+pnpm studio            # sqlite/schema.ts with sqlite/dev.db: every page
 pnpm studio:diagram    # db/schema.ts without a database: Schema and Docs
 ```
 
@@ -30,9 +30,10 @@ Then:
   `text("name")` for drizzle-orm's column methods, or misspell `.notNull()` to see a type error.
   Ctrl/Cmd + S saves, **Format** runs oxfmt, **SVG** / **PNG** download the diagram.
 - **Docs** — the tables, columns, relations and enums, with the `///` descriptions.
+- **Query** — Drizzle against the database, e.g.
+  `db.query.post.findMany({ with: { author: true } })`, then Ctrl/Cmd + Enter.
 - **user**, **post**, ... in the sidebar — the rows; add, edit and delete them.
 - **SQL** — e.g. `SELECT * FROM posts WHERE published = 1`, then Ctrl/Cmd + Enter.
-- The gear opens the settings: the formatter options are saved to `.oxfmtrc.json` here.
 
 Put everything back with `pnpm -F @examples/studio reset` (the schemas from git, and a fresh
 `sqlite/dev.db`); `pnpm -F @examples/studio seed` only rebuilds the database.

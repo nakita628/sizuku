@@ -19,7 +19,11 @@ export const BASE_OPTIONS: editor.IStandaloneEditorConstructionOptions = {
   // never inserts a space; the textarea this turns back on is the input Monaco used for a decade.
   editContext: false,
   fontFamily: EDITOR_FONT,
+  fontSize: 13,
   lineHeight: 20,
+  tabSize: 2,
+  insertSpaces: true,
+  minimap: { enabled: false },
   scrollBeyondLastLine: false,
   automaticLayout: true,
   padding: { top: 12, bottom: 12 },

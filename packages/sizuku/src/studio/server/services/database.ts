@@ -13,10 +13,21 @@ type Result = {
   readonly rowCount: number;
 };
 
+/** A result with its rows as arrays, in column order: what Drizzle's proxy drivers take. */
+type ArrayResult = {
+  readonly columns: readonly string[];
+  readonly rows: readonly (readonly unknown[])[];
+  readonly rowCount: number;
+  /** The id the database gave an inserted row, where it says (MySQL, SQLite). */
+  readonly insertId: number | null;
+};
+
 /** An open connection: every statement is an Effect that fails with the driver's message. */
 export type Driver = {
   readonly dialect: Dialect;
   readonly query: (statement: Statement) => Effect.Effect<Result, DatabaseError>;
+  /** The same, with each row an array: two columns of one name (a join) both survive. */
+  readonly queryArrays: (statement: Statement) => Effect.Effect<ArrayResult, DatabaseError>;
   readonly close: Effect.Effect<void>;
 };
 
@@ -93,6 +104,27 @@ function openSqlite(url: string, cwd: string) {
           },
           catch: queryError,
         }),
+      queryArrays: (statement) =>
+        Effect.try({
+          try: () => {
+            const prepared = db.prepare(statement.sql);
+            const columns = prepared.columns().map((column) => column.name);
+            const params = statement.params as SQLInputValue[];
+            if (columns.length === 0) {
+              const info = prepared.run(...params);
+              return {
+                columns,
+                rows: [],
+                rowCount: Number(info.changes),
+                insertId: Number(info.lastInsertRowid),
+              };
+            }
+            prepared.setReturnArrays(true);
+            const rows = prepared.all(...params) as unknown as unknown[][];
+            return { columns, rows, rowCount: rows.length, insertId: null };
+          },
+          catch: queryError,
+        }),
       close: Effect.sync(() => db.close()),
     };
     return driver;
@@ -102,7 +134,12 @@ function openSqlite(url: string, cwd: string) {
 type PgClient = {
   readonly connect: () => Promise<void>;
   readonly end: () => Promise<void>;
-  readonly query: (sql: string, params: readonly unknown[]) => Promise<unknown>;
+  readonly query: (
+    sql:
+      | string
+      | { readonly text: string; readonly values: readonly unknown[]; readonly rowMode: "array" },
+    params?: readonly unknown[],
+  ) => Promise<unknown>;
 };
 
 function openPostgres(url: string, cwd: string) {
@@ -141,6 +178,30 @@ function openPostgres(url: string, cwd: string) {
           },
           catch: queryError,
         }),
+      queryArrays: (statement) =>
+        Effect.tryPromise({
+          try: async () => {
+            const result = await client.query({
+              text: statement.sql,
+              values: statement.params,
+              rowMode: "array",
+            });
+            const rows =
+              isRecord(result) && Array.isArray(result.rows) ? (result.rows as unknown[][]) : [];
+            const fields = isRecord(result) && Array.isArray(result.fields) ? result.fields : [];
+            const rowCount =
+              isRecord(result) && typeof result.rowCount === "number"
+                ? result.rowCount
+                : rows.length;
+            return {
+              columns: fields.filter(isRecord).map((field) => String(field.name)),
+              rows,
+              rowCount,
+              insertId: null,
+            };
+          },
+          catch: queryError,
+        }),
       close: Effect.promise(() => client.end().catch(() => undefined)),
     };
     return driver;
@@ -148,7 +209,12 @@ function openPostgres(url: string, cwd: string) {
 }
 
 type MysqlConnection = {
-  readonly query: (sql: string, params: readonly unknown[]) => Promise<readonly [unknown, unknown]>;
+  readonly query: (
+    sql:
+      | string
+      | { readonly sql: string; readonly values: readonly unknown[]; readonly rowsAsArray: true },
+    params?: readonly unknown[],
+  ) => Promise<readonly [unknown, unknown]>;
   readonly end: () => Promise<void>;
 };
 
@@ -181,6 +247,35 @@ function openMysql(url: string, cwd: string) {
             const affected =
               isRecord(result) && typeof result.affectedRows === "number" ? result.affectedRows : 0;
             return { columns: [], rows: [], rowCount: affected };
+          },
+          catch: queryError,
+        }),
+      queryArrays: (statement) =>
+        Effect.tryPromise({
+          try: async () => {
+            const [result, fields] = await connection.query({
+              sql: statement.sql,
+              values: statement.params,
+              rowsAsArray: true,
+            });
+            if (Array.isArray(result)) {
+              const columns = Array.isArray(fields)
+                ? fields.filter(isRecord).map((field) => String(field.name))
+                : [];
+              return {
+                columns,
+                rows: result as unknown[][],
+                rowCount: result.length,
+                insertId: null,
+              };
+            }
+            const header = isRecord(result) ? result : {};
+            return {
+              columns: [],
+              rows: [],
+              rowCount: typeof header.affectedRows === "number" ? header.affectedRows : 0,
+              insertId: typeof header.insertId === "number" ? header.insertId : null,
+            };
           },
           catch: queryError,
         }),

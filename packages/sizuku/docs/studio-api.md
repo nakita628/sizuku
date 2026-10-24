@@ -382,17 +382,7 @@ curl http://127.0.0.1:4983/api/format \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json' \
   -d '{
-    "source": "string",
-    "options": {
-      "printWidth": 20,
-      "tabWidth": 1,
-      "useTabs": true,
-      "semi": true,
-      "singleQuote": true,
-      "trailingComma": "all",
-      "bracketSpacing": true,
-      "arrowParens": "always"
-    }
+    "source": "string"
   }'
 ```
 
@@ -404,45 +394,16 @@ Format a schema with oxfmt; a source that does not parse is a 422.
 
 ```json
 {
-  "source": "string",
-  "options": {
-    "printWidth": 20,
-    "tabWidth": 1,
-    "useTabs": true,
-    "semi": true,
-    "singleQuote": true,
-    "trailingComma": "all",
-    "bracketSpacing": true,
-    "arrowParens": "always"
-  }
+  "source": "string"
 }
 ```
 
 <h3 id="formatsource-parameters">Parameters</h3>
 
-| Name               | In   | Type                            | Required | Description                                            |
-| ------------------ | ---- | ------------------------------- | -------- | ------------------------------------------------------ |
-| body               | body | [FormatBody](#schemaformatbody) | true     | none                                                   |
-| » source           | body | string                          | true     | The schema source                                      |
-| » options          | body | object                          | false    | Options for this run; the saved settings when left out |
-| » » printWidth     | body | integer(int32)                  | false    | The line length the printer wraps at                   |
-| » » tabWidth       | body | integer(int32)                  | false    | Spaces per indentation level                           |
-| » » useTabs        | body | boolean                         | false    | Indent with tabs instead of spaces                     |
-| » » semi           | body | boolean                         | false    | End statements with a semicolon                        |
-| » » singleQuote    | body | boolean                         | false    | Use single quotes for strings                          |
-| » » trailingComma  | body | string                          | false    | Trailing commas where valid                            |
-| » » bracketSpacing | body | boolean                         | false    | Spaces inside object braces                            |
-| » » arrowParens    | body | string                          | false    | Parentheses around a sole arrow function parameter     |
-
-#### Enumerated Values
-
-| Parameter         | Value  |
-| ----------------- | ------ |
-| » » trailingComma | all    |
-| » » trailingComma | es5    |
-| » » trailingComma | none   |
-| » » arrowParens   | always |
-| » » arrowParens   | avoid  |
+| Name     | In   | Type                            | Required | Description       |
+| -------- | ---- | ------------------------------- | -------- | ----------------- |
+| body     | body | [FormatBody](#schemaformatbody) | true     | none              |
+| » source | body | string                          | true     | The schema source |
 
 > Example responses
 
@@ -489,197 +450,6 @@ Format a schema with oxfmt; a source that does not parse is a 422.
 | Status | Meaning               | Description                                            | Schema                                                |
 | ------ | --------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
 | 200    | OK                    | The request has succeeded.                             | [Formatted](#schemaformatted)                         |
-| 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)         |
-| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem) |
-
-<aside class="success">
-This operation does not require authentication
-</aside>
-
-## readFormatSettings
-
-<a id="opIdreadFormatSettings"></a>
-
-> Code samples
-
-```bash
-curl http://127.0.0.1:4983/api/format/settings \
-  -H 'Accept: application/json'
-```
-
-`GET /format/settings`
-
-The formatter settings in effect.
-
-> Example responses
-
-> 200 Response
-
-```json
-{
-  "options": {
-    "printWidth": 20,
-    "tabWidth": 1,
-    "useTabs": true,
-    "semi": true,
-    "singleQuote": true,
-    "trailingComma": "all",
-    "bracketSpacing": true,
-    "arrowParens": "always"
-  },
-  "configPath": "string"
-}
-```
-
-> 500 Response
-
-```json
-{
-  "type": "/problems/internal-server-error",
-  "title": "Internal Server Error",
-  "status": 500,
-  "detail": "string",
-  "instance": "string"
-}
-```
-
-<h3 id="readformatsettings-responses">Responses</h3>
-
-| Status | Meaning               | Description                                            | Schema                                                |
-| ------ | --------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
-| 200    | OK                    | The request has succeeded.                             | [FormatSettings](#schemaformatsettings)               |
-| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem) |
-
-<aside class="success">
-This operation does not require authentication
-</aside>
-
-## writeFormatSettings
-
-<a id="opIdwriteFormatSettings"></a>
-
-> Code samples
-
-```bash
-curl http://127.0.0.1:4983/api/format/settings \
-  -X PUT \
-  -H 'Content-Type: application/json' \
-  -H 'Accept: application/json' \
-  -d '{
-    "options": {
-      "printWidth": 20,
-      "tabWidth": 1,
-      "useTabs": true,
-      "semi": true,
-      "singleQuote": true,
-      "trailingComma": "all",
-      "bracketSpacing": true,
-      "arrowParens": "always"
-    }
-  }'
-```
-
-`PUT /format/settings`
-
-Save the formatter settings to the project's `.oxfmtrc.json`.
-
-> Body parameter
-
-```json
-{
-  "options": {
-    "printWidth": 20,
-    "tabWidth": 1,
-    "useTabs": true,
-    "semi": true,
-    "singleQuote": true,
-    "trailingComma": "all",
-    "bracketSpacing": true,
-    "arrowParens": "always"
-  }
-}
-```
-
-<h3 id="writeformatsettings-parameters">Parameters</h3>
-
-| Name               | In   | Type                                            | Required | Description                                        |
-| ------------------ | ---- | ----------------------------------------------- | -------- | -------------------------------------------------- |
-| body               | body | [FormatSettingsBody](#schemaformatsettingsbody) | true     | none                                               |
-| » options          | body | object                                          | true     | The options to save                                |
-| » » printWidth     | body | integer(int32)                                  | false    | The line length the printer wraps at               |
-| » » tabWidth       | body | integer(int32)                                  | false    | Spaces per indentation level                       |
-| » » useTabs        | body | boolean                                         | false    | Indent with tabs instead of spaces                 |
-| » » semi           | body | boolean                                         | false    | End statements with a semicolon                    |
-| » » singleQuote    | body | boolean                                         | false    | Use single quotes for strings                      |
-| » » trailingComma  | body | string                                          | false    | Trailing commas where valid                        |
-| » » bracketSpacing | body | boolean                                         | false    | Spaces inside object braces                        |
-| » » arrowParens    | body | string                                          | false    | Parentheses around a sole arrow function parameter |
-
-#### Enumerated Values
-
-| Parameter         | Value  |
-| ----------------- | ------ |
-| » » trailingComma | all    |
-| » » trailingComma | es5    |
-| » » trailingComma | none   |
-| » » arrowParens   | always |
-| » » arrowParens   | avoid  |
-
-> Example responses
-
-> 200 Response
-
-```json
-{
-  "options": {
-    "printWidth": 20,
-    "tabWidth": 1,
-    "useTabs": true,
-    "semi": true,
-    "singleQuote": true,
-    "trailingComma": "all",
-    "bracketSpacing": true,
-    "arrowParens": "always"
-  },
-  "configPath": "string"
-}
-```
-
-> 422 Response
-
-```json
-{
-  "type": "/problems/validation-failed",
-  "title": "Validation Failed",
-  "status": 422,
-  "detail": "string",
-  "instance": "string",
-  "errors": [
-    {
-      "field": "string",
-      "message": "string"
-    }
-  ]
-}
-```
-
-> 500 Response
-
-```json
-{
-  "type": "/problems/internal-server-error",
-  "title": "Internal Server Error",
-  "status": 500,
-  "detail": "string",
-  "instance": "string"
-}
-```
-
-<h3 id="writeformatsettings-responses">Responses</h3>
-
-| Status | Meaning               | Description                                            | Schema                                                |
-| ------ | --------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
-| 200    | OK                    | The request has succeeded.                             | [FormatSettings](#schemaformatsettings)               |
 | 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)         |
 | 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem) |
 
@@ -1600,6 +1370,7 @@ curl http://127.0.0.1:4983/api/language/complete \
   -H 'Accept: application/json' \
   -d '{
     "source": "string",
+    "document": {},
     "offset": 0
   }'
 ```
@@ -1613,17 +1384,19 @@ The completions at the cursor.
 ```json
 {
   "source": "string",
+  "document": {},
   "offset": 0
 }
 ```
 
 <h3 id="complete-parameters">Parameters</h3>
 
-| Name     | In   | Type                                | Required | Description                     |
-| -------- | ---- | ----------------------------------- | -------- | ------------------------------- |
-| body     | body | [PositionBody](#schemapositionbody) | true     | none                            |
-| » source | body | string                              | true     | The schema source, saved or not |
-| » offset | body | integer(int32)                      | true     | The UTF-16 offset of the cursor |
+| Name       | In   | Type                                | Required | Description                                          |
+| ---------- | ---- | ----------------------------------- | -------- | ---------------------------------------------------- |
+| body       | body | [PositionBody](#schemapositionbody) | true     | none                                                 |
+| » source   | body | string                              | true     | The schema source, saved or not, or the query        |
+| » document | body | object                              | false    | Which editor it comes from; the schema when left out |
+| » offset   | body | integer(int32)                      | true     | The UTF-16 offset of the cursor                      |
 
 > Example responses
 
@@ -1714,6 +1487,7 @@ curl http://127.0.0.1:4983/api/language/complete/detail \
   -H 'Accept: application/json' \
   -d '{
     "source": "string",
+    "document": {},
     "offset": 0,
     "name": "string"
   }'
@@ -1728,6 +1502,7 @@ The type and documentation of one completion.
 ```json
 {
   "source": "string",
+  "document": {},
   "offset": 0,
   "name": "string"
 }
@@ -1735,12 +1510,13 @@ The type and documentation of one completion.
 
 <h3 id="completedetail-parameters">Parameters</h3>
 
-| Name     | In   | Type                                                | Required | Description                     |
-| -------- | ---- | --------------------------------------------------- | -------- | ------------------------------- |
-| body     | body | [CompletionDetailBody](#schemacompletiondetailbody) | true     | none                            |
-| » source | body | string                                              | true     | The schema source, saved or not |
-| » offset | body | integer(int32)                                      | true     | The UTF-16 offset of the cursor |
-| » name   | body | string                                              | true     | The name of the completion      |
+| Name       | In   | Type                                                | Required | Description                                          |
+| ---------- | ---- | --------------------------------------------------- | -------- | ---------------------------------------------------- |
+| body       | body | [CompletionDetailBody](#schemacompletiondetailbody) | true     | none                                                 |
+| » source   | body | string                                              | true     | The schema source, saved or not, or the query        |
+| » document | body | object                                              | false    | Which editor it comes from; the schema when left out |
+| » offset   | body | integer(int32)                                      | true     | The UTF-16 offset of the cursor                      |
+| » name     | body | string                                              | true     | The name of the completion                           |
 
 > Example responses
 
@@ -1821,6 +1597,7 @@ curl http://127.0.0.1:4983/api/language/hover \
   -H 'Accept: application/json' \
   -d '{
     "source": "string",
+    "document": {},
     "offset": 0
   }'
 ```
@@ -1834,17 +1611,19 @@ What TypeScript says about the symbol at the cursor.
 ```json
 {
   "source": "string",
+  "document": {},
   "offset": 0
 }
 ```
 
 <h3 id="hover-parameters">Parameters</h3>
 
-| Name     | In   | Type                                | Required | Description                     |
-| -------- | ---- | ----------------------------------- | -------- | ------------------------------- |
-| body     | body | [PositionBody](#schemapositionbody) | true     | none                            |
-| » source | body | string                              | true     | The schema source, saved or not |
-| » offset | body | integer(int32)                      | true     | The UTF-16 offset of the cursor |
+| Name       | In   | Type                                | Required | Description                                          |
+| ---------- | ---- | ----------------------------------- | -------- | ---------------------------------------------------- |
+| body       | body | [PositionBody](#schemapositionbody) | true     | none                                                 |
+| » source   | body | string                              | true     | The schema source, saved or not, or the query        |
+| » document | body | object                              | false    | Which editor it comes from; the schema when left out |
+| » offset   | body | integer(int32)                      | true     | The UTF-16 offset of the cursor                      |
 
 > Example responses
 
@@ -1928,6 +1707,7 @@ curl http://127.0.0.1:4983/api/language/signature \
   -H 'Accept: application/json' \
   -d '{
     "source": "string",
+    "document": {},
     "offset": 0
   }'
 ```
@@ -1941,17 +1721,19 @@ The signatures of the call the cursor is in.
 ```json
 {
   "source": "string",
+  "document": {},
   "offset": 0
 }
 ```
 
 <h3 id="signature-parameters">Parameters</h3>
 
-| Name     | In   | Type                                | Required | Description                     |
-| -------- | ---- | ----------------------------------- | -------- | ------------------------------- |
-| body     | body | [PositionBody](#schemapositionbody) | true     | none                            |
-| » source | body | string                              | true     | The schema source, saved or not |
-| » offset | body | integer(int32)                      | true     | The UTF-16 offset of the cursor |
+| Name       | In   | Type                                | Required | Description                                          |
+| ---------- | ---- | ----------------------------------- | -------- | ---------------------------------------------------- |
+| body       | body | [PositionBody](#schemapositionbody) | true     | none                                                 |
+| » source   | body | string                              | true     | The schema source, saved or not, or the query        |
+| » document | body | object                              | false    | Which editor it comes from; the schema when left out |
+| » offset   | body | integer(int32)                      | true     | The UTF-16 offset of the cursor                      |
 
 > Example responses
 
@@ -2043,7 +1825,8 @@ curl http://127.0.0.1:4983/api/language/diagnostics \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json' \
   -d '{
-    "source": "string"
+    "source": "string",
+    "document": {}
   }'
 ```
 
@@ -2055,16 +1838,18 @@ The type errors of the source.
 
 ```json
 {
-  "source": "string"
+  "source": "string",
+  "document": {}
 }
 ```
 
 <h3 id="diagnostics-parameters">Parameters</h3>
 
-| Name     | In   | Type                            | Required | Description                     |
-| -------- | ---- | ------------------------------- | -------- | ------------------------------- |
-| body     | body | [SourceBody](#schemasourcebody) | true     | none                            |
-| » source | body | string                          | true     | The schema source, saved or not |
+| Name       | In   | Type                            | Required | Description                                          |
+| ---------- | ---- | ------------------------------- | -------- | ---------------------------------------------------- |
+| body       | body | [SourceBody](#schemasourcebody) | true     | none                                                 |
+| » source   | body | string                          | true     | The schema source, saved or not, or the query        |
+| » document | body | object                          | false    | Which editor it comes from; the schema when left out |
 
 > Example responses
 
@@ -2132,6 +1917,120 @@ The type errors of the source.
 | Status | Meaning               | Description                                            | Schema                                                        |
 | ------ | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
 | 200    | OK                    | The request has succeeded.                             | [Diagnostics](#schemadiagnostics)                             |
+| 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)                 |
+| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem)         |
+| 503    | Service Unavailable   | 503 Service Unavailable (`application/problem+json`)   | [ServiceUnavailableProblem](#schemaserviceunavailableproblem) |
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+<h1 id="sizuku-studio-api-drizzle">drizzle</h1>
+
+## runQuery
+
+<a id="opIdrunQuery"></a>
+
+> Code samples
+
+```bash
+curl http://127.0.0.1:4983/api/drizzle \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "code": "string"
+  }'
+```
+
+`POST /drizzle`
+
+Run Drizzle code against the connected database. Code that does not parse, or a schema that
+does not, is a 422; an error the code throws is reported in the result with the statements
+that ran before it.
+
+> Body parameter
+
+```json
+{
+  "code": "string"
+}
+```
+
+<h3 id="runquery-parameters">Parameters</h3>
+
+| Name   | In   | Type                          | Required | Description                                                                                                                               |
+| ------ | ---- | ----------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| body   | body | [QueryBody](#schemaquerybody) | true     | none                                                                                                                                      |
+| » code | body | string                        | true     | The body of an async function with `db`, the schema's exports and drizzle-orm's operators<br>in scope; its last expression is the result. |
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "result": null,
+  "error": "string",
+  "statements": [
+    {
+      "sql": "string",
+      "params": [null],
+      "rowCount": 0,
+      "durationMs": 0
+    }
+  ],
+  "durationMs": 0
+}
+```
+
+> 422 Response
+
+```json
+{
+  "type": "/problems/validation-failed",
+  "title": "Validation Failed",
+  "status": 422,
+  "detail": "string",
+  "instance": "string",
+  "errors": [
+    {
+      "field": "string",
+      "message": "string"
+    }
+  ]
+}
+```
+
+> 500 Response
+
+```json
+{
+  "type": "/problems/internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "string",
+  "instance": "string"
+}
+```
+
+> 503 Response
+
+```json
+{
+  "type": "/problems/service-unavailable",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "No database is connected. Pass --url to sizuku studio or set DATABASE_URL.",
+  "instance": "/api/db/counts"
+}
+```
+
+<h3 id="runquery-responses">Responses</h3>
+
+| Status | Meaning               | Description                                            | Schema                                                        |
+| ------ | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| 200    | OK                    | The request has succeeded.                             | [QueryResult](#schemaqueryresult)                             |
 | 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)                 |
 | 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem)         |
 | 503    | Service Unavailable   | 503 Service Unavailable (`application/problem+json`)   | [ServiceUnavailableProblem](#schemaserviceunavailableproblem) |
@@ -2428,51 +2327,6 @@ The formatted text.
 | ------ | ------ | -------- | ------------ | ------------------------------------- |
 | source | string | true     | none         | The source as the formatter prints it |
 
-<h2 id="tocS_FormatOptions">FormatOptions</h2>
-<!-- backwards compatibility -->
-<a id="schemaformatoptions"></a>
-<a id="schema_FormatOptions"></a>
-<a id="tocSformatoptions"></a>
-<a id="tocsformatoptions"></a>
-
-```json
-{
-  "printWidth": 20,
-  "tabWidth": 1,
-  "useTabs": true,
-  "semi": true,
-  "singleQuote": true,
-  "trailingComma": "all",
-  "bracketSpacing": true,
-  "arrowParens": "always"
-}
-```
-
-oxfmt options (a subset of Prettier's), as `.oxfmtrc.json` holds them.
-
-### Properties
-
-| Name           | Type           | Required | Restrictions | Description                                        |
-| -------------- | -------------- | -------- | ------------ | -------------------------------------------------- |
-| printWidth     | integer(int32) | false    | none         | The line length the printer wraps at               |
-| tabWidth       | integer(int32) | false    | none         | Spaces per indentation level                       |
-| useTabs        | boolean        | false    | none         | Indent with tabs instead of spaces                 |
-| semi           | boolean        | false    | none         | End statements with a semicolon                    |
-| singleQuote    | boolean        | false    | none         | Use single quotes for strings                      |
-| trailingComma  | string         | false    | none         | Trailing commas where valid                        |
-| bracketSpacing | boolean        | false    | none         | Spaces inside object braces                        |
-| arrowParens    | string         | false    | none         | Parentheses around a sole arrow function parameter |
-
-#### Enumerated Values
-
-| Property      | Value  |
-| ------------- | ------ |
-| trailingComma | all    |
-| trailingComma | es5    |
-| trailingComma | none   |
-| arrowParens   | always |
-| arrowParens   | avoid  |
-
 <h2 id="tocS_FormatBody">FormatBody</h2>
 <!-- backwards compatibility -->
 <a id="schemaformatbody"></a>
@@ -2482,90 +2336,17 @@ oxfmt options (a subset of Prettier's), as `.oxfmtrc.json` holds them.
 
 ```json
 {
-  "source": "string",
-  "options": {
-    "printWidth": 20,
-    "tabWidth": 1,
-    "useTabs": true,
-    "semi": true,
-    "singleQuote": true,
-    "trailingComma": "all",
-    "bracketSpacing": true,
-    "arrowParens": "always"
-  }
+  "source": "string"
 }
 ```
 
-Text to format.
+Text to format, with the project's `.oxfmtrc.json` when it has one and oxfmt's defaults when not.
 
 ### Properties
 
-| Name    | Type   | Required | Restrictions | Description                                            |
-| ------- | ------ | -------- | ------------ | ------------------------------------------------------ |
-| source  | string | true     | none         | The schema source                                      |
-| options | object | false    | none         | Options for this run; the saved settings when left out |
-
-<h2 id="tocS_FormatSettings">FormatSettings</h2>
-<!-- backwards compatibility -->
-<a id="schemaformatsettings"></a>
-<a id="schema_FormatSettings"></a>
-<a id="tocSformatsettings"></a>
-<a id="tocsformatsettings"></a>
-
-```json
-{
-  "options": {
-    "printWidth": 20,
-    "tabWidth": 1,
-    "useTabs": true,
-    "semi": true,
-    "singleQuote": true,
-    "trailingComma": "all",
-    "bracketSpacing": true,
-    "arrowParens": "always"
-  },
-  "configPath": "string"
-}
-```
-
-The formatter settings in effect, and the file they come from.
-
-### Properties
-
-| Name       | Type           | Required | Restrictions | Description                                                          |
-| ---------- | -------------- | -------- | ------------ | -------------------------------------------------------------------- |
-| options    | object         | true     | none         | The options the formatter runs with                                  |
-| configPath | string \| null | true     | none         | The `.oxfmtrc.json` they were read from, null when there is none yet |
-
-<h2 id="tocS_FormatSettingsBody">FormatSettingsBody</h2>
-<!-- backwards compatibility -->
-<a id="schemaformatsettingsbody"></a>
-<a id="schema_FormatSettingsBody"></a>
-<a id="tocSformatsettingsbody"></a>
-<a id="tocsformatsettingsbody"></a>
-
-```json
-{
-  "options": {
-    "printWidth": 20,
-    "tabWidth": 1,
-    "useTabs": true,
-    "semi": true,
-    "singleQuote": true,
-    "trailingComma": "all",
-    "bracketSpacing": true,
-    "arrowParens": "always"
-  }
-}
-```
-
-Options to write to the project's `.oxfmtrc.json`.
-
-### Properties
-
-| Name    | Type   | Required | Restrictions | Description         |
-| ------- | ------ | -------- | ------------ | ------------------- |
-| options | object | true     | none         | The options to save |
+| Name   | Type   | Required | Restrictions | Description       |
+| ------ | ------ | -------- | ------------ | ----------------- |
+| source | string | true     | none         | The schema source |
 
 <h2 id="tocS_ColumnReference">ColumnReference</h2>
 <!-- backwards compatibility -->
@@ -3454,6 +3235,19 @@ The completions at the cursor.
 | ----- | ----------------------------------------- | -------- | ------------ | -------------------------------- |
 | items | [[CompletionItem](#schemacompletionitem)] | true     | none         | The items, in TypeScript's order |
 
+<h2 id="tocS_DocumentKind">DocumentKind</h2>
+<!-- backwards compatibility -->
+<a id="schemadocumentkind"></a>
+<a id="schema_DocumentKind"></a>
+<a id="tocSdocumentkind"></a>
+<a id="tocsdocumentkind"></a>
+
+```json
+"schema"
+```
+
+Which editor a language request is about.
+
 <h2 id="tocS_PositionBody">PositionBody</h2>
 <!-- backwards compatibility -->
 <a id="schemapositionbody"></a>
@@ -3464,6 +3258,7 @@ The completions at the cursor.
 ```json
 {
   "source": "string",
+  "document": {},
   "offset": 0
 }
 ```
@@ -3472,10 +3267,11 @@ The editor buffer and a place in it.
 
 ### Properties
 
-| Name   | Type           | Required | Restrictions | Description                     |
-| ------ | -------------- | -------- | ------------ | ------------------------------- |
-| source | string         | true     | none         | The schema source, saved or not |
-| offset | integer(int32) | true     | none         | The UTF-16 offset of the cursor |
+| Name     | Type           | Required | Restrictions | Description                                          |
+| -------- | -------------- | -------- | ------------ | ---------------------------------------------------- |
+| source   | string         | true     | none         | The schema source, saved or not, or the query        |
+| document | object         | false    | none         | Which editor it comes from; the schema when left out |
+| offset   | integer(int32) | true     | none         | The UTF-16 offset of the cursor                      |
 
 <h2 id="tocS_CompletionDetail">CompletionDetail</h2>
 <!-- backwards compatibility -->
@@ -3510,6 +3306,7 @@ The type and documentation of one completion.
 ```json
 {
   "source": "string",
+  "document": {},
   "offset": 0,
   "name": "string"
 }
@@ -3519,11 +3316,12 @@ A completion to describe in full.
 
 ### Properties
 
-| Name   | Type           | Required | Restrictions | Description                     |
-| ------ | -------------- | -------- | ------------ | ------------------------------- |
-| source | string         | true     | none         | The schema source, saved or not |
-| offset | integer(int32) | true     | none         | The UTF-16 offset of the cursor |
-| name   | string         | true     | none         | The name of the completion      |
+| Name     | Type           | Required | Restrictions | Description                                          |
+| -------- | -------------- | -------- | ------------ | ---------------------------------------------------- |
+| source   | string         | true     | none         | The schema source, saved or not, or the query        |
+| document | object         | false    | none         | Which editor it comes from; the schema when left out |
+| offset   | integer(int32) | true     | none         | The UTF-16 offset of the cursor                      |
+| name     | string         | true     | none         | The name of the completion                           |
 
 <h2 id="tocS_Hover">Hover</h2>
 <!-- backwards compatibility -->
@@ -3715,7 +3513,8 @@ The type errors of a source; its syntax errors come from the parser, with the di
 
 ```json
 {
-  "source": "string"
+  "source": "string",
+  "document": {}
 }
 ```
 
@@ -3723,6 +3522,89 @@ A source to check.
 
 ### Properties
 
-| Name   | Type   | Required | Restrictions | Description                     |
-| ------ | ------ | -------- | ------------ | ------------------------------- |
-| source | string | true     | none         | The schema source, saved or not |
+| Name     | Type   | Required | Restrictions | Description                                          |
+| -------- | ------ | -------- | ------------ | ---------------------------------------------------- |
+| source   | string | true     | none         | The schema source, saved or not, or the query        |
+| document | object | false    | none         | Which editor it comes from; the schema when left out |
+
+<h2 id="tocS_ExecutedStatement">ExecutedStatement</h2>
+<!-- backwards compatibility -->
+<a id="schemaexecutedstatement"></a>
+<a id="schema_ExecutedStatement"></a>
+<a id="tocSexecutedstatement"></a>
+<a id="tocsexecutedstatement"></a>
+
+```json
+{
+  "sql": "string",
+  "params": [null],
+  "rowCount": 0,
+  "durationMs": 0
+}
+```
+
+One statement Drizzle sent to the database.
+
+### Properties
+
+| Name       | Type           | Required | Restrictions | Description                          |
+| ---------- | -------------- | -------- | ------------ | ------------------------------------ |
+| sql        | string         | true     | none         | The SQL                              |
+| params     | [object]       | true     | none         | Its parameters                       |
+| rowCount   | integer(int32) | true     | none         | Rows returned, or changed by a write |
+| durationMs | number(double) | true     | none         | How long it took                     |
+
+<h2 id="tocS_QueryResult">QueryResult</h2>
+<!-- backwards compatibility -->
+<a id="schemaqueryresult"></a>
+<a id="schema_QueryResult"></a>
+<a id="tocSqueryresult"></a>
+<a id="tocsqueryresult"></a>
+
+```json
+{
+  "result": null,
+  "error": "string",
+  "statements": [
+    {
+      "sql": "string",
+      "params": [null],
+      "rowCount": 0,
+      "durationMs": 0
+    }
+  ],
+  "durationMs": 0
+}
+```
+
+What a query gave, and what the database was asked on the way.
+
+### Properties
+
+| Name       | Type                                            | Required | Restrictions | Description                                         |
+| ---------- | ----------------------------------------------- | -------- | ------------ | --------------------------------------------------- |
+| result     | object                                          | true     | none         | The value of the query, as JSON; null when it threw |
+| error      | string \| null                                  | true     | none         | The message it threw, null when it did not          |
+| statements | [[ExecutedStatement](#schemaexecutedstatement)] | true     | none         | The statements, in the order they ran               |
+| durationMs | number(double)                                  | true     | none         | How long the query took in all                      |
+
+<h2 id="tocS_QueryBody">QueryBody</h2>
+<!-- backwards compatibility -->
+<a id="schemaquerybody"></a>
+<a id="schema_QueryBody"></a>
+<a id="tocSquerybody"></a>
+<a id="tocsquerybody"></a>
+
+```json
+{
+  "code": "string"
+}
+```
+
+Drizzle code to run.
+
+### Properties
+
+| Name | Type   | Required | Restrictions | Description                                                                                                                               |
+| ---- | ------ | -------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| code | string | true     | none         | The body of an async function with `db`, the schema's exports and drizzle-orm's operators<br>in scope; its last expression is the result. |

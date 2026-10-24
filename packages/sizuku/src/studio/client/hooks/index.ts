@@ -21,6 +21,7 @@ import {
   docsClient,
   dbClient,
   languageClient,
+  drizzleClient,
 } from "../api";
 
 export function getDbKey() {
@@ -33,6 +34,10 @@ export function getDiagramKey() {
 
 export function getDocsKey() {
   return ["docs"] as const;
+}
+
+export function getDrizzleKey() {
+  return ["drizzle"] as const;
 }
 
 export function getFormatKey() {
@@ -418,158 +423,6 @@ export function usePostFormat<TError = DefaultError, TOnMutateResult = unknown>(
 ) {
   const { mutation: mutationOptions, options: clientOptions } = options ?? {};
   const mutationDefaults = getPostFormatMutationOptions<TError, TOnMutateResult>(clientOptions);
-  return useMutation(
-    {
-      ...mutationOptions,
-      ...mutationDefaults,
-      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
-    },
-    queryClient,
-  );
-}
-
-export function getFormatSettingsQueryKey() {
-  return ["format", "/format/settings"] as const;
-}
-
-export function getFormatSettingsQueryOptions<
-  TData = Awaited<
-    ReturnType<typeof parseResponse<Awaited<ReturnType<typeof formatClient.format.settings.$get>>>>
-  >,
-  TError = DefaultError,
->(options?: ClientRequestOptions) {
-  return queryOptions<
-    Awaited<
-      ReturnType<
-        typeof parseResponse<Awaited<ReturnType<typeof formatClient.format.settings.$get>>>
-      >
-    >,
-    TError,
-    TData,
-    ReturnType<typeof getFormatSettingsQueryKey>
-  >({
-    queryKey: getFormatSettingsQueryKey(),
-    queryFn({ signal }) {
-      return parseResponse(
-        formatClient.format.settings.$get(undefined, {
-          ...options,
-          init: { ...options?.init, signal },
-        }),
-      );
-    },
-  });
-}
-
-export function useFormatSettings<
-  TData = Awaited<
-    ReturnType<typeof parseResponse<Awaited<ReturnType<typeof formatClient.format.settings.$get>>>>
-  >,
-  TError = DefaultError,
->(
-  options?: {
-    query?: Omit<
-      UseQueryOptions<
-        Awaited<
-          ReturnType<
-            typeof parseResponse<Awaited<ReturnType<typeof formatClient.format.settings.$get>>>
-          >
-        >,
-        TError,
-        TData,
-        ReturnType<typeof getFormatSettingsQueryKey>
-      >,
-      "queryKey" | "queryFn"
-    >;
-    options?: ClientRequestOptions;
-  },
-  queryClient?: QueryClient,
-) {
-  const { query: queryOptions, options: clientOptions } = options ?? {};
-  return useQuery(
-    { ...getFormatSettingsQueryOptions<TData, TError>(clientOptions), ...queryOptions },
-    queryClient,
-  );
-}
-
-export function useSuspenseFormatSettings<
-  TData = Awaited<
-    ReturnType<typeof parseResponse<Awaited<ReturnType<typeof formatClient.format.settings.$get>>>>
-  >,
-  TError = DefaultError,
->(
-  options?: {
-    query?: Omit<
-      UseSuspenseQueryOptions<
-        Awaited<
-          ReturnType<
-            typeof parseResponse<Awaited<ReturnType<typeof formatClient.format.settings.$get>>>
-          >
-        >,
-        TError,
-        TData,
-        ReturnType<typeof getFormatSettingsQueryKey>
-      >,
-      "queryKey" | "queryFn"
-    >;
-    options?: ClientRequestOptions;
-  },
-  queryClient?: QueryClient,
-) {
-  const { query: queryOptions, options: clientOptions } = options ?? {};
-  return useSuspenseQuery(
-    { ...getFormatSettingsQueryOptions<TData, TError>(clientOptions), ...queryOptions },
-    queryClient,
-  );
-}
-
-export function getPutFormatSettingsMutationKey() {
-  return ["format", "/format/settings", "PUT"] as const;
-}
-
-export function getPutFormatSettingsMutationOptions<
-  TError = DefaultError,
-  TOnMutateResult = unknown,
->(options?: ClientRequestOptions) {
-  return mutationOptions<
-    Awaited<
-      ReturnType<
-        typeof parseResponse<Awaited<ReturnType<typeof formatClient.format.settings.$put>>>
-      >
-    >,
-    TError,
-    InferRequestType<typeof formatClient.format.settings.$put>,
-    TOnMutateResult
-  >({
-    mutationKey: getPutFormatSettingsMutationKey(),
-    async mutationFn(args: InferRequestType<typeof formatClient.format.settings.$put>) {
-      return parseResponse(formatClient.format.settings.$put(args, options));
-    },
-  });
-}
-
-export function usePutFormatSettings<TError = DefaultError, TOnMutateResult = unknown>(
-  options?: {
-    mutation?: Omit<
-      UseMutationOptions<
-        Awaited<
-          ReturnType<
-            typeof parseResponse<Awaited<ReturnType<typeof formatClient.format.settings.$put>>>
-          >
-        >,
-        TError,
-        InferRequestType<typeof formatClient.format.settings.$put>,
-        TOnMutateResult
-      >,
-      "mutationFn"
-    >;
-    options?: ClientRequestOptions;
-  },
-  queryClient?: QueryClient,
-) {
-  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
-  const mutationDefaults = getPutFormatSettingsMutationOptions<TError, TOnMutateResult>(
-    clientOptions,
-  );
   return useMutation(
     {
       ...mutationOptions,
@@ -1530,6 +1383,57 @@ export function usePostLanguageDiagnostics<TError = DefaultError, TOnMutateResul
   const mutationDefaults = getPostLanguageDiagnosticsMutationOptions<TError, TOnMutateResult>(
     clientOptions,
   );
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}
+
+export function getPostDrizzleMutationKey() {
+  return ["drizzle", "/drizzle", "POST"] as const;
+}
+
+export function getPostDrizzleMutationOptions<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: ClientRequestOptions,
+) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<typeof parseResponse<Awaited<ReturnType<typeof drizzleClient.drizzle.$post>>>>
+    >,
+    TError,
+    InferRequestType<typeof drizzleClient.drizzle.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostDrizzleMutationKey(),
+    async mutationFn(args: InferRequestType<typeof drizzleClient.drizzle.$post>) {
+      return parseResponse(drizzleClient.drizzle.$post(args, options));
+    },
+  });
+}
+
+export function usePostDrizzle<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<typeof parseResponse<Awaited<ReturnType<typeof drizzleClient.drizzle.$post>>>>
+        >,
+        TError,
+        InferRequestType<typeof drizzleClient.drizzle.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostDrizzleMutationOptions<TError, TOnMutateResult>(clientOptions);
   return useMutation(
     {
       ...mutationOptions,

@@ -42,7 +42,6 @@ export function completionKindOf(kind: string) {
   return languages.CompletionItemKind[KINDS.get(kind) ?? "Text"];
 }
 
-/** Which model the providers answer for: only the schema, never the SQL console. */
 const state = { enabled: false, registered: false };
 
 /** Turned on once the API says the project's TypeScript loaded. */
@@ -50,8 +49,14 @@ export function setLanguageEnabled(enabled: boolean) {
   state.enabled = enabled;
 }
 
-function isSchema(model: editor.ITextModel) {
-  return state.enabled && model.getLanguageId() === "typescript";
+/** The model paths of the two TypeScript editors, and what the API calls them. */
+export const SCHEMA_MODEL = "schema.ts";
+export const QUERY_MODEL = "query.ts";
+
+/** Which document a model is to the API; null for one the providers do not answer (SQL). */
+function documentOf(model: editor.ITextModel) {
+  if (!state.enabled || model.getLanguageId() !== "typescript") return null;
+  return model.uri.path.endsWith(QUERY_MODEL) ? ("query" as const) : ("schema" as const);
 }
 
 function rangeOf(model: editor.ITextModel, span: { readonly start: number; readonly end: number }) {
@@ -63,19 +68,20 @@ function rangeOf(model: editor.ITextModel, span: { readonly start: number; reado
 // What each completion item was asked about, for its detail when it is highlighted.
 const asked = new WeakMap<
   languages.CompletionItem,
-  { readonly source: string; readonly offset: number }
+  { readonly source: string; readonly offset: number; readonly document: "schema" | "query" }
 >();
 
 function completionProvider(): languages.CompletionItemProvider {
   return {
     triggerCharacters: [".", '"', "'", "/", "@", "<", "{", ","],
     async provideCompletionItems(model, position) {
-      if (!isSchema(model)) return null;
+      const document = documentOf(model);
+      if (document === null) return null;
       const source = model.getValue();
       const offset = model.getOffsetAt(position);
       // A request the API refuses leaves the editor without the feature, not with an error.
       const found = await parseResponse(
-        languageClient.language.complete.$post({ json: { source, offset } }),
+        languageClient.language.complete.$post({ json: { source, offset, document } }),
       ).catch(() => null);
       if (found === null || model.getValue() !== source) return null;
       const word = model.getWordUntilPosition(position);
@@ -93,7 +99,7 @@ function completionProvider(): languages.CompletionItemProvider {
           sortText: item.sortText,
           range: item.replacement === null ? atWord : rangeOf(model, item.replacement),
         };
-        asked.set(suggestion, { source, offset });
+        asked.set(suggestion, { source, offset, document });
         return suggestion;
       });
       return { suggestions };
@@ -118,11 +124,12 @@ function completionProvider(): languages.CompletionItemProvider {
 function hoverProvider(): languages.HoverProvider {
   return {
     async provideHover(model, position) {
-      if (!isSchema(model)) return null;
+      const document = documentOf(model);
+      if (document === null) return null;
       const source = model.getValue();
       const found = await parseResponse(
         languageClient.language.hover.$post({
-          json: { source, offset: model.getOffsetAt(position) },
+          json: { source, offset: model.getOffsetAt(position), document },
         }),
       ).catch(() => null);
       if (found === null || found.contents === null || model.getValue() !== source) return null;
@@ -139,10 +146,11 @@ function signatureProvider(): languages.SignatureHelpProvider {
     signatureHelpTriggerCharacters: ["(", ","],
     signatureHelpRetriggerCharacters: [")"],
     async provideSignatureHelp(model, position) {
-      if (!isSchema(model)) return null;
+      const document = documentOf(model);
+      if (document === null) return null;
       const found = await parseResponse(
         languageClient.language.signature.$post({
-          json: { source: model.getValue(), offset: model.getOffsetAt(position) },
+          json: { source: model.getValue(), offset: model.getOffsetAt(position), document },
         }),
       ).catch(() => null);
       if (found === null || found.signatures.length === 0) return null;

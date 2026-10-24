@@ -2,9 +2,9 @@ import path from "node:path";
 import { Effect } from "effect";
 import { format } from "oxfmt";
 import { FormatError } from "../errors/index.js";
-import { readTextIfExists, writeText } from "./file.js";
+import { readTextIfExists } from "./file.js";
 
-/** The oxfmt options the studio lets you set. */
+/** The oxfmt options the studio reads from the project's config. */
 export type FormatOptions = {
   readonly printWidth?: number;
   readonly tabWidth?: number;
@@ -95,28 +95,6 @@ export function readSettings(input: { readonly schemaPath: string }) {
     const config = yield* findConfig(path.dirname(input.schemaPath));
     if (config === null) return { options: {}, configPath: null };
     return { options: pickOptions(yield* parseConfig(config)), configPath: config.path };
-  });
-}
-
-/**
- * Writes the options into the config oxfmt would read, keeping its other settings; with none
- * yet, a new `.oxfmtrc.json` in the working directory.
- */
-export function writeSettings(input: {
-  readonly schemaPath: string;
-  readonly cwd: string;
-  readonly options: FormatOptions;
-}) {
-  return Effect.gen(function* () {
-    const config = yield* findConfig(path.dirname(input.schemaPath));
-    const existing = config === null ? {} : yield* parseConfig(config);
-    const base = typeof existing === "object" && existing !== null ? existing : {};
-    const rest = Object.fromEntries(
-      Object.entries(base).filter(([key]) => !(OPTION_KEYS as readonly string[]).includes(key)),
-    );
-    const file = config?.path ?? path.join(input.cwd, ".oxfmtrc.json");
-    yield* writeText(file, `${JSON.stringify({ ...rest, ...input.options }, null, 2)}\n`);
-    return { options: input.options, configPath: file };
   });
 }
 

@@ -7,7 +7,7 @@
     "studio:diagram": "sizuku studio db/schema.ts",
     "seed": "node sqlite/seed.mjs",
     "generate": "sizuku db/schema.ts -o docs/er.svg && sizuku db/schema.ts -o docs/er.png && sizuku db/schema.ts -o docs/er-dark.png --theme dark && sizuku db/schema.ts -o docs/ER.md && sizuku db/schema.ts -o docs/schema.dbml",
-    "reset": "git checkout -- db/schema.ts sqlite/schema.ts && rm -f .oxfmtrc.json && node sqlite/seed.mjs"
+    "reset": "git checkout -- db/schema.ts sqlite/schema.ts && node sqlite/seed.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
