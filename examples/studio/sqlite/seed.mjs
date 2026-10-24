@@ -1,6 +1,9 @@
-// Creates sqlite/dev.db with the tables of sqlite/schema.ts and a few rows, so the studio has
-// data to show. `--if-missing` leaves an existing database alone; without it the file is rebuilt.
+// Creates sqlite/dev.db with the tables of sqlite/schema.ts, then fills them with the rows of
+// sizuku.config.ts through `sizuku seed`, so the studio has data to show. `--if-missing` leaves an
+// existing database alone; without it the file is rebuilt.
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -41,23 +44,13 @@ db.exec(`
     tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     PRIMARY KEY (post_id, tag_id)
   );
-
-  INSERT INTO users (email, name, is_admin) VALUES
-    ('ada@example.com', 'Ada Lovelace', 1),
-    ('linus@example.com', 'Linus Torvalds', 0),
-    ('grace@example.com', 'Grace Hopper', 0),
-    ('yukihiro@example.com', 'まつもと ゆきひろ', 0);
-  INSERT INTO posts (author_id, title, body, published) VALUES
-    (1, 'Notes on the Analytical Engine', 'The engine weaves algebraic patterns.', 1),
-    (2, 'Hello from Helsinki', 'Just a hobby, won''t be big.', 1),
-    (3, 'Nanoseconds', 'A foot of wire is a nanosecond.', 0),
-    (4, 'たのしいプログラミング', 'プログラマの幸せを考える。', 1);
-  INSERT INTO comments (post_id, author_id, body) VALUES
-    (1, 3, 'Beautiful.'),
-    (2, 1, 'Famous last words.'),
-    (4, 2, 'いいね！');
-  INSERT INTO tags (name) VALUES ('history'), ('os'), ('hardware'), ('ruby');
-  INSERT INTO post_tags (post_id, tag_id) VALUES (1, 1), (2, 2), (3, 3), (3, 1), (4, 4);
 `);
 db.close();
-console.log(`💧 Seeded ${path.relative(process.cwd(), file)}`);
+
+// The rows come from sizuku.config.ts, inserted by the sizuku this example depends on.
+const require = createRequire(import.meta.url);
+const sizuku = path.join(path.dirname(require.resolve("sizuku/package.json")), "dist/cli.mjs");
+execFileSync(process.execPath, [sizuku, "seed"], {
+  cwd: path.join(import.meta.dirname, ".."),
+  stdio: "inherit",
+});

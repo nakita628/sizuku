@@ -19,7 +19,7 @@
     "url": "git+https://github.com/nakita628/sizuku.git"
   },
   "bin": {
-    "sizuku": "dist/index.mjs"
+    "sizuku": "dist/cli.mjs"
   },
   "files": [
     "dist"
@@ -27,6 +27,13 @@
   "type": "module",
   "main": "dist/index.mjs",
   "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -42,6 +49,7 @@
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",
     "@effect/platform-node": "^4.0.6",
+    "@faker-js/faker": "^10.6.0",
     "@hono/node-server": "^2.1.5",
     "@hono/zod-openapi": "^1.6.3",
     "@resvg/resvg-js": "^2.6.2",
@@ -60,6 +68,7 @@
     "@codemirror/search": "^6.7.2",
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.15",
+    "@electric-sql/pglite": "^0.3.16",
     "@heroui/react": "^3.2.6",
     "@lezer/highlight": "^1.2.5",
     "@monaco-editor/react": "^4.7.0",
@@ -88,5 +97,13 @@
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
     "zustand": "^5.0.16"
+  },
+  "peerDependencies": {
+    "drizzle-orm": ">=0.40.0"
+  },
+  "peerDependenciesMeta": {
+    "drizzle-orm": {
+      "optional": true
+    }
   }
 }

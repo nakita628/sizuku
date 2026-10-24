@@ -11,6 +11,7 @@
 - 🖼️ Draws ER diagrams as **SVG** / **PNG** images (light and dark)
 - 💬 Describes tables and columns from plain TypeScript comments (`/** … */` or `//`), nothing sizuku-specific
 - ✏️ `sizuku studio`: edit the schema in Monaco beside its live ER diagram, read its generated docs, run Drizzle queries and SQL, and browse and edit the database's rows
+- 🌱 `sizuku seed`: fill the database with rows from [faker](https://fakerjs.dev/) or your own, typed against the schema and keeping every foreign key and unique key
 
 ## Installation
 
@@ -23,6 +24,7 @@ npm install -D sizuku
 ```
 sizuku <input> -o <output> [options]
 sizuku studio <input> [--port <port>] [--url <database-url>]
+sizuku seed [--config <path>] [--url <database-url>] [--sql <file>] [--seed <n>] [--count <n>] [--locale <locale>] [--reset]
 ```
 
 The flags can come before or after the input. A command line that cannot run (a missing `-o`,
@@ -35,7 +37,7 @@ an unknown format, a file that is not there) prints why and exits with code 1.
 --theme <light|dark>              Colour scheme of the .svg / .png ER diagram
 -p, --port <port>                 Port for sizuku studio (default: 4983)
 -u, --url <database-url>          Database for sizuku studio (default: $DATABASE_URL)
--h, --help                        Display help message (sizuku studio --help for the studio's)
+-h, --help                        Display help message (sizuku studio --help, sizuku seed --help)
 -v, --version                     Print the version
 ```
 
@@ -54,6 +56,9 @@ npx sizuku db/schema.ts -o docs/ER.md
 
 # Edit the schema, its ER diagram, docs and data in the browser
 npx sizuku studio db/schema.ts --url file:./dev.db
+
+# Fill the database with the rows sizuku.config.ts describes
+npx sizuku seed
 ```
 
 ## Comments
@@ -169,6 +174,75 @@ Opens `http://127.0.0.1:4983` with these pages:
 
 See [docs/studio.md](https://github.com/nakita628/sizuku/blob/main/packages/sizuku/docs/studio.md) for the full guide and
 [docs/studio-api.md](https://github.com/nakita628/sizuku/blob/main/packages/sizuku/docs/studio-api.md) for its API.
+
+## Seed
+
+```sh
+npx sizuku seed                 # insert into the database of the config's url, or DATABASE_URL
+npx sizuku seed --sql seed.sql  # or write the rows as a SQL script
+```
+
+`sizuku.config.ts` imports the Drizzle schema module and says what to insert. `defineConfig` types
+it against the schema: every table (by its export name), column, relation and bound is checked,
+and a rule function knows the row it sees.
+
+```ts
+// sizuku.config.ts
+import { defineConfig } from "sizuku";
+
+import * as schema from "./db/schema";
+
+export default defineConfig(schema, {
+  url: "file:./dev.db",
+  seed: 42,
+  models: {
+    // Rows from faker, shaped by rules
+    user: {
+      count: 20,
+      fields: { age: { min: 18, max: 65 }, nickname: { nullRate: 0.3 } },
+      relations: { posts: { min: 1, max: 3 } },
+    },
+    post: { count: 40 },
+    // Or real rows, as they are
+    tag: { data: [{ label: "drizzle" }, { label: "effect" }] },
+  },
+});
+```
+
+A model is seeded from faker (`count`, `fields`) or from real rows (`data`), not both. In a real
+row no id is written by hand:
+
+- a column left out takes its default (`.default()`, `$defaultFn()`, the next number of a serial or
+  autoincrement), and one with a SQL default (`` sql`CURRENT_TIMESTAMP` ``) is left to the database;
+- a `many()` relation nests the child rows, whose key to the parent is filled in
+  (`posts: [{ title: "Hello" }]`);
+- a `one()` relation names the parent by a unique key (`author: { email: "ann@example.com" }`);
+  left out, a required one is linked to a row that exists.
+
+`defineData(schema, "user", [...])` types rows kept in their own file.
+
+The tables are filled parents first, and every foreign key, unique key, enum, length and
+nullability is respected; a relation that only a `relations()` block declares is filled like a
+foreign key. Every row is checked against its columns before anything is written, and the rows
+go in one transaction (on PostgreSQL, the sequences are moved past them). The seeder fills tables
+that exist; create them first, with drizzle-kit or your migrations.
+
+| Option                     | What it does                                                                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `seed`                     | The faker seed: the same seed gives the same rows                                                                                   |
+| `locale`                   | The faker locale, or several tried in order (`["ja", "en"]`)                                                                        |
+| `count`                    | Rows for every table without a rule of its own                                                                                      |
+| `nullRate`                 | How often a nullable column is null, from 0 to 1                                                                                    |
+| `dates`                    | The window every date falls in (`{ from, to }`)                                                                                     |
+| `url`                      | The database (`file:./dev.db`, `postgres://...`, `mysql://...`)                                                                     |
+| `output`                   | Write SQL to this file instead of inserting                                                                                         |
+| `reset`                    | Delete every row of the seeded tables first                                                                                         |
+| `models.<table>.fields`    | Per column: a function `(faker, { index, row }) => value`, or `value`, `values`, `min` / `max`, `from` / `to`, `length`, `nullRate` |
+| `models.<table>.relations` | Per `many()` relation: how many children each row has (`min` / `max`)                                                               |
+
+The command line overrides the config: `--url`, `--sql <file>`, `--seed <n>`, `--count <n>`,
+`--locale ja,en`, `--reset` and `--config <path>`. SQLite is written through `node:sqlite`,
+PostgreSQL through `pg` and MySQL through `mysql2`, as installed in your project.
 
 ## Relation Detection
 

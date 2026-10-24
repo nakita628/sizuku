@@ -1,7 +1,21 @@
-#!/usr/bin/env node
-import { runMain } from "@effect/platform-node/NodeRuntime";
-import { layer as nodeServicesLayer } from "@effect/platform-node/NodeServices";
-import { Effect } from "effect";
-import { sizuku } from "./cli/index.js";
-
-runMain(sizuku().pipe(Effect.provide(nodeServicesLayer)));
+export { defineConfig, defineData } from "./seed/config.js";
+export type {
+  CommonOptions,
+  Data,
+  DataRow,
+  FieldRule,
+  FieldValue,
+  JsonValue,
+  KeyOf,
+  LooseFieldRule,
+  LooseModelRule,
+  ModelName,
+  ModelRule,
+  RelationRule,
+  Row,
+  RowOf,
+  SeedConfig,
+  SeedRow,
+  SeedValue,
+  TypedSeedConfig,
+} from "./seed/config.js";
