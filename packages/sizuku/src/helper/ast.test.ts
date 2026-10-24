@@ -46,7 +46,7 @@ describe("descriptionBefore", () => {
     const code = [
       "/**",
       " * Posts.",
-      " * @relation user.id post.authorId one-to-many",
+      " * @see https://orm.drizzle.team",
       " */",
       "export const post = pgTable('post', {",
       "  /** @deprecated */",

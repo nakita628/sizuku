@@ -33,11 +33,6 @@ function commentLines(comment: Source["comments"][number]) {
   return lines.map((line) => line.trim()).filter((line) => line !== "");
 }
 
-/** Every line the comments of the source say, in order: where `@relation` tags are looked for. */
-export function allCommentLines(source: Source) {
-  return source.comments.flatMap(commentLines);
-}
-
 /**
  * The comments written directly above `start`, oldest first: a JSDoc or block comment, or a run
  * of `//` lines, with nothing but whitespace between them and the code — a blank line ends the
@@ -62,7 +57,7 @@ export function commentsBefore(source: Source, start: number) {
 
 /**
  * What the comment above `start` says of the table or column, on one line; the `@` lines are
- * tags (`@relation`), not description. Null when there is no comment, or only tags.
+ * tags (`@deprecated`, ...), not description. Null when there is no comment, or only tags.
  */
 export function descriptionBefore(source: Source, start: number) {
   const lines = commentsBefore(source, start).filter((line) => !line.startsWith("@"));

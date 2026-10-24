@@ -610,9 +610,9 @@
   fill: var(--c-surface);
 }
 
-/* A relation no foreign key backs: declared in a `/// @relation` comment. Dashed is about that,
+/* A relation no foreign key backs: declared only in a `relations()` block. Dashed is about that,
    not about cardinality. */
-.react-flow__edge.relation-edge--annotated .react-flow__edge-path,
+.react-flow__edge.relation-edge--relations .react-flow__edge-path,
 .react-flow__edge.relation-edge--implicit-many-to-many .react-flow__edge-path {
   stroke-dasharray: 5 4;
 }

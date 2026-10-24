@@ -8,7 +8,7 @@ Two Drizzle schemas to try `sizuku studio` on:
 - [db/schema.ts](db/schema.ts) — a PostgreSQL schema that uses everything the ER diagram draws:
   a `pgEnum`, a composite primary key, unique and plain indexes, `foreignKey()` and
   `.references()` with `onDelete` / `onUpdate`, a self reference, an array column, defaults,
-  `///` descriptions in Japanese, and a relation declared only by `/// @relation` (dashed).
+  `///` descriptions in Japanese, and a relation declared only by a `relations()` block (dashed).
 
 ## Try the studio
 

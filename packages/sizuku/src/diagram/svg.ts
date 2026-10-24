@@ -186,7 +186,7 @@ export function renderDiagramSvg(input: DiagramInput) {
       relation,
       points: wired[index]?.points ?? [],
       // Dashed is "no foreign key backs this", not "many to many" — see `RelationOrigin`.
-      dashed: relation.origin === "annotated" || relation.origin === "implicit-many-to-many",
+      dashed: relation.origin === "relations" || relation.origin === "implicit-many-to-many",
       targetTowards: loops ? "left" : "right",
     }),
   );

@@ -46,7 +46,7 @@ Table auditLog {
   actorId uuid [note: '操作したユーザー（外部キーなし）']
   action varchar
   at timestamp
-  Note: '操作の記録。外部キーは張らず、関係は注釈で示す'
+  Note: '操作の記録。外部キーは張らず、関係は relations() で示す'
 }
 
 Ref member_userId_user_id_fk: member.userId > user.id

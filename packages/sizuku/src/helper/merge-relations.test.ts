@@ -42,30 +42,31 @@ describe("mergeRelations", () => {
     ]);
   });
 
-  it("maps an annotation-only relation (no FK) to its declared cardinality, origin annotated", () => {
+  it("maps a relations()-only pair (no FK) to a non-identifying relation, origin relations", () => {
     const code = [
-      "/// @relation User.id Profile.user_id zero-one-to-many-optional",
       "export const User = sqliteTable('User', {",
       "  id: text('id').notNull().primaryKey(),",
       "})",
       "export const Profile = sqliteTable('Profile', {",
       "  id: text('id').notNull().primaryKey(),",
-      "  user_id: text('user_id').notNull(),",
+      "  user_id: text('user_id'),",
       "})",
+      "export const profileRelations = relations(Profile, ({ one }) => ({",
+      "  user: one(User, { fields: [Profile.user_id], references: [User.id] }),",
+      "}))",
     ];
     expect(mergeRelations(code)).toStrictEqual([
       {
-        from: { model: "User", field: "id", cardinality: "zero-one" },
-        to: { model: "Profile", field: "user_id", cardinality: "many" },
+        from: { model: "User", field: "id", cardinality: "one" },
+        to: { model: "Profile", field: "user_id", cardinality: "zero-many" },
         identifying: false,
-        origin: "annotated",
+        origin: "relations",
       },
     ]);
   });
 
-  it("lets an annotation refine an existing FK's cardinality while keeping origin inferred", () => {
+  it("keeps a relations() pair a FK also backs as the FK (origin inferred)", () => {
     const code = [
-      "/// @relation user.id post.userId one-to-zero-many",
       "export const user = mysqlTable('user', {",
       "  id: varchar('id', { length: 36 }).primaryKey(),",
       "})",
@@ -73,34 +74,16 @@ describe("mergeRelations", () => {
       "  id: varchar('id', { length: 36 }).primaryKey(),",
       "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id),",
       "})",
+      "export const postRelations = relations(post, ({ one }) => ({",
+      "  user: one(user, { fields: [post.userId], references: [user.id] }),",
+      "}))",
     ];
     expect(mergeRelations(code)).toStrictEqual([
       {
         from: { model: "user", field: "id", cardinality: "one" },
-        to: { model: "post", field: "userId", cardinality: "zero-many" },
+        to: { model: "post", field: "userId", cardinality: "many" },
         identifying: true,
         origin: "inferred",
-      },
-    ]);
-  });
-
-  it("keeps the last annotation when the same pair is declared twice (last-wins)", () => {
-    const code = [
-      "/// @relation User.id Post.userId one-to-many",
-      "/// @relation User.id Post.userId one-to-zero-many",
-      "export const User = sqliteTable('User', {",
-      "  id: text('id').primaryKey(),",
-      "})",
-      "export const Post = sqliteTable('Post', {",
-      "  userId: text('user_id').notNull(),",
-      "})",
-    ];
-    expect(mergeRelations(code)).toStrictEqual([
-      {
-        from: { model: "User", field: "id", cardinality: "one" },
-        to: { model: "Post", field: "userId", cardinality: "zero-many" },
-        identifying: true,
-        origin: "annotated",
       },
     ]);
   });
@@ -135,9 +118,11 @@ describe("mergeRelations", () => {
     ]);
   });
 
-  it("orders inferred relations first and appends annotation-only relations last", () => {
+  it("orders FK relations first and appends relations()-only ones last", () => {
     const code = [
-      "/// @relation Tag.id Article.tag_id zero-one-to-many-optional",
+      "export const articleRelations = relations(Article, ({ one }) => ({",
+      "  tag: one(Tag, { fields: [Article.tag_id], references: [Tag.id] }),",
+      "}))",
       "export const user = mysqlTable('user', {",
       "  id: varchar('id', { length: 36 }).primaryKey(),",
       "})",
@@ -155,10 +140,10 @@ describe("mergeRelations", () => {
         origin: "inferred",
       },
       {
-        from: { model: "Tag", field: "id", cardinality: "zero-one" },
+        from: { model: "Tag", field: "id", cardinality: "one" },
         to: { model: "Article", field: "tag_id", cardinality: "many" },
         identifying: false,
-        origin: "annotated",
+        origin: "relations",
       },
     ]);
   });

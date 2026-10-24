@@ -139,16 +139,18 @@ describe("diagramSchema", () => {
     ]);
   });
 
-  it("draws an annotated relation dashed by keeping its origin", () => {
+  it("draws a relations()-only relation dashed by keeping its origin", () => {
     const code = [
-      "/// @relation user.id post.authorId one-to-zero-many",
       "export const user = sqliteTable('user', { id: text('id').primaryKey() })",
       "export const post = sqliteTable('post', { authorId: text('author_id') })",
+      "export const postRelations = relations(post, ({ one }) => ({",
+      "  author: one(user, { fields: [post.authorId], references: [user.id] }),",
+      "}))",
     ];
 
     const [relation] = diagramSchema(code).relations;
 
-    expect(relation.origin).toBe("annotated");
+    expect(relation.origin).toBe("relations");
     expect(diagramSchema(code).models[1].fields[0].isForeignKey).toBe(true);
   });
 });

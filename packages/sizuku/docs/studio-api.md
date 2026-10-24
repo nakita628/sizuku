@@ -2997,22 +2997,22 @@ A relation as an edge.
 
 ### Properties
 
-| Name     | Type           | Required | Restrictions | Description                                                                            |
-| -------- | -------------- | -------- | ------------ | -------------------------------------------------------------------------------------- |
-| id       | string         | true     | none         | A key for the edge: `from.field->to.field`                                             |
-| origin   | string         | true     | none         | Where it was found: a foreign key (`inferred`) or a `/// @relation` note (`annotated`) |
-| name     | string \| null | true     | none         | Its name, when it has one                                                              |
-| onDelete | string \| null | true     | none         | The action on delete of the parent row                                                 |
-| onUpdate | string \| null | true     | none         | The action on update of the parent key                                                 |
-| from     | object         | true     | none         | The referenced end                                                                     |
-| to       | object         | true     | none         | The end that holds the foreign key                                                     |
+| Name     | Type           | Required | Restrictions | Description                                                                                |
+| -------- | -------------- | -------- | ------------ | ------------------------------------------------------------------------------------------ |
+| id       | string         | true     | none         | A key for the edge: `from.field->to.field`                                                 |
+| origin   | string         | true     | none         | Where it was found: a foreign key (`inferred`) or only a `relations()` block (`relations`) |
+| name     | string \| null | true     | none         | Its name, when it has one                                                                  |
+| onDelete | string \| null | true     | none         | The action on delete of the parent row                                                     |
+| onUpdate | string \| null | true     | none         | The action on update of the parent key                                                     |
+| from     | object         | true     | none         | The referenced end                                                                         |
+| to       | object         | true     | none         | The end that holds the foreign key                                                         |
 
 #### Enumerated Values
 
 | Property | Value                 |
 | -------- | --------------------- |
 | origin   | inferred              |
-| origin   | annotated             |
+| origin   | relations             |
 | origin   | implicit-many-to-many |
 
 <h2 id="tocS_CanvasEnumValue">CanvasEnumValue</h2>
@@ -3534,15 +3534,15 @@ A relation as seen from one table.
 
 ### Properties
 
-| Name        | Type           | Required | Restrictions | Description                                                                        |
-| ----------- | -------------- | -------- | ------------ | ---------------------------------------------------------------------------------- |
-| table       | string         | true     | none         | The other table                                                                    |
-| column      | string         | true     | none         | The column on this side                                                            |
-| otherColumn | string         | true     | none         | The column on the other side                                                       |
-| kind        | string         | true     | none         | How it reads from this side: `one to many`, `many to one`, ...                     |
-| origin      | string         | true     | none         | Where it was found: a foreign key, a `relations()` block or a `/// @relation` note |
-| onDelete    | string \| null | true     | none         | The action on delete of the parent row                                             |
-| onUpdate    | string \| null | true     | none         | The action on update of the parent key                                             |
+| Name        | Type           | Required | Restrictions | Description                                                                                |
+| ----------- | -------------- | -------- | ------------ | ------------------------------------------------------------------------------------------ |
+| table       | string         | true     | none         | The other table                                                                            |
+| column      | string         | true     | none         | The column on this side                                                                    |
+| otherColumn | string         | true     | none         | The column on the other side                                                               |
+| kind        | string         | true     | none         | How it reads from this side: `one to many`, `many to one`, ...                             |
+| origin      | string         | true     | none         | Where it was found: a foreign key (`inferred`) or only a `relations()` block (`relations`) |
+| onDelete    | string \| null | true     | none         | The action on delete of the parent row                                                     |
+| onUpdate    | string \| null | true     | none         | The action on update of the parent key                                                     |
 
 <h2 id="tocS_DocQuery">DocQuery</h2>
 <!-- backwards compatibility -->

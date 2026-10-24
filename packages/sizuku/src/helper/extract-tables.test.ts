@@ -15,7 +15,6 @@ describe("parseTableInfo", () => {
       "  name: varchar('name', { length: 50 }).notNull(),",
       "})",
       "",
-      "/// @relation user.id post.userId one-to-many",
       "export const post = mysqlTable('post', {",
       "  /// Primary key",
       "  /// @z.uuid()",
@@ -191,6 +190,7 @@ describe("extractRelationsFromSchema", () => {
         fromField: "id",
         toField: "userId",
         isRequired: true,
+        enforced: true,
       },
     ]);
   });
@@ -222,6 +222,7 @@ describe("extractRelationsFromSchema", () => {
         fromField: "id",
         toField: "userId",
         isRequired: true,
+        enforced: false,
       },
     ]);
   });
@@ -246,6 +247,7 @@ describe("extractRelationsFromSchema", () => {
         fromField: "id",
         toField: "userId",
         isRequired: true,
+        enforced: true,
       },
     ]);
   });
@@ -280,6 +282,7 @@ describe("extractRelationsFromSchema", () => {
         fromField: "id",
         toField: "userId",
         isRequired: false,
+        enforced: true,
       },
     ]);
   });
@@ -311,6 +314,7 @@ describe("extractRelationsFromSchema", () => {
       fromField: "id",
       toField: "userId",
       isRequired: true,
+      enforced: true,
     });
   });
 
@@ -331,6 +335,7 @@ describe("extractRelationsFromSchema", () => {
         fromField: "id",
         toField: "userId",
         isRequired: true,
+        enforced: true,
       },
     ]);
   });
@@ -352,6 +357,7 @@ describe("extractRelationsFromSchema", () => {
         fromField: "id",
         toField: "userId",
         isRequired: true,
+        enforced: true,
       },
     ]);
   });
@@ -377,6 +383,7 @@ describe("extractRelationsFromSchema", () => {
         fromField: "id",
         toField: "userId",
         isRequired: true,
+        enforced: true,
       },
     ]);
   });
@@ -400,6 +407,7 @@ describe("extractRelationsFromSchema", () => {
         fromField: "id",
         toField: "authorId",
         isRequired: true,
+        enforced: true,
       },
     ]);
   });

@@ -93,10 +93,7 @@ export const comment = pgTable("comments", {
   likes: integer("likes").notNull().default(0),
 });
 
-/**
- * 操作の記録。外部キーは張らず、関係は注釈で示す
- * @relation user.id auditLog.actorId one-to-zero-many
- */
+/** 操作の記録。外部キーは張らず、関係は relations() で示す */
 export const auditLog = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
   /** 操作したユーザー（外部キーなし） */
@@ -113,4 +110,8 @@ export const userRelations = relations(user, ({ many }) => ({
 export const postRelations = relations(post, ({ one, many }) => ({
   author: one(user, { fields: [post.authorId], references: [user.id] }),
   comments: many(comment),
+}));
+
+export const auditLogRelations = relations(auditLog, ({ one }) => ({
+  actor: one(user, { fields: [auditLog.actorId], references: [user.id] }),
 }));

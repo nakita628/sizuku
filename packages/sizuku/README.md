@@ -75,7 +75,7 @@ export const user = mysqlTable("user", {
 - The lines of a comment, or of a run of `//` lines, are joined into one description.
 - A comment that ends a line of code (`id: int(), // ...`) belongs to that line, and one
   separated by a blank line (a file header) describes nothing.
-- Lines starting with `@` are tags, not description: `@relation` (below) is one.
+- Lines starting with `@` are tags (`@deprecated`, ...), not description.
 
 ## Output Examples
 
@@ -135,7 +135,7 @@ the primary key, foreign keys, `UK` for unique columns, `?` for nullable ones, d
 (`.default()`, `.defaultNow()`, `$defaultFn()`, `$onUpdate()`), the comments' descriptions and the
 indexes, unique and composite key constraints of the table. `pgEnum`s get a card of their own.
 Edges use crow's-foot notation and name the relation and its `onDelete` / `onUpdate` action;
-an edge declared only by `@relation` is dashed, since nothing in the database backs it.
+an edge declared only by a `relations()` block is dashed, since nothing in the database backs it.
 
 ## Studio
 
@@ -172,7 +172,7 @@ See [docs/studio.md](https://github.com/nakita628/sizuku/blob/main/packages/sizu
 
 ## Relation Detection
 
-Sizuku detects relations from four sources. They are reflected consistently
+Sizuku detects relations from three sources. They are reflected consistently
 across every ER output format (Mermaid, DBML, SVG and PNG).
 
 ### 1. `.references()` chain
@@ -191,39 +191,24 @@ export const post = pgTable('post', { ... }, (t) => [
 
 The older object form, `(t) => ({ fk: foreignKey(...) })`, is read as well.
 
-### 3. `relations()` block
+### 3. `relations()` block (no foreign key required)
 
 ```ts
+export const post = pgTable("post", {
+  id: uuid("id").primaryKey(),
+  userId: uuid("user_id").notNull(), // no .references()
+});
+
 export const postRelations = relations(post, ({ one }) => ({
   user: one(user, { fields: [post.userId], references: [user.id] }),
 }));
 ```
 
-### 4. `@relation` tag (no foreign key required)
-
-Document a relation for the ER diagram without a Drizzle foreign key by writing
-`@relation <parent>.<field> <child>.<field> <cardinality>` in a comment — a JSDoc block or a
-`//` line, anywhere in the file. No `.references()` is needed:
-
-```ts
-/**
- * Everyone who can sign in.
- * @relation user.id post.userId one-to-many
- */
-export const user = sqliteTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-});
-
-export const post = sqliteTable("post", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull(),
-});
-```
-
-`<field>` is the schema **property name** (`userId`), not the database column.
-`<cardinality>` is `<from>-to-<to>` where each side is `zero-one`, `one`,
-`zero-many`, or `many`; add a `-optional` suffix for a dashed (non-identifying) line.
+Drizzle's `relations()` are not database constraints, so a `one()` with `fields` and `references`
+is drawn even when no foreign key backs it. Such an edge is dashed; when a `.references()` or
+`foreignKey()` backs the same pair, it is drawn solid as that foreign key. The child side is
+"one or more" when its column is `.notNull()`, else "zero or more". `many()` adds nothing on its
+own, since it names no columns.
 
 ## License
 

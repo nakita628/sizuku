@@ -85,7 +85,7 @@ columns and enums (`/** … */` or `//`):
   `$defaultFn()`, ...), its description and the column it references;
 - indexes, unique and composite keys;
 - relations in both directions (**References** and **Referenced by**), with their cardinality and
-  `onDelete` / `onUpdate` actions. A relation declared only with an `@relation` tag is marked, since
+  `onDelete` / `onUpdate` actions. A relation declared only in a `relations()` block is marked, since
   no foreign key backs it;
 - every `pgEnum` and its values;
 - Drizzle queries to start from for each table, with nothing to fill in: **Select**

@@ -107,13 +107,13 @@ export const account = pgTable('account', {})`;
     expect(result[0]).toBe("export const account = pgTable('account', {})");
   });
 
-  it("preserves inline comment annotations after imports", () => {
+  it("preserves comments after imports", () => {
     const code = `import { sqliteTable } from 'drizzle-orm/sqlite-core'
 
-/// @relation user.id post.userId one-to-many
+/// Everyone who can sign in
 export const user = sqliteTable('user', {})`;
     const result = stripImports(code);
-    expect(result[0]).toBe("/// @relation user.id post.userId one-to-many");
+    expect(result[0]).toBe("/// Everyone who can sign in");
     expect(result[1]).toBe("export const user = sqliteTable('user', {})");
   });
 
