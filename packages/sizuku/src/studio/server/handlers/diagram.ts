@@ -3,7 +3,22 @@ import { Effect, Match } from "effect";
 import type { postDiagramPngRoute, postDiagramSchemaRoute, postDiagramSvgRoute } from "../routes";
 import * as DiagramUseCase from "../usecases/diagram.js";
 
-/** `POST /diagram/svg` handler. A source that does not parse answers 200 with its error. */
+/**
+ * `POST /diagram/svg` handler. A source that does not parse answers 200 with its error.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant U as DiagramUseCase
+ *   C->>H: POST /diagram/svg { source, theme }
+ *   H->>U: drawSvg({ source, theme })
+ *   U-->>H: Diagram
+ *   H-->>C: 200 Diagram
+ *   Note over U: a parse error is part of the Diagram, not a failure
+ *   Note over H: on failure, Match.tag: RenderError -> 500
+ * ```
+ */
 export const postDiagramSvgRouteHandler: RouteHandler<typeof postDiagramSvgRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
@@ -37,7 +52,21 @@ export const postDiagramSvgRouteHandler: RouteHandler<typeof postDiagramSvgRoute
   );
 };
 
-/** `POST /diagram/png` handler. A source that does not parse is a 422 pointing at the line. */
+/**
+ * `POST /diagram/png` handler. A source that does not parse is a 422 pointing at the line.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant U as DiagramUseCase
+ *   C->>H: POST /diagram/png { source, theme }
+ *   H->>U: drawPng({ source, theme })
+ *   U-->>H: Png
+ *   H-->>C: 200 Png
+ *   Note over H: on failure, Match.tag: SchemaParseError -> 422, RenderError -> 500
+ * ```
+ */
 export const postDiagramPngRouteHandler: RouteHandler<typeof postDiagramPngRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
@@ -89,7 +118,22 @@ export const postDiagramPngRouteHandler: RouteHandler<typeof postDiagramPngRoute
   );
 };
 
-/** `POST /diagram/schema` handler. The diagram as data; a source that does not parse answers 200 with its error. */
+/**
+ * `POST /diagram/schema` handler. The diagram as data; a source that does not parse answers 200 with its error.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant U as DiagramUseCase
+ *   C->>H: POST /diagram/schema { source }
+ *   H->>U: drawSchema({ source })
+ *   U-->>H: DiagramData
+ *   H-->>C: 200 DiagramData
+ *   Note over U: a parse error is part of the DiagramData, not a failure
+ *   Note over H: on failure, Match.tag: RenderError -> 500
+ * ```
+ */
 export const postDiagramSchemaRouteHandler: RouteHandler<typeof postDiagramSchemaRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(

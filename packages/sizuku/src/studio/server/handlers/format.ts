@@ -3,7 +3,21 @@ import { Effect, Match } from "effect";
 import type { postFormatRoute } from "../routes";
 import * as FormatUseCase from "../usecases/format.js";
 
-/** `POST /format` handler. The formatted source; a syntax error, or a config oxfmt cannot read, is a 422. */
+/**
+ * `POST /format` handler. The formatted source; a syntax error, or a config oxfmt cannot read, is a 422.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant U as FormatUseCase
+ *   C->>H: POST /format { source }
+ *   H->>U: formatText({ source })
+ *   U-->>H: Formatted
+ *   H-->>C: 200 Formatted
+ *   Note over H: on failure, Match.tag: FormatError -> 422, FileReadError -> 500
+ * ```
+ */
 export const postFormatRouteHandler: RouteHandler<typeof postFormatRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
