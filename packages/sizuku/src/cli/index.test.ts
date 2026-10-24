@@ -8,9 +8,10 @@ const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
 
 Usage:
   sizuku <input> -o <output> [options]
+  sizuku studio <input> [--port <port>]   Edit the schema with a live ER diagram
 
 Options:
-  -o <path>                         Output file path
+  -o <path>                         Output file path (.ts, .md, .dbml, .svg, .png)
   --zod                             Generate Zod validation schema
   --valibot                         Generate Valibot validation schema
   --arktype                         Generate ArkType validation schema
@@ -19,6 +20,8 @@ Options:
   --no-export-types                 Do not export inferred types
   --no-with-comment                 Do not add JSDoc comments
   --no-with-relation                Do not generate relation schemas
+  --theme <light|dark>              Colour scheme of the .svg / .png ER diagram
+  --port <port>                     Port for sizuku studio (default: 4983)
   -h, --help                        Display this help message`;
 
 // ============================================================================
@@ -107,7 +110,7 @@ describe("stripImports", () => {
 
   it("handles empty content", () => {
     const result = stripImports("");
-    expect(result).toStrictEqual([""]);
+    expect(result).toStrictEqual([]);
   });
 
   it("strips multiple import lines with blank lines between them", () => {
@@ -130,14 +133,14 @@ export const user = sqliteTable('user', {})`;
     expect(result[1]).toBe("export const user = sqliteTable('user', {})");
   });
 
-  it("handles content with only imports returns last import via slice(-1)", () => {
+  it("handles content with only imports", () => {
     const code = `import { pgTable } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'`;
     const result = stripImports(code);
-    expect(result).toStrictEqual(["import { relations } from 'drizzle-orm'"]);
+    expect(result).toStrictEqual([]);
   });
 
-  it("multi-line import: stripImports only checks line-level import prefix", () => {
+  it("strips an import written over several lines", () => {
     const code = `import {
   pgTable,
   uuid,
@@ -146,9 +149,13 @@ import { relations } from 'drizzle-orm'`;
 
 export const user = pgTable('user', {})`;
     const result = stripImports(code);
-    // stripImports checks per-line startsWith('import') — continuation lines
-    // like "  pgTable," don't start with "import", so they become the first result
-    expect(result[0]).toBe("  pgTable,");
+    expect(result).toStrictEqual(["export const user = pgTable('user', {})"]);
+  });
+
+  it("falls back to dropping import lines when the source does not parse", () => {
+    expect(stripImports("import { a } from 'a'\nexport const x = (")).toStrictEqual([
+      "export const x = (",
+    ]);
   });
 
   it("preserves blank lines within schema definitions", () => {
@@ -246,7 +253,7 @@ describe("sizuku argv parsing", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toBe(
-        "Unsupported output format: output.txt. Supported: .dbml, .png, .md, .ts",
+        "Unsupported output format: output.txt. Supported: .dbml, .svg, .png, .md, .ts",
       );
     }
   });
@@ -505,7 +512,7 @@ describe("E2E: sizuku() full pipeline", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value).toBe(`💧 Generated PNG at: ${outputPath}`);
+      expect(result.value).toBe(`💧 Generated PNG ER diagram at: ${outputPath}`);
     }
     expect(fs.existsSync(outputPath)).toBe(true);
     const buffer = fs.readFileSync(outputPath);

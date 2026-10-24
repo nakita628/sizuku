@@ -295,8 +295,7 @@ describe("DBML output always parses (issue regression guard)", () => {
   // sizuku never emits a table-level `Note:`, and a column note is sourced from a
   // single `///` line, so every note stays single-line. This proves the generated
   // DBML parses even with the exact characters from the report — apostrophes,
-  // full-width parens, Japanese, and stacked `///` comments. The renderer is the
-  // same one core/dbml.ts uses for PNG output.
+  // full-width parens, Japanese, and stacked `///` comments.
   it("parses notes with apostrophes, full-width parens, and stacked comments", () => {
     const code = [
       "export const user = pgTable('user', {",
@@ -309,53 +308,5 @@ describe("DBML output always parses (issue regression guard)", () => {
     ];
 
     expect(() => run(dbml(code), "svg")).not.toThrow();
-  });
-});
-
-describe("E2E: PNG generation", () => {
-  let tmpdir: string;
-
-  beforeEach(() => {
-    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-e2e-png-"));
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmpdir, { recursive: true, force: true });
-  });
-
-  it("generates valid PNG binary for EC schema", async () => {
-    fs.writeFileSync(path.join(tmpdir, "schema.ts"), ecSchemaContent, "utf-8");
-    const output = path.join(tmpdir, "output", "er.png");
-
-    const code = stripImports(ecSchemaContent);
-    const result = await sizukuDbml(code, output);
-
-    expect(result.ok).toBe(true);
-    expect(fs.existsSync(output)).toBe(true);
-
-    const buffer = fs.readFileSync(output);
-    // PNG magic bytes: 89 50 4E 47 (‰PNG)
-    expect(buffer[0]).toBe(0x89);
-    expect(buffer[1]).toBe(0x50);
-    expect(buffer[2]).toBe(0x4e);
-    expect(buffer[3]).toBe(0x47);
-    expect(buffer.length > 1000).toBe(true);
-  });
-
-  it("generates valid PNG for single-table schema", async () => {
-    fs.writeFileSync(path.join(tmpdir, "schema.ts"), singleTableSchema, "utf-8");
-    const output = path.join(tmpdir, "output", "config.png");
-
-    const code = stripImports(singleTableSchema);
-    const result = await sizukuDbml(code, output);
-
-    expect(result.ok).toBe(true);
-    expect(fs.existsSync(output)).toBe(true);
-
-    const buffer = fs.readFileSync(output);
-    expect(buffer[0]).toBe(0x89);
-    expect(buffer[1]).toBe(0x50);
-    expect(buffer[2]).toBe(0x4e);
-    expect(buffer[3]).toBe(0x47);
   });
 });

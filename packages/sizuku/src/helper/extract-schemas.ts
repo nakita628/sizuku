@@ -1,14 +1,16 @@
-import type { CallExpression, ObjectLiteralExpression } from "ts-morph";
-import { Node, Project } from "ts-morph";
+import type { CallExpression, Node, Program, VariableDeclarator } from "oxc-parser";
 import { extractFieldComments, makeCapitalized, parseFieldComments } from "../utils/index.js";
-
-function makeSourceFile(sourceCode: string) {
-  const project = new Project({
-    useInMemoryFileSystem: true,
-    compilerOptions: { allowJs: true, skipLibCheck: true },
-  });
-  return project.createSourceFile("temp.ts", sourceCode);
-}
+import {
+  arrowObject,
+  declaratorName,
+  exportedDeclarations,
+  isArrow,
+  isCall,
+  isObject,
+  parseSource,
+  textOf,
+  unwrapParens,
+} from "./ast.js";
 
 function generateRelationDefinition(
   fnName: string,
@@ -25,39 +27,32 @@ function generateRelationDefinition(
   return "";
 }
 
-function findObjectLiteralExpression(expr: Node): ObjectLiteralExpression | null {
-  if (Node.isObjectLiteralExpression(expr)) return expr;
-  if (Node.isParenthesizedExpression(expr)) {
-    return findObjectLiteralExpression(expr.getExpression());
-  }
-  if (Node.isArrowFunction(expr)) {
-    const body = expr.getBody();
-    if (Node.isObjectLiteralExpression(body)) return body;
-    if (Node.isParenthesizedExpression(body)) {
-      return findObjectLiteralExpression(body.getExpression());
-    }
-    if (Node.isBlock(body)) {
-      const ret = body.getStatements().find(Node.isReturnStatement);
-      const re = ret?.getExpression();
-      return re && Node.isObjectLiteralExpression(re) ? re : null;
-    }
-  }
-  return null;
-}
-
 function findObjectLiteralInArgs(call: CallExpression) {
-  for (const arg of call.getArguments()) {
-    const obj = findObjectLiteralExpression(arg);
-    if (obj) return obj;
+  for (const arg of call.arguments) {
+    if (arg.type === "SpreadElement") continue;
+    const expr = unwrapParens(arg);
+    if (isObject(expr)) return expr;
+    if (isArrow(expr)) {
+      const obj = arrowObject(expr);
+      if (obj) return obj;
+    }
   }
   return null;
 }
 
 function isRelationFunctionCall(callExpr: CallExpression) {
-  const expression = callExpr.getExpression();
-  if (!Node.isIdentifier(expression)) return false;
-  const fnName = expression.getText();
+  const expression = callExpr.callee;
+  if (expression.type !== "Identifier") return false;
+  const fnName = expression.name;
   return fnName === "relations" || fnName.includes("relation");
+}
+
+// A property's name as written: `id`, or `'id'` with its quotes, as ts-morph's
+// `getName()` gave it. Shorthands, methods, accessors and spreads have none.
+function propertyName(property: Node, text: string) {
+  if (property.type !== "Property" || property.kind !== "init") return null;
+  if (property.shorthand || property.method || property.computed) return null;
+  return textOf(text, property.key) || null;
 }
 
 function extractFieldFromProperty(
@@ -65,11 +60,10 @@ function extractFieldFromProperty(
   sourceText: string,
   tag: "@z." | "@v." | "@a." | "@e.",
 ) {
-  if (!Node.isPropertyAssignment(property)) return null;
-  const name = property.getName();
+  const name = propertyName(property, sourceText);
   if (!name) return null;
   const { definition, description } = parseFieldComments(
-    extractFieldComments(sourceText, property.getStart()),
+    extractFieldComments(sourceText, property.start),
     tag,
   );
   return { name, definition, description };
@@ -81,29 +75,25 @@ function extractRelationFieldFromProperty(
   tag: "@z." | "@v." | "@a." | "@e.",
   prefix: "z" | "v" | "type" | "Schema",
 ) {
-  if (!Node.isPropertyAssignment(property)) return null;
-  const name = property.getName();
-  if (!name) return null;
+  const name = propertyName(property, sourceText);
+  if (!name || property.type !== "Property") return null;
 
-  const init = property.getInitializer();
-  if (!Node.isCallExpression(init)) return { name, definition: "", description: undefined };
+  const init = property.value;
+  if (!isCall(init)) return { name, definition: "", description: undefined };
 
-  const expr = init.getExpression();
-  if (!Node.isIdentifier(expr)) return { name, definition: "", description: undefined };
+  const expr = init.callee;
+  if (expr.type !== "Identifier") return { name, definition: "", description: undefined };
 
-  const fnName = expr.getText();
-  const args = init.getArguments();
+  const fnName = expr.name;
+  const args = init.arguments;
   // args[0] is the referenced table identifier (e.g. `user` in `one(user, {...})`)
-  if (!(args.length && Node.isIdentifier(args[0]))) {
+  if (!(args.length && args[0].type === "Identifier")) {
     return { name, definition: "", description: undefined };
   }
 
-  const refTable = args[0].getText();
+  const refTable = args[0].name;
   const definition = generateRelationDefinition(fnName, refTable, prefix);
-  const { description } = parseFieldComments(
-    extractFieldComments(sourceText, property.getStart()),
-    tag,
-  );
+  const { description } = parseFieldComments(extractFieldComments(sourceText, property.start), tag);
   return { name, definition, description };
 }
 
@@ -116,8 +106,7 @@ function extractFieldsFromCall(
   const objectLiteral = findObjectLiteralInArgs(call);
   if (!objectLiteral) return [];
   const isRelation = isRelationFunctionCall(call);
-  return objectLiteral
-    .getProperties()
+  return objectLiteral.properties
     .map((prop) =>
       isRelation
         ? extractRelationFieldFromProperty(prop, sourceText, tag, prefix)
@@ -137,25 +126,21 @@ function findLeadingComments(sourceCode: string, statementStart: number) {
 }
 
 function extractSchema(
-  variableStatement: Node,
+  declaration: VariableDeclarator,
+  statementStart: number,
   sourceText: string,
-  sourceCode: string,
   tag: "@z." | "@v." | "@a." | "@e.",
   prefix: "z" | "v" | "type" | "Schema",
 ) {
-  if (!Node.isVariableStatement(variableStatement)) return null;
-  const declaration = variableStatement.getDeclarations()[0];
-  if (!declaration) return null;
-  const name = declaration.getName();
+  const name = declaratorName(declaration);
   if (!name) return null;
 
-  // ts-morph doesn't capture all comments properly; parse the original source
-  const commentLines = findLeadingComments(sourceCode, variableStatement.getStart());
+  const commentLines = findLeadingComments(sourceText, statementStart);
   const { objectType } = parseFieldComments(commentLines, tag);
 
-  const initializer = declaration.getInitializer();
+  const initializer = declaration.init;
 
-  if (Node.isCallExpression(initializer)) {
+  if (isCall(initializer)) {
     if (isRelationFunctionCall(initializer)) return null;
     return {
       name,
@@ -164,9 +149,8 @@ function extractSchema(
     };
   }
 
-  if (Node.isObjectLiteralExpression(initializer)) {
-    const fields = initializer
-      .getProperties()
+  if (isObject(initializer)) {
+    const fields = initializer.properties
       .map((prop) => extractFieldFromProperty(prop, sourceText, tag))
       .filter((f): f is NonNullable<typeof f> => f !== null);
     return { name, fields, objectType };
@@ -175,17 +159,23 @@ function extractSchema(
   return { name, fields: [], objectType };
 }
 
+// Only the first declarator of each `export const` statement is a schema.
+function firstDeclarators(program: Program) {
+  const seen = new Set<number>();
+  return exportedDeclarations(program).filter(({ start }) => {
+    if (seen.has(start)) return false;
+    seen.add(start);
+    return true;
+  });
+}
+
 export function extractSchemas(lines: string[], library: "zod" | "valibot" | "arktype" | "effect") {
-  const sourceCode = lines.join("\n");
-  const sourceFile = makeSourceFile(sourceCode);
-  const sourceText = sourceFile.getFullText();
+  const { program, text } = parseSource(lines);
   const tag = ({ zod: "@z.", valibot: "@v.", arktype: "@a.", effect: "@e." } as const)[library];
   const prefix = ({ zod: "z", valibot: "v", arktype: "type", effect: "Schema" } as const)[library];
 
-  return sourceFile
-    .getVariableStatements()
-    .filter((stmt) => stmt.hasExportKeyword())
-    .map((stmt) => extractSchema(stmt, sourceText, sourceCode, tag, prefix))
+  return firstDeclarators(program)
+    .map(({ declarator, start }) => extractSchema(declarator, start, text, tag, prefix))
     .filter((schema): schema is NonNullable<typeof schema> => schema !== null);
 }
 
@@ -193,9 +183,7 @@ export function extractRelationSchemas(
   lines: string[],
   library: "zod" | "valibot" | "arktype" | "effect",
 ) {
-  const sourceCode = lines.join("\n");
-  const sourceFile = makeSourceFile(sourceCode);
-  const sourceText = sourceFile.getFullText();
+  const { program, text } = parseSource(lines);
   const tag = ({ zod: "@z.", valibot: "@v.", arktype: "@a.", effect: "@e." } as const)[library];
   const prefix = ({ zod: "z", valibot: "v", arktype: "type", effect: "Schema" } as const)[library];
 
@@ -204,22 +192,18 @@ export function extractRelationSchemas(
     extractSchemas(lines, library).map((schema) => [schema.name, schema.objectType]),
   );
 
-  return sourceFile
-    .getVariableStatements()
-    .filter((stmt) => stmt.hasExportKeyword())
-    .flatMap((stmt) => stmt.getDeclarations())
-    .map((declaration) => {
-      if (!Node.isVariableDeclaration(declaration)) return null;
-      const name = declaration.getName();
+  return exportedDeclarations(program)
+    .map(({ declarator }) => {
+      const name = declaratorName(declarator);
       if (!name) return null;
-      const initializer = declaration.getInitializer();
-      if (!Node.isCallExpression(initializer)) return null;
+      const initializer = declarator.init;
+      if (!isCall(initializer)) return null;
       if (!isRelationFunctionCall(initializer)) return null;
       // relArgs[0] is the base table identifier (e.g. `user` in `relations(user, ...)`)
-      const baseIdentifier = initializer.getArguments()[0];
-      if (!baseIdentifier || !Node.isIdentifier(baseIdentifier)) return null;
-      const baseName = baseIdentifier.getText();
-      const fields = extractFieldsFromCall(initializer, sourceText, tag, prefix);
+      const baseIdentifier = initializer.arguments[0];
+      if (baseIdentifier?.type !== "Identifier") return null;
+      const baseName = baseIdentifier.name;
+      const fields = extractFieldsFromCall(initializer, text, tag, prefix);
       const objectType = baseSchemaMap.get(baseName);
       return { name, baseName, fields, objectType };
     })

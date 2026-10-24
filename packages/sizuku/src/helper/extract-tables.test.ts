@@ -376,4 +376,27 @@ describe("extractRelationsFromSchema", () => {
       },
     ]);
   });
+
+  it.concurrent("extracts foreignKey() from the array form of the constraints callback", () => {
+    const code = [
+      "export const user = pgTable('user', {",
+      "  id: uuid('id').primaryKey(),",
+      "})",
+      "export const post = pgTable('post', {",
+      "  authorId: uuid('author_id').notNull(),",
+      "}, (t) => [",
+      "  index('post_author_idx').on(t.authorId),",
+      "  foreignKey({ columns: [t.authorId], foreignColumns: [user.id] }),",
+      "])",
+    ];
+    expect(extractRelationsFromSchema(code)).toStrictEqual([
+      {
+        fromModel: "user",
+        toModel: "post",
+        fromField: "id",
+        toField: "authorId",
+        isRequired: true,
+      },
+    ]);
+  });
 });

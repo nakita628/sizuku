@@ -12,7 +12,8 @@
 - ⚡ Generates [Effect Schema](https://effect.website/docs/schema/introduction/) from your Drizzle schema
 - 📊 Creates [Mermaid](https://mermaid.js.org/) ER diagrams
 - 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files
-- 🖼️ Outputs ER diagrams as **PNG** images
+- 🖼️ Draws ER diagrams as **SVG** / **PNG** images (light and dark)
+- ✏️ `sizuku studio`: edit the schema in the browser with a live ER diagram
 
 ## Installation
 
@@ -24,12 +25,13 @@ npm install -D sizuku
 
 ```
 sizuku <input> -o <output> [options]
+sizuku studio <input> [--port <port>]
 ```
 
 ### Options
 
 ```
--o <path>                         Output file path
+-o <path>                         Output file path (.ts, .md, .dbml, .svg, .png)
 --zod                             Generate Zod validation schema
 --valibot                         Generate Valibot validation schema
 --arktype                         Generate ArkType validation schema
@@ -38,6 +40,8 @@ sizuku <input> -o <output> [options]
 --no-export-types                 Do not export inferred types
 --no-with-comment                 Do not add JSDoc comments
 --no-with-relation                Do not generate relation schemas
+--theme <light|dark>              Colour scheme of the .svg / .png ER diagram
+--port <port>                     Port for sizuku studio (default: 4983)
 -h, --help                        Display help message
 ```
 
@@ -53,11 +57,15 @@ npx sizuku db/schema.ts -o valibot/index.ts --valibot
 # Generate DBML
 npx sizuku db/schema.ts -o docs/schema.dbml
 
-# Generate ER diagram PNG
-npx sizuku db/schema.ts -o docs/er.png
+# Generate ER diagram (SVG or PNG)
+npx sizuku db/schema.ts -o docs/er.svg
+npx sizuku db/schema.ts -o docs/er.png --theme dark
 
 # Generate Mermaid ER diagram
 npx sizuku db/schema.ts -o docs/ER.md
+
+# Edit the schema with a live ER diagram
+npx sizuku studio db/schema.ts
 ```
 
 ## Schema Annotations
@@ -280,10 +288,43 @@ erDiagram
     }
 ```
 
+### ER Diagram (SVG / PNG)
+
+```sh
+npx sizuku db/schema.ts -o docs/er.svg
+npx sizuku db/schema.ts -o docs/er.png --theme dark
+```
+
+![ER diagram](https://github.com/nakita628/sizuku/blob/main/fixtures/example/docs/er-diagram.png)
+
+Tables are laid out left to right along their relations. Each card shows its columns with
+the primary key, foreign keys, `UK` for unique columns, `?` for nullable ones, defaults
+(`.default()`, `.defaultNow()`, `$defaultFn()`, `$onUpdate()`), `///` descriptions and the
+indexes, unique and composite key constraints of the table. `pgEnum`s get a card of their own.
+Edges use crow's-foot notation and name the relation and its `onDelete` / `onUpdate` action;
+an edge declared only by `/// @relation` is dashed, since nothing in the database backs it.
+
+## Studio
+
+```sh
+npx sizuku studio db/schema.ts
+```
+
+Opens an editor at `http://127.0.0.1:4983` with the schema on the left and its ER diagram on the
+right, redrawn as you type. Syntax errors are reported with their line while the last good
+drawing stays on screen.
+
+- **Ctrl/Cmd + S** saves the file. A change made on disk by another editor is picked up, and
+  the studio asks before replacing unsaved work.
+- Drag to pan, scroll to zoom, **Fit** to see the whole diagram.
+- **Export SVG** / **Export PNG** download the drawing in the current theme.
+
+The server listens on the loopback interface only.
+
 ## Relation Detection
 
 Sizuku detects relations from four sources. They are reflected consistently
-across every ER output format (Mermaid, DBML, and PNG).
+across every ER output format (Mermaid, DBML, SVG and PNG).
 
 ### 1. `.references()` chain
 
@@ -294,10 +335,12 @@ userId: varchar("user_id").references(() => user.id);
 ### 2. `foreignKey()` constraint
 
 ```ts
-export const post = pgTable('post', { ... }, (t) => ({
-  fk: foreignKey({ columns: [t.userId], foreignColumns: [user.id] }),
-}))
+export const post = pgTable('post', { ... }, (t) => [
+  foreignKey({ columns: [t.userId], foreignColumns: [user.id] }),
+])
 ```
+
+The older object form, `(t) => ({ fk: foreignKey(...) })`, is read as well.
 
 ### 3. `relations()` block
 
