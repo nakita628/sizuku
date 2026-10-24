@@ -128,8 +128,9 @@ export function Sidebar() {
           {tables.map((table) => (
             <li key={table.name}>
               <Link
-                to="/data/$table"
-                params={{ table: table.name }}
+                to="/tables/$name"
+                params={{ name: table.name }}
+                search={{}}
                 activeProps={ENTITY_ACTIVE}
                 inactiveProps={ENTITY_INACTIVE}
               >
@@ -160,11 +161,20 @@ export function Sidebar() {
           <ul className="m-0 list-none p-0">
             {enums.map((value) => (
               <li key={value.name}>
-                <Link to="/docs" hash={`enum-${value.name}`} className={ENTITY_INACTIVE.className}>
-                  <span className="shrink-0 text-faint">
-                    <LuList size={15} />
-                  </span>
-                  <span className="flex-1 truncate">{value.name}</span>
+                <Link
+                  to="/enums/$name"
+                  params={{ name: value.name }}
+                  activeProps={ENTITY_ACTIVE}
+                  inactiveProps={ENTITY_INACTIVE}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span className={`shrink-0 ${isActive ? "text-accent" : "text-faint"}`}>
+                        <LuList size={15} />
+                      </span>
+                      <span className="flex-1 truncate">{value.name}</span>
+                    </>
+                  )}
                 </Link>
               </li>
             ))}

@@ -5,6 +5,7 @@ import {
   makeDialect,
   makeInsertStatement,
   makeRedactedUrl,
+  makeCountStatement,
   makeSelectStatement,
   makeSqlitePath,
   makeUpdateStatement,
@@ -50,6 +51,25 @@ describe("statements", () => {
         params: [10, 20],
       },
     );
+  });
+
+  it("searches every column as text, escaping the wildcards, before the page", () => {
+    expect(
+      makeSelectStatement({ dialect: "postgresql", table, skip: 0, take: 10, search: "5%_off" }),
+    ).toStrictEqual({
+      sql:
+        'SELECT * FROM "post_tags" WHERE CAST("post_id" AS TEXT) ILIKE $1 ESCAPE \'!\' OR ' +
+        "CAST(\"tag_id\" AS TEXT) ILIKE $2 ESCAPE '!' OR CAST(\"note\" AS TEXT) ILIKE $3 ESCAPE '!' " +
+        'ORDER BY "post_id", "tag_id" LIMIT $4 OFFSET $5',
+      params: ["%5!%!_off%", "%5!%!_off%", "%5!%!_off%", 10, 0],
+    });
+    expect(makeCountStatement({ dialect: "mysql", table, search: "a" }).sql).toContain(
+      "LOWER(CAST(`note` AS CHAR)) LIKE LOWER(?) ESCAPE '!'",
+    );
+    expect(makeCountStatement({ dialect: "sqlite", table, search: "" })).toStrictEqual({
+      sql: 'SELECT COUNT(*) AS count FROM "post_tags"',
+      params: [],
+    });
   });
 
   it("numbers the PostgreSQL placeholders past the SET values, skipping IS NULL", () => {

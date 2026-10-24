@@ -210,8 +210,9 @@ function TableSection({
         ) : null}
         <span className="flex-1" />
         <Link
-          to="/data/$table"
-          params={{ table: table.name }}
+          to="/tables/$name"
+          params={{ name: table.name }}
+          search={{}}
           className="text-meta text-accent-text hover:underline"
         >
           Browse rows

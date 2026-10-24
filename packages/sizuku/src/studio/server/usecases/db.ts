@@ -87,12 +87,14 @@ export function readRows(input: {
   readonly table: string;
   readonly skip: number;
   readonly take: number;
+  readonly search: string;
 }) {
   return Effect.gen(function* () {
     const db = yield* driver();
     const found = yield* table(input.table);
+    const search = input.search.trim();
     const total = yield* db.query(
-      SqlDomain.makeCountStatement({ dialect: db.dialect, table: found }),
+      SqlDomain.makeCountStatement({ dialect: db.dialect, table: found, search }),
     );
     const page = yield* db.query(
       SqlDomain.makeSelectStatement({
@@ -100,6 +102,7 @@ export function readRows(input: {
         table: found,
         skip: input.skip,
         take: input.take,
+        search,
       }),
     );
     return {
@@ -107,6 +110,7 @@ export function readRows(input: {
       total: Number(total.rows[0]?.count ?? 0),
       skip: input.skip,
       take: input.take,
+      search,
     };
   });
 }

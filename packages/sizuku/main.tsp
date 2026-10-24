@@ -502,6 +502,9 @@ model RowsQuery {
 
   /** Rows per page */
   @query take: take;
+
+  /** Text to look for in any column, case-insensitively; empty or absent reads every row */
+  @query search?: string;
 }
 
 /** One page of a table's rows. */
@@ -517,6 +520,9 @@ model Rows {
 
   /** The take the page was read with */
   take: int32;
+
+  /** The search the page was read with; `total` counts the rows it matched */
+  search: string;
 }
 
 /** A row to insert. */

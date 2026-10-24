@@ -889,11 +889,12 @@ One page of a table's rows, ordered by its key.
 
 <h3 id="readrows-parameters">Parameters</h3>
 
-| Name      | In    | Type                          | Required | Description                  |
-| --------- | ----- | ----------------------------- | -------- | ---------------------------- |
-| tableName | path  | [tableName](#schematablename) | true     | none                         |
-| skip      | query | [skip](#schemaskip)           | true     | Rows to skip before the page |
-| take      | query | [take](#schematake)           | true     | Rows per page                |
+| Name      | In    | Type                          | Required | Description                                                                         |
+| --------- | ----- | ----------------------------- | -------- | ----------------------------------------------------------------------------------- |
+| tableName | path  | [tableName](#schematablename) | true     | none                                                                                |
+| skip      | query | [skip](#schemaskip)           | true     | Rows to skip before the page                                                        |
+| take      | query | [take](#schematake)           | true     | Rows per page                                                                       |
+| search    | query | string                        | false    | Text to look for in any column, case-insensitively; empty or absent reads every row |
 
 > Example responses
 
@@ -909,7 +910,8 @@ One page of a table's rows, ordered by its key.
   ],
   "total": 0,
   "skip": 0,
-  "take": 0
+  "take": 0,
+  "search": "string"
 }
 ```
 
@@ -3735,7 +3737,8 @@ A row keyed by column property name.
   ],
   "total": 0,
   "skip": 0,
-  "take": 0
+  "take": 0,
+  "search": "string"
 }
 ```
 
@@ -3743,12 +3746,13 @@ One page of a table's rows.
 
 ### Properties
 
-| Name  | Type                | Required | Restrictions | Description                     |
-| ----- | ------------------- | -------- | ------------ | ------------------------------- |
-| rows  | [[Row](#schemarow)] | true     | none         | The rows of the page            |
-| total | integer(int32)      | true     | none         | How many rows the table has     |
-| skip  | integer(int32)      | true     | none         | The skip the page was read with |
-| take  | integer(int32)      | true     | none         | The take the page was read with |
+| Name   | Type                | Required | Restrictions | Description                                                           |
+| ------ | ------------------- | -------- | ------------ | --------------------------------------------------------------------- |
+| rows   | [[Row](#schemarow)] | true     | none         | The rows of the page                                                  |
+| total  | integer(int32)      | true     | none         | How many rows the table has                                           |
+| skip   | integer(int32)      | true     | none         | The skip the page was read with                                       |
+| take   | integer(int32)      | true     | none         | The take the page was read with                                       |
+| search | string              | true     | none         | The search the page was read with; `total` counts the rows it matched |
 
 <h2 id="tocS_NotFoundProblem">NotFoundProblem</h2>
 <!-- backwards compatibility -->

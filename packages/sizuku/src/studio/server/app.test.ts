@@ -162,7 +162,18 @@ describe("sizuku studio API", () => {
       total: 1,
       skip: 0,
       take: 10,
+      search: "",
     });
+
+    // A search reads any column as text, whatever its case, and counts what it matched.
+    const found = await (
+      await request("GET", "/api/db/rows/user?skip=0&take=10&search=ADA")
+    ).json();
+    expect(found).toMatchObject({ total: 1, search: "ADA" });
+    expect(found.rows).toHaveLength(1);
+    expect(
+      (await (await request("GET", "/api/db/rows/user?skip=0&take=10&search=%25")).json()).total,
+    ).toBe(0);
 
     const inserted = await request("POST", "/api/db/rows/user", {
       values: { id: 3, name: "Grace", active: false },

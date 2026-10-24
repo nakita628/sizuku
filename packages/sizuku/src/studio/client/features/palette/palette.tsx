@@ -103,9 +103,6 @@ export function CommandPalette() {
         void navigate({ to });
       },
     });
-    const inDocs = (hash: string) => () => {
-      void navigate({ to: "/docs", hash });
-    };
     return [
       page("/", "Schema", <LuFileCode />),
       page("/docs", "Docs", <LuBook />),
@@ -117,7 +114,7 @@ export function CommandPalette() {
         kind: "Table",
         icon: <LuTable />,
         go: () => {
-          void navigate({ to: "/data/$table", params: { table: table.name } });
+          void navigate({ to: "/tables/$name", params: { name: table.name }, search: {} });
         },
       })),
       ...(docs?.enums ?? []).map((value) => ({
@@ -125,7 +122,9 @@ export function CommandPalette() {
         label: value.name,
         kind: "Enum",
         icon: <LuList />,
-        go: inDocs(`enum-${value.name}`),
+        go: () => {
+          void navigate({ to: "/enums/$name", params: { name: value.name } });
+        },
       })),
       // Last, because they are the many: a schema's columns outnumber everything above them, and
       // an empty query should open on the pages rather than on `account.id`. Written with their
@@ -137,7 +136,13 @@ export function CommandPalette() {
           label: `${table.name}.${column.name}`,
           kind: "Column",
           icon: <LuColumns3 />,
-          go: inDocs(`table-${table.name}`),
+          go: () => {
+            void navigate({
+              to: "/tables/$name",
+              params: { name: table.name },
+              search: { tab: "columns", column: column.name },
+            });
+          },
         })),
       ),
     ];

@@ -698,10 +698,13 @@ export const RowsSchema = z
     total: z.int32().openapi({ description: "How many rows the table has" }),
     skip: z.int32().openapi({ description: "The skip the page was read with" }),
     take: z.int32().openapi({ description: "The take the page was read with" }),
+    search: z.string().openapi({
+      description: "The search the page was read with; `total` counts the rows it matched",
+    }),
   })
   .readonly()
   .openapi({
-    required: ["rows", "total", "skip", "take"],
+    required: ["rows", "total", "skip", "take", "search"],
     description: "One page of a table's rows.",
   })
   .openapi("Rows");
@@ -1075,6 +1078,21 @@ const RowsQueryTakeParamsSchema = TakeSchema.openapi({
   },
 });
 
+const RowsQuerySearchParamsSchema = z
+  .string()
+  .exactOptional()
+  .openapi({
+    param: {
+      name: "search",
+      in: "query",
+      required: false,
+      description:
+        "Text to look for in any column, case-insensitively; empty or absent reads every row",
+      schema: { type: "string" },
+      explode: false,
+    },
+  });
+
 export const getSchemaRoute = createRoute({
   method: "get",
   path: "/schema",
@@ -1308,7 +1326,11 @@ export const getDbRowsTableNameRoute = createRoute({
         },
       }),
     }),
-    query: z.object({ skip: RowsQuerySkipParamsSchema, take: RowsQueryTakeParamsSchema }),
+    query: z.object({
+      skip: RowsQuerySkipParamsSchema,
+      take: RowsQueryTakeParamsSchema,
+      search: RowsQuerySearchParamsSchema,
+    }),
   },
   responses: {
     200: {

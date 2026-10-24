@@ -85,15 +85,25 @@ The documentation of the saved file, generated from the schema and its `///` com
   composite one with `and()`) and with a value for every column a row needs. **Open in Query**
   puts one in the Query page's editor.
 
-### Data
+### Tables and enums
 
-One page per table of the schema, listed in the sidebar with its row count. The rows are read 50
-at a time, ordered by the primary key.
+One page per table of the schema, listed in the sidebar with its row count, with two tabs:
 
-- **Add row** opens a form with a field per column. Fields left empty are not sent, so the
-  database fills them in from its defaults; a nullable column has a **NULL** box.
-- The pencil (or a double click on a row) edits a row; only the fields you changed are sent.
-- The bin deletes a row after asking.
+- **Data** — the rows, 100 at a time, ordered by the key. The search box (focus it with `/`)
+  finds the rows where any column holds the text, whatever its case; what matched is marked.
+  - A value is picked by a click; **Enter** or its pencil edits it in place (a list for an enum
+    or a boolean), **⌘/Ctrl + C** or its copy button copies it.
+  - **Add row** puts an empty row on top. Fields left empty are not sent, so the database fills
+    them in from its defaults; a nullable column takes `NULL`.
+  - Tick rows to copy them (as a spreadsheet pastes them) or delete them, after asking. Each
+    row's menu copies it, as TSV or JSON, or deletes it.
+  - **Export** downloads the page as CSV or JSON, or copies it. **Columns** folds columns away
+    (remembered per table); copies and exports take what is shown.
+- **Columns** — the columns as the schema declares them: type, key, uniqueness, defaults, the
+  column a foreign key references, and the `///` description.
+
+The details panel beside either (the **i** button) lists the columns, the relations to and from
+the table and its indexes. An enum's page lists its values and the columns that hold it.
 
 A row is identified by its primary key — a composite one included — or, without one, by its
 unique columns, or else by all of its columns. Columns are written by their database names
@@ -168,7 +178,7 @@ sidebar shows why the database is not connected.
 **Ctrl/Cmd + K** (or **Search the schema** in the sidebar) opens a palette that jumps to any
 page, table, enum or column by name. The letters only have to appear in order, so `ua` finds
 `userAccount` and `usemail` finds `user.email`; matches on word starts rank first. A table opens
-its rows, an enum and a column open their place in the docs.
+its page, an enum its values, and a column its row in the table's Columns tab.
 
 ## Theme
 

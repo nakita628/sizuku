@@ -121,16 +121,40 @@ export function makeUnknownFields(input: z.infer<typeof MakeUnknownFieldsInput>)
   return Object.keys(input.values).filter((name) => columnOf(input.table, name) === null);
 }
 
-const MakeCountStatementInput = z
-  .object({ dialect: Dialect, table: Table })
-  .readonly()
-  .meta({ description: "A table to count" });
+const Search = z
+  .string()
+  .meta({ description: "Text to look for in any column; empty matches every row", example: "ada" });
 
-/** How many rows the table has. */
+/**
+ * The WHERE clause of a search: any column, read as text, holds the text, whatever its case
+ * (`ILIKE` on PostgreSQL, `LOWER` on MySQL, whose binary columns would match case-sensitively;
+ * SQLite's `LIKE` ignores the case already). `%`, `_` and the escape are matched as written, and
+ * the parameters are numbered from `from`.
+ */
+function searchClause(dialect: Dialect, table: Table, search: string, from: number) {
+  if (search === "") return { sql: "", params: [] };
+  const pattern = `%${search.replaceAll(/[!%_]/gu, "!$&")}%`;
+  const tests = table.columns.map(({ column }, index) => {
+    const name = makeIdentifier({ dialect, name: column });
+    const param = placeholder(dialect, from + index);
+    if (dialect === "postgresql") return `CAST(${name} AS TEXT) ILIKE ${param} ESCAPE '!'`;
+    if (dialect === "mysql") return `LOWER(CAST(${name} AS CHAR)) LIKE LOWER(${param}) ESCAPE '!'`;
+    return `CAST(${name} AS TEXT) LIKE ${param} ESCAPE '!'`;
+  });
+  return { sql: ` WHERE ${tests.join(" OR ")}`, params: table.columns.map(() => pattern) };
+}
+
+const MakeCountStatementInput = z
+  .object({ dialect: Dialect, table: Table, search: Search.optional() })
+  .readonly()
+  .meta({ description: "A table to count, or the rows of it a search matches" });
+
+/** How many rows the table has, or how many of them the search matches. */
 export function makeCountStatement(input: z.infer<typeof MakeCountStatementInput>) {
+  const where = searchClause(input.dialect, input.table, input.search ?? "", 1);
   return {
-    sql: `SELECT COUNT(*) AS count FROM ${makeIdentifier({ dialect: input.dialect, name: input.table.table })}`,
-    params: [],
+    sql: `SELECT COUNT(*) AS count FROM ${makeIdentifier({ dialect: input.dialect, name: input.table.table })}${where.sql}`,
+    params: where.params,
   };
 }
 
@@ -140,24 +164,27 @@ const MakeSelectStatementInput = z
     table: Table,
     skip: z.number().meta({ description: "How many rows to skip", example: 0 }),
     take: z.number().meta({ description: "How many rows to read", example: 50 }),
+    search: Search.optional(),
   })
   .readonly()
   .meta({ description: "A page of a table" });
 
-/** One page of rows, ordered by the key so that paging is stable. */
+/** One page of rows, or of the rows a search matches, ordered by the key so paging is stable. */
 export function makeSelectStatement(input: z.infer<typeof MakeSelectStatementInput>): Statement {
   const { dialect, table } = input;
   const order = table.key
     .map((name) => columnOf(table, name))
     .filter((column) => column !== null)
     .map((column) => makeIdentifier({ dialect, name: column }));
+  const where = searchClause(dialect, table, input.search ?? "", 1);
+  const next = where.params.length + 1;
   return {
     sql: [
-      `SELECT * FROM ${makeIdentifier({ dialect, name: table.table })}`,
+      `SELECT * FROM ${makeIdentifier({ dialect, name: table.table })}${where.sql}`,
       ...(order.length > 0 ? [`ORDER BY ${order.join(", ")}`] : []),
-      `LIMIT ${placeholder(dialect, 1)} OFFSET ${placeholder(dialect, 2)}`,
+      `LIMIT ${placeholder(dialect, next)} OFFSET ${placeholder(dialect, next + 1)}`,
     ].join(" "),
-    params: [input.take, input.skip],
+    params: [...where.params, input.take, input.skip],
   };
 }
 

@@ -91,7 +91,12 @@ export const getDbRowsTableNameRouteHandler: RouteHandler<typeof getDbRowsTableN
   const data = { ...c.req.valid("param"), ...c.req.valid("query") };
   return Effect.runPromise(
     Effect.matchEffect(
-      DbUseCase.readRows({ table: data.tableName, skip: data.skip, take: data.take }),
+      DbUseCase.readRows({
+        table: data.tableName,
+        skip: data.skip,
+        take: data.take,
+        search: data.search ?? "",
+      }),
       {
         onSuccess: (value) => Effect.succeed(c.json(value, 200)),
         onFailure: (error) =>
