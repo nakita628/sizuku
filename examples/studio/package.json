@@ -1,0 +1,14 @@
+{
+  "name": "@examples/studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "sizuku studio db/schema.ts",
+    "generate": "sizuku db/schema.ts -o docs/er.svg && sizuku db/schema.ts -o docs/er.png && sizuku db/schema.ts -o docs/er-dark.png --theme dark && sizuku db/schema.ts -o docs/ER.md && sizuku db/schema.ts -o docs/schema.dbml",
+    "reset": "git checkout -- db/schema.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "sizuku": "workspace:^"
+  }
+}
