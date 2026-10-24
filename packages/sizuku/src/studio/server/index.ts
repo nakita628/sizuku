@@ -15,6 +15,7 @@ import {
   postDiagramSchemaRoute,
   postDiagramSvgRoute,
   postDrizzleRoute,
+  postDrizzleTouchedRoute,
   postFormatRoute,
   postLanguageCompleteDetailRoute,
   postLanguageCompleteRoute,
@@ -39,6 +40,7 @@ import {
   postDiagramSchemaRouteHandler,
   postDiagramSvgRouteHandler,
   postDrizzleRouteHandler,
+  postDrizzleTouchedRouteHandler,
   postFormatRouteHandler,
   postLanguageCompleteDetailRouteHandler,
   postLanguageCompleteRouteHandler,
@@ -81,6 +83,8 @@ export const language = app
   .openapi(postLanguageSignatureRoute, postLanguageSignatureRouteHandler)
   .openapi(postLanguageDiagnosticsRoute, postLanguageDiagnosticsRouteHandler);
 
-export const drizzle = app.openapi(postDrizzleRoute, postDrizzleRouteHandler);
+export const drizzle = app
+  .openapi(postDrizzleRoute, postDrizzleRouteHandler)
+  .openapi(postDrizzleTouchedRoute, postDrizzleTouchedRouteHandler);
 
 export default app;

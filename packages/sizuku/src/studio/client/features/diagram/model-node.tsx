@@ -18,15 +18,20 @@ import { OpenNodeLink } from "./open-node-link.js";
 const ROW_HANDLE = { top: NODE_ROW_HEIGHT / 2 } as const;
 
 function ModelNodeComponent({ data, selected }: NodeProps<ModelNodeType>) {
-  const { model, fields } = data;
+  const { model, fields, highlight } = data;
   const primaryKey = new Set(model.primaryKey);
   const unique = uniqueColumns(model);
   const constraints = diagramConstraints(model);
+  const dim = highlight?.dim ?? false;
   return (
     <div
-      className={`model-node w-[340px] overflow-visible rounded-lg border bg-surface font-mono shadow-sm ${
-        selected ? "border-accent ring-[3px] ring-accent-soft" : "border-line-strong"
-      }`}
+      className={`model-node w-[340px] overflow-visible rounded-lg border bg-surface font-mono shadow-sm transition-opacity ${
+        selected
+          ? "border-accent ring-[3px] ring-accent-soft"
+          : highlight !== null && !dim
+            ? "border-accent"
+            : "border-line-strong"
+      } ${dim ? "opacity-35" : ""}`}
     >
       <div className="relative flex h-9 items-center gap-2 rounded-t-[7px] bg-node px-2.5 text-node-text">
         <Handle
@@ -58,6 +63,9 @@ function ModelNodeComponent({ data, selected }: NodeProps<ModelNodeType>) {
       <div className="py-2">
         {fields.map((field) => {
           const detail = fieldDetail(field);
+          // While a query is drawn, the columns it names on this table are marked; a card the
+          // query leaves alone is dimmed whole instead.
+          const named = highlight !== null && !dim && highlight.used.has(field.name);
           return (
             <div
               key={field.name}
@@ -81,6 +89,12 @@ function ModelNodeComponent({ data, selected }: NodeProps<ModelNodeType>) {
                   blank={<span className="inline-block size-[11px] shrink-0" />}
                 />
                 <span className="min-w-0 flex-1 truncate">{field.name}</span>
+                {named ? (
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-accent"
+                    title="Named by the query"
+                  />
+                ) : null}
                 {unique.has(field.name) && !(field.isId || primaryKey.has(field.name)) ? (
                   <span className={`${BADGE} ${UNIQUE_BADGE} shrink-0`}>UK</span>
                 ) : null}

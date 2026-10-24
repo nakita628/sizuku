@@ -2207,6 +2207,99 @@ that ran before it.
 This operation does not require authentication
 </aside>
 
+## touchedByQuery
+
+<a id="opIdtouchedByQuery"></a>
+
+> Code samples
+
+```bash
+curl http://127.0.0.1:4983/api/drizzle/touched \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "code": "string"
+  }'
+```
+
+`POST /drizzle/touched`
+
+The tables and columns Drizzle code touches, against the saved schema. Code or a schema that
+does not parse touches nothing.
+
+> Body parameter
+
+```json
+{
+  "code": "string"
+}
+```
+
+<h3 id="touchedbyquery-parameters">Parameters</h3>
+
+| Name   | In   | Type                              | Required | Description                     |
+| ------ | ---- | --------------------------------- | -------- | ------------------------------- |
+| body   | body | [TouchedBody](#schematouchedbody) | true     | none                            |
+| » code | body | string                            | true     | The code as the editor holds it |
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "tables": [
+    {
+      "table": "string",
+      "columns": ["string"]
+    }
+  ]
+}
+```
+
+> 422 Response
+
+```json
+{
+  "type": "/problems/validation-failed",
+  "title": "Validation Failed",
+  "status": 422,
+  "detail": "string",
+  "instance": "string",
+  "errors": [
+    {
+      "field": "string",
+      "message": "string"
+    }
+  ]
+}
+```
+
+> 500 Response
+
+```json
+{
+  "type": "/problems/internal-server-error",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "string",
+  "instance": "string"
+}
+```
+
+<h3 id="touchedbyquery-responses">Responses</h3>
+
+| Status | Meaning               | Description                                            | Schema                                                |
+| ------ | --------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| 200    | OK                    | The request has succeeded.                             | [QueryTouched](#schemaquerytouched)                   |
+| 422    | Unprocessable Entity  | 422 Unprocessable Content (`application/problem+json`) | [ValidationProblem](#schemavalidationproblem)         |
+| 500    | Internal Server Error | 500 Internal Server Error (`application/problem+json`) | [InternalServerProblem](#schemainternalserverproblem) |
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
 # Schemas
 
 <h2 id="tocS_ParseError">ParseError</h2>
@@ -4292,3 +4385,73 @@ Drizzle code to run.
 | Name | Type   | Required | Restrictions | Description                                                                                                                               |
 | ---- | ------ | -------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | code | string | true     | none         | The body of an async function with `db`, the schema's exports and drizzle-orm's operators<br>in scope; its last expression is the result. |
+
+<h2 id="tocS_TouchedTable">TouchedTable</h2>
+<!-- backwards compatibility -->
+<a id="schematouchedtable"></a>
+<a id="schema_TouchedTable"></a>
+<a id="tocStouchedtable"></a>
+<a id="tocstouchedtable"></a>
+
+```json
+{
+  "table": "string",
+  "columns": ["string"]
+}
+```
+
+A table Drizzle code touches.
+
+### Properties
+
+| Name    | Type     | Required | Restrictions | Description                                         |
+| ------- | -------- | -------- | ------------ | --------------------------------------------------- |
+| table   | string   | true     | none         | The table's exported name                           |
+| columns | [string] | true     | none         | The columns the code names on it, as `table.column` |
+
+<h2 id="tocS_QueryTouched">QueryTouched</h2>
+<!-- backwards compatibility -->
+<a id="schemaquerytouched"></a>
+<a id="schema_QueryTouched"></a>
+<a id="tocSquerytouched"></a>
+<a id="tocsquerytouched"></a>
+
+```json
+{
+  "tables": [
+    {
+      "table": "string",
+      "columns": ["string"]
+    }
+  ]
+}
+```
+
+The tables Drizzle code touches, for the diagram beside the editor to light up.
+
+### Properties
+
+| Name   | Type                                  | Required | Restrictions | Description                                                                                             |
+| ------ | ------------------------------------- | -------- | ------------ | ------------------------------------------------------------------------------------------------------- |
+| tables | [[TouchedTable](#schematouchedtable)] | true     | none         | The tables read by name, through `db.query`, or reached by a `with`; empty when the code does not parse |
+
+<h2 id="tocS_TouchedBody">TouchedBody</h2>
+<!-- backwards compatibility -->
+<a id="schematouchedbody"></a>
+<a id="schema_TouchedBody"></a>
+<a id="tocStouchedbody"></a>
+<a id="tocstouchedbody"></a>
+
+```json
+{
+  "code": "string"
+}
+```
+
+Drizzle code, written or being written, to read the tables of.
+
+### Properties
+
+| Name | Type   | Required | Restrictions | Description                     |
+| ---- | ------ | -------- | ------------ | ------------------------------- |
+| code | string | true     | none         | The code as the editor holds it |

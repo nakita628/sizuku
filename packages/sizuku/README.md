@@ -324,7 +324,7 @@ Opens `http://127.0.0.1:4983` with five pages:
   `///` descriptions, and Drizzle queries for each table to open in the Query page.
 - **Query**: Drizzle against the database (`db.select().from(post)`,
   `db.query.post.findMany({ with: { author: true } })`), with completion, the result as a table
-  or JSON, and the SQL it sent.
+  or JSON, the SQL it sent, and a diagram that lights up the tables the code touches.
 - **Data**: each table's rows, with adding, editing and deleting a row (composite keys included).
 - **SQL**: a console on the same database.
 

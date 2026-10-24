@@ -8,10 +8,23 @@ import type { SchemaEnum, SchemaField, SchemaModel } from "../../../../types/ind
 /** The schema as `POST /diagram/schema` answers it: each table also knows the lines it is declared on. */
 export type CanvasSchema = z.infer<typeof CanvasSchemaSchema>;
 
+/**
+ * The tables a query touches, by exported name, each with the columns it names; null leaves every
+ * card as it is.
+ */
+export type SchemaHighlight = ReadonlyMap<string, ReadonlySet<string>>;
+
+/** What a card shows of a query: dimmed when the query leaves it alone, its named columns marked. */
+export type ModelHighlight = {
+  readonly dim: boolean;
+  readonly used: ReadonlySet<string>;
+};
+
 export type ModelNodeType = Node<
   {
     readonly model: SchemaModel;
     readonly fields: readonly SchemaField[];
+    readonly highlight: ModelHighlight | null;
   },
   "model"
 >;

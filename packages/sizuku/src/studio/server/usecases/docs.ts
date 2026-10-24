@@ -17,7 +17,7 @@ export function readDocs() {
     if (parseError !== null) return { tables: [], enums: [], parseError };
     const docs = DocsDomain.makeDocs({
       ...ParseService.readSchema(source),
-      relationNames: ParseService.readRelationNames(source),
+      relationFields: ParseService.readRelationFields(source),
       dialect: QueryDomain.makeSchemaDialect({ source }) ?? "postgresql",
     });
     return { ...docs, parseError: null };

@@ -1018,6 +1018,41 @@ export const QueryBodySchema = z
   .openapi({ required: ["code"], description: "Drizzle code to run." })
   .openapi("QueryBody");
 
+export const TouchedTableSchema = z
+  .object({
+    table: z.string().openapi({ description: "The table's exported name" }),
+    columns: z
+      .array(z.string())
+      .readonly()
+      .openapi({ description: "The columns the code names on it, as `table.column`" }),
+  })
+  .readonly()
+  .openapi({ required: ["table", "columns"], description: "A table Drizzle code touches." })
+  .openapi("TouchedTable");
+
+export const QueryTouchedSchema = z
+  .object({
+    tables: z.array(TouchedTableSchema).readonly().openapi({
+      description:
+        "The tables read by name, through `db.query`, or reached by a `with`; empty when the code does not parse",
+    }),
+  })
+  .readonly()
+  .openapi({
+    required: ["tables"],
+    description: "The tables Drizzle code touches, for the diagram beside the editor to light up.",
+  })
+  .openapi("QueryTouched");
+
+export const TouchedBodySchema = z
+  .object({ code: z.string().openapi({ description: "The code as the editor holds it" }) })
+  .readonly()
+  .openapi({
+    required: ["code"],
+    description: "Drizzle code, written or being written, to read the tables of.",
+  })
+  .openapi("TouchedBody");
+
 const RowsQuerySkipParamsSchema = SkipSchema.openapi({
   param: {
     name: "skip",
@@ -1647,6 +1682,32 @@ export const postDrizzleRoute = createRoute({
     503: {
       description: "503 Service Unavailable (`application/problem+json`)",
       content: { "application/problem+json": { schema: ServiceUnavailableProblemSchema } },
+    },
+  },
+} as const);
+
+export const postDrizzleTouchedRoute = createRoute({
+  method: "post",
+  path: "/drizzle/touched",
+  tags: ["drizzle"],
+  description:
+    "The tables and columns Drizzle code touches, against the saved schema. Code or a schema that\ndoes not parse touches nothing.",
+  operationId: "touchedByQuery",
+  request: {
+    body: { content: { "application/json": { schema: TouchedBodySchema } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "The request has succeeded.",
+      content: { "application/json": { schema: QueryTouchedSchema } },
+    },
+    422: {
+      description: "422 Unprocessable Content (`application/problem+json`)",
+      content: { "application/problem+json": { schema: ValidationProblemSchema } },
+    },
+    500: {
+      description: "500 Internal Server Error (`application/problem+json`)",
+      content: { "application/problem+json": { schema: InternalServerProblemSchema } },
     },
   },
 } as const);

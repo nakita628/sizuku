@@ -1,4 +1,6 @@
 import * as z from "zod";
+import type { SchemaModel } from "../../../types/index.js";
+import { RelationFields } from "./docs.js";
 import { makePosition } from "./parse.js";
 import { Dialect } from "./sql.js";
 
@@ -214,4 +216,67 @@ export function makeJsonValue(value: unknown, seen: WeakSet<object> = new WeakSe
   return Object.fromEntries(
     Object.entries(value).map(([key, item]) => [key, makeJsonValue(item, seen)]),
   );
+}
+
+const MakeQueryTouchedInput = z
+  .object({
+    models: z.array(z.custom<SchemaModel>()).readonly().meta({ description: "The tables" }),
+    relationFields: RelationFields,
+    names: z
+      .array(z.string())
+      .readonly()
+      .meta({ description: "The identifiers the query reads", example: ["db", "post", "eq"] }),
+    members: z
+      .array(
+        z
+          .object({
+            object: z.string().meta({ description: "The object read", example: "post" }),
+            property: z
+              .string()
+              .meta({ description: "The property read off it", example: "title" }),
+          })
+          .readonly(),
+      )
+      .readonly()
+      .meta({ description: "The `a.b` accesses of the query" }),
+    queries: z
+      .array(z.string())
+      .readonly()
+      .meta({ description: "The tables of `db.query.<table>`", example: ["user"] }),
+    withs: z
+      .array(z.string())
+      .readonly()
+      .meta({ description: "The relation names given to `with`", example: ["posts"] }),
+  })
+  .readonly()
+  .meta({ description: "The tables of a schema and the names a query uses" });
+
+/**
+ * The tables a query touches, each with the columns it names: a table read by its name or through
+ * `db.query`, and the tables its `with` reaches through the relations of the ones already touched.
+ */
+export function makeQueryTouched(input: z.infer<typeof MakeQueryTouchedInput>) {
+  const named = new Set([...input.names, ...input.queries]);
+  const touched = new Set(input.models.map((m) => m.name).filter((name) => named.has(name)));
+  // A `with` can nest, so the relations are followed until nothing new is reached.
+  const withs = new Set(input.withs);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const field of input.relationFields) {
+      if (touched.has(field.table) && withs.has(field.name) && !touched.has(field.target)) {
+        touched.add(field.target);
+        grew = true;
+      }
+    }
+  }
+  return input.models
+    .filter((model) => touched.has(model.name))
+    .map((model) => {
+      const fields = new Set(model.fields.map((f) => f.name));
+      const columns = input.members
+        .filter((m) => m.object === model.name && fields.has(m.property))
+        .map((m) => m.property);
+      return { table: model.name, columns: [...new Set(columns)] };
+    });
 }

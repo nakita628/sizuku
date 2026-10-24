@@ -203,6 +203,15 @@ throw new Error("stop here");`);
     expect(canvas.relations.map((r: { id: string }) => r.id)).toContain("user.id->post.authorId");
   });
 
+  it("names the tables and columns a query touches, before it runs", async () => {
+    const touched = async (code: string) =>
+      (await (await request("/api/drizzle/touched", { code })).json()).tables;
+    expect(await touched("db.select().from(post).where(eq(post.published, true))")).toStrictEqual([
+      { table: "post", columns: ["published"] },
+    ]);
+    expect(await touched("db.select(")).toStrictEqual([]);
+  });
+
   // Every example the docs offer has to run as written: they are what the Query page starts from.
   it("runs every query the docs offer", { timeout: 60_000 }, async () => {
     const docs = await (await request("/api/docs", undefined)).json();

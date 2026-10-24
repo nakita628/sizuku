@@ -1501,3 +1501,61 @@ export function usePostDrizzle<TError = DefaultError, TOnMutateResult = unknown>
     queryClient,
   );
 }
+
+export function getPostDrizzleTouchedMutationKey() {
+  return ["drizzle", "/drizzle/touched", "POST"] as const;
+}
+
+export function getPostDrizzleTouchedMutationOptions<
+  TError = DefaultError,
+  TOnMutateResult = unknown,
+>(options?: ClientRequestOptions) {
+  return mutationOptions<
+    Awaited<
+      ReturnType<
+        typeof parseResponse<Awaited<ReturnType<typeof drizzleClient.drizzle.touched.$post>>>
+      >
+    >,
+    TError,
+    InferRequestType<typeof drizzleClient.drizzle.touched.$post>,
+    TOnMutateResult
+  >({
+    mutationKey: getPostDrizzleTouchedMutationKey(),
+    async mutationFn(args: InferRequestType<typeof drizzleClient.drizzle.touched.$post>) {
+      return parseResponse(drizzleClient.drizzle.touched.$post(args, options));
+    },
+  });
+}
+
+export function usePostDrizzleTouched<TError = DefaultError, TOnMutateResult = unknown>(
+  options?: {
+    mutation?: Omit<
+      UseMutationOptions<
+        Awaited<
+          ReturnType<
+            typeof parseResponse<Awaited<ReturnType<typeof drizzleClient.drizzle.touched.$post>>>
+          >
+        >,
+        TError,
+        InferRequestType<typeof drizzleClient.drizzle.touched.$post>,
+        TOnMutateResult
+      >,
+      "mutationFn"
+    >;
+    options?: ClientRequestOptions;
+  },
+  queryClient?: QueryClient,
+) {
+  const { mutation: mutationOptions, options: clientOptions } = options ?? {};
+  const mutationDefaults = getPostDrizzleTouchedMutationOptions<TError, TOnMutateResult>(
+    clientOptions,
+  );
+  return useMutation(
+    {
+      ...mutationOptions,
+      ...mutationDefaults,
+      mutationKey: mutationOptions?.mutationKey ?? mutationDefaults.mutationKey,
+    },
+    queryClient,
+  );
+}

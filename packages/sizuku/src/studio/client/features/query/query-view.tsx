@@ -16,6 +16,7 @@ import { loadString, saveString } from "../../lib/storage.js";
 import { CodeEditor } from "../editor/code-editor.js";
 import { QUERY_MODEL, setLanguageEnabled, setTypeMarkers } from "../editor/language.js";
 import { asRows, ResultView } from "./result-view.js";
+import { QuerySchemaPane } from "./schema-pane.js";
 
 const CODE_KEY = "sizuku-studio:query";
 const CHECK_DEBOUNCE_MS = 500;
@@ -131,24 +132,33 @@ export function QueryView() {
         defaultRatio={0.45}
         label="Resize the query editor"
         first={
-          <div className="min-h-0 min-w-0 bg-surface">
-            <CodeEditor
-              path={QUERY_MODEL}
-              language="typescript"
-              value={text}
-              commands={[{ keys: "run", run: execute }]}
-              onChange={(next) => {
-                setCode(next);
-                saveString(CODE_KEY, next);
-              }}
-              onMount={(editor) => {
-                editorRef.current = editor;
-                setEditorReady(true);
-                // The model outlives the page; code put in while it was away replaces what it held.
-                if (editor.getValue() !== text) editor.setValue(text);
-              }}
-            />
-          </div>
+          <SplitPane
+            direction="column"
+            storageKey="sizuku-studio:query-schema-split"
+            defaultRatio={0.6}
+            label="Resize the schema under the query"
+            first={
+              <div className="h-full min-h-0 min-w-0 bg-surface">
+                <CodeEditor
+                  path={QUERY_MODEL}
+                  language="typescript"
+                  value={text}
+                  commands={[{ keys: "run", run: execute }]}
+                  onChange={(next) => {
+                    setCode(next);
+                    saveString(CODE_KEY, next);
+                  }}
+                  onMount={(editor) => {
+                    editorRef.current = editor;
+                    setEditorReady(true);
+                    // The model outlives the page; code put in while it was away replaces what it held.
+                    if (editor.getValue() !== text) editor.setValue(text);
+                  }}
+                />
+              </div>
+            }
+            second={<QuerySchemaPane code={text} />}
+          />
         }
         second={
           <div className="flex min-h-0 min-w-0 flex-col bg-surface">

@@ -167,6 +167,21 @@ function makeQueries(input: {
 
 const Models = z.array(z.custom<SchemaModel>()).readonly().meta({ description: "The tables" });
 
+export const RelationFields = z
+  .array(
+    z
+      .object({
+        table: z
+          .string()
+          .meta({ description: "The table the relation is declared on", example: "user" }),
+        name: z.string().meta({ description: "The name `relations()` gives it", example: "posts" }),
+        target: z.string().meta({ description: "The table it points at", example: "post" }),
+      })
+      .readonly(),
+  )
+  .readonly()
+  .meta({ description: "The relations `relations()` declares, by the names queries use" });
+
 const MakeDocsInput = z
   .object({
     models: Models,
@@ -175,13 +190,7 @@ const MakeDocsInput = z
       .readonly()
       .meta({ description: "The relations between them" }),
     enums: z.array(z.custom<SchemaEnum>()).readonly().meta({ description: "The enums" }),
-    relationNames: z
-      .record(z.string(), z.array(z.string()).readonly())
-      .readonly()
-      .meta({
-        description: "The names `relations()` gives each table's relations, by table",
-        example: { user: ["posts"] },
-      }),
+    relationFields: RelationFields,
     dialect: Dialect.meta({ description: "The dialect the queries are written for" }),
   })
   .readonly()
@@ -230,7 +239,9 @@ export function makeDocs(input: z.infer<typeof MakeDocsInput>) {
       queries: makeQueries({
         model,
         key: keys.get(model.name) ?? [],
-        relationNames: input.relationNames[model.name] ?? [],
+        relationNames: input.relationFields
+          .filter((f) => f.table === model.name)
+          .map((f) => f.name),
         enums,
         dialect,
       }),

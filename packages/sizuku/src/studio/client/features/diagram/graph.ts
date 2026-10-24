@@ -3,7 +3,7 @@ import type { Edge } from "@xyflow/react";
 import { MODEL_HANDLE } from "../../../../constants/index.js";
 import { edgeCaption } from "../../../../diagram/caption-text.js";
 import type { Cardinality, LayoutPositions } from "../../../../types/index.js";
-import type { CanvasSchema, DiagramNodeType } from "./types.js";
+import type { CanvasSchema, DiagramNodeType, ModelHighlight, SchemaHighlight } from "./types.js";
 import { diagramFields } from "./layout.js";
 
 export function sourceHandle(field: string) {
@@ -19,16 +19,27 @@ export function loopTargetHandle(field: string) {
   return `${field}-loop`;
 }
 
+/** What the card of a table shows of a query: nothing while none is drawn, its part otherwise. */
+export function highlightOf(
+  touched: SchemaHighlight | null,
+  model: { readonly name: string },
+): ModelHighlight | null {
+  if (touched === null) return null;
+  const used = touched.get(model.name);
+  return used === undefined ? { dim: true, used: new Set() } : { dim: false, used };
+}
+
 export function buildNodes(
   schema: CanvasSchema,
   positions: LayoutPositions,
+  touched: SchemaHighlight | null = null,
 ): readonly DiagramNodeType[] {
   return [
     ...schema.models.map<DiagramNodeType>((model) => ({
       id: model.name,
       type: "model",
       position: positions[model.name] ?? { x: 0, y: 0 },
-      data: { model, fields: diagramFields(model) },
+      data: { model, fields: diagramFields(model), highlight: highlightOf(touched, model) },
     })),
     ...schema.enums.map<DiagramNodeType>((value) => ({
       id: value.name,

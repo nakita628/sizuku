@@ -46,7 +46,7 @@ describe("makeDocs", () => {
       models: [user],
       relations: [],
       enums: [],
-      relationNames: { user: ["posts"] },
+      relationFields: [{ table: "user", name: "posts", target: "post" }],
       dialect,
     });
   const queries = (dialect: "sqlite" | "mysql") =>

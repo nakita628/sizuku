@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { findSyntaxError, findTableSpans, parseQuery, readRelationNames } from "./parse.js";
+import {
+  findSyntaxError,
+  findTableSpans,
+  parseQuery,
+  readQueryNames,
+  readRelationFields,
+} from "./parse.js";
 
 const schema = `import { integer, sqliteTable } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
@@ -36,9 +42,11 @@ describe("findTableSpans", () => {
   });
 });
 
-describe("readRelationNames", () => {
-  it("names each table's relations as relations() gives them", () => {
-    expect(readRelationNames(schema)).toStrictEqual({ user: ["posts"] });
+describe("readRelationFields", () => {
+  it("names each table's relations as relations() gives them, with the table they point at", () => {
+    expect(readRelationFields(schema)).toStrictEqual([
+      { table: "user", name: "posts", target: "post" },
+    ]);
   });
 });
 
@@ -59,5 +67,29 @@ describe("parseQuery", () => {
     const { error } = parseQuery("a;\nb(");
     expect(error?.offset).toBeGreaterThanOrEqual(3);
     expect(error?.offset).toBeLessThanOrEqual(5);
+  });
+});
+
+describe("readQueryNames", () => {
+  it("reads identifiers, member accesses, db.query tables and with keys, but not property names", () => {
+    const names = readQueryNames(
+      "const rows = await db.select({ t: post.title }).from(post).where(eq(post.id, 1));\n" +
+        "db.query.user.findMany({ with: { posts: { with: { comments: true } } } })",
+    );
+    expect(names?.names).toEqual(expect.arrayContaining(["rows", "db", "post", "eq"]));
+    expect(names?.names).not.toContain("title");
+    expect(names?.names).not.toContain("t");
+    expect(names?.members).toEqual(
+      expect.arrayContaining([
+        { object: "post", property: "title" },
+        { object: "post", property: "id" },
+      ]),
+    );
+    expect(names?.queries).toStrictEqual(["user"]);
+    expect(names?.withs).toStrictEqual(["posts", "comments"]);
+  });
+
+  it("is null for code that does not parse", () => {
+    expect(readQueryNames("db.select(")).toBeNull();
   });
 });

@@ -129,6 +129,10 @@ return { added, total: await db.$count(tag) };
   before it.
 - Completion, hovers, signature help and type errors work as in the schema editor, with `db`
   typed by the schema: `db.query.` offers the tables, `post.` their columns.
+- Under the editor, the saved schema's diagram lights up the tables the code touches as you
+  type — named (`post`), through `db.query.user`, or reached by a `with` through `relations()` —
+  marks the columns it names (`post.title`), and dims the rest. Its cards are where the Schema
+  page left them.
 - A write refreshes the row counts in the sidebar. The code is kept in the browser.
 
 The query runs against the **saved** schema, in the studio's process, as Drizzle's proxy driver

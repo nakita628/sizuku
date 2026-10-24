@@ -1,6 +1,6 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { Effect, Match } from "effect";
-import type { postDrizzleRoute } from "../routes";
+import type { postDrizzleRoute, postDrizzleTouchedRoute } from "../routes";
 import * as QueryUseCase from "../usecases/query.js";
 
 /** `POST /drizzle` handler. Runs Drizzle code; what it throws comes back in the result, while code or a schema that does not parse is a 422 and a missing database or TypeScript a 503. */
@@ -75,6 +75,37 @@ export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c
               ),
             ),
           ),
+          Match.tag("FileReadError", ({ path, cause }) =>
+            Effect.logError("cannot read the schema", path, cause).pipe(
+              Effect.as(
+                c.json(
+                  {
+                    type: "/problems/internal-server-error",
+                    title: "Internal Server Error",
+                    status: 500,
+                    detail: "An unexpected error occurred.",
+                    instance: c.req.path,
+                  } as const,
+                  500,
+                  { "Content-Type": "application/problem+json" },
+                ),
+              ),
+            ),
+          ),
+          Match.exhaustive,
+        ),
+    }),
+  );
+};
+
+/** `POST /drizzle/touched` handler. The tables and columns Drizzle code touches; code that does not parse touches none. */
+export const postDrizzleTouchedRouteHandler: RouteHandler<typeof postDrizzleTouchedRoute> = (c) => {
+  const data = c.req.valid("json");
+  return Effect.runPromise(
+    Effect.matchEffect(QueryUseCase.touchedByQuery({ code: data.code }), {
+      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onFailure: (error) =>
+        Match.value(error).pipe(
           Match.tag("FileReadError", ({ path, cause }) =>
             Effect.logError("cannot read the schema", path, cause).pipe(
               Effect.as(

@@ -736,6 +736,27 @@ model QueryBody {
   code: string;
 }
 
+/** Drizzle code, written or being written, to read the tables of. */
+model TouchedBody {
+  /** The code as the editor holds it */
+  code: string;
+}
+
+/** A table Drizzle code touches. */
+model TouchedTable {
+  /** The table's exported name */
+  table: string;
+
+  /** The columns the code names on it, as `table.column` */
+  columns: string[];
+}
+
+/** The tables Drizzle code touches, for the diagram beside the editor to light up. */
+model QueryTouched {
+  /** The tables read by name, through `db.query`, or reached by a `with`; empty when the code does not parse */
+  tables: TouchedTable[];
+}
+
 /** One statement Drizzle sent to the database. */
 model ExecutedStatement {
   /** The SQL */
@@ -1128,5 +1149,17 @@ namespace DrizzleRoutes {
     | QueryResult
     | ValidationProblemResponse
     | ServiceUnavailableProblemResponse
+    | InternalServerProblemResponse;
+
+  /**
+   * The tables and columns Drizzle code touches, against the saved schema. Code or a schema that
+   * does not parse touches nothing.
+   */
+  @post
+  @route("/touched")
+  @operationId("touchedByQuery")
+  op touched(@body body: TouchedBody):
+    | QueryTouched
+    | ValidationProblemResponse
     | InternalServerProblemResponse;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { makeQueryBody, makeSchemaDialect } from "./query.js";
+import type { SchemaModel } from "../../../types/index.js";
+import { makeQueryBody, makeQueryTouched, makeSchemaDialect } from "./query.js";
 
 describe("makeQueryBody", () => {
   it("returns the last expression statement", () => {
@@ -35,5 +36,79 @@ describe("makeSchemaDialect", () => {
     ["export const x = 1;", null],
   ] as const)("%s → %s", (source, dialect) => {
     expect(makeSchemaDialect({ source })).toBe(dialect);
+  });
+});
+
+function table(name: string, fields: readonly string[]): SchemaModel {
+  return {
+    name,
+    dbName: name,
+    primaryKey: null,
+    fields: fields.map((field) => ({
+      name: field,
+      dbName: field,
+      kind: "scalar",
+      type: "text",
+      isList: false,
+      isRequired: true,
+      isId: false,
+      isForeignKey: false,
+      documentation: null,
+    })),
+  };
+}
+
+describe("makeQueryTouched", () => {
+  const models = [
+    table("user", ["id", "name"]),
+    table("post", ["id", "title", "authorId"]),
+    table("comment", ["id", "body"]),
+  ];
+  const relationFields = [
+    { table: "user", name: "posts", target: "post" },
+    { table: "post", name: "comments", target: "comment" },
+  ];
+
+  it("touches the tables read by name, with the columns named on them", () => {
+    expect(
+      makeQueryTouched({
+        models,
+        relationFields,
+        names: ["db", "post", "eq"],
+        members: [
+          { object: "post", property: "title" },
+          { object: "post", property: "title" },
+          { object: "post", property: "nope" },
+        ],
+        queries: [],
+        withs: [],
+      }),
+    ).toStrictEqual([{ table: "post", columns: ["title"] }]);
+  });
+
+  it("follows db.query and nested with through the relations", () => {
+    expect(
+      makeQueryTouched({
+        models,
+        relationFields,
+        names: ["db"],
+        members: [],
+        queries: ["user"],
+        withs: ["comments", "posts"],
+      }).map((t) => t.table),
+    ).toStrictEqual(["user", "post", "comment"]);
+  });
+
+  it("touches nothing that is not a table", () => {
+    expect(
+      makeQueryTouched({
+        models,
+        relationFields,
+        names: ["x"],
+        members: [],
+        queries: [],
+        withs: ["posts"],
+      }),
+    ).toStrictEqual([]);
   });
 });

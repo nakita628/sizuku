@@ -21,11 +21,11 @@ import { useUiStore } from "../../lib/store.js";
 import { EnumNode } from "./enum-node.js";
 import { exportPng, exportSvg } from "./export.js";
 import { GeometryContext, useDiagramGeometry } from "./geometry.js";
-import { buildEdges, buildNodes, highlightEdges } from "./graph.js";
+import { buildEdges, buildNodes, highlightEdges, highlightOf } from "./graph.js";
 import { autoLayout, positionsFor } from "./layout.js";
 import { ModelNode } from "./model-node.js";
 import { RelationEdge } from "./relation-edge.js";
-import type { CanvasSchema, DiagramNodeType } from "./types.js";
+import type { CanvasSchema, DiagramNodeType, SchemaHighlight } from "./types.js";
 
 const nodeTypes = { model: ModelNode, enum: EnumNode } as const;
 const edgeTypes = { relation: RelationEdge } as const;
@@ -93,12 +93,14 @@ function Canvas({
   schemaPath,
   focus,
   highlight,
+  touched,
   compact,
 }: {
   readonly schema: CanvasSchema;
   readonly schemaPath: string;
   readonly focus: string | null;
   readonly highlight: string | null;
+  readonly touched: SchemaHighlight | null;
   readonly compact: boolean;
 }) {
   const storageKey = layoutStorageKey(schemaPath);
@@ -117,9 +119,21 @@ function Canvas({
     if (built.current === structure) return;
     built.current = structure;
     const positions = positionsFor(schema, loadLayout(storageKey));
-    setNodes([...buildNodes(schema, positions)]);
+    setNodes([...buildNodes(schema, positions, touched)]);
     setEdges([...buildEdges(schema)]);
-  }, [schema, structure, storageKey, setNodes, setEdges]);
+  }, [schema, structure, storageKey, setNodes, setEdges, touched]);
+
+  // A query's highlight is painted onto the cards there are, so drawing one never moves a card
+  // someone dragged into place.
+  useEffect(() => {
+    setNodes((current) =>
+      current.map((node) =>
+        node.type === "model"
+          ? { ...node, data: { ...node.data, highlight: highlightOf(touched, node.data.model) } }
+          : node,
+      ),
+    );
+  }, [touched, setNodes]);
 
   useEffect(() => {
     if (focus === null || nodes.length === 0) return undefined;
@@ -267,6 +281,7 @@ export function SchemaCanvas({
   schemaPath,
   focus = null,
   highlight = null,
+  touched = null,
   compact = false,
 }: {
   readonly schema: CanvasSchema;
@@ -276,6 +291,8 @@ export function SchemaCanvas({
   readonly focus?: string | null;
   /** A table to select, as a click would. */
   readonly highlight?: string | null;
+  /** The tables and columns a query touches, to light up; the rest are dimmed. */
+  readonly touched?: SchemaHighlight | null;
   readonly compact?: boolean;
 }) {
   return (
@@ -285,6 +302,7 @@ export function SchemaCanvas({
         schemaPath={schemaPath}
         focus={focus}
         highlight={highlight}
+        touched={touched}
         compact={compact}
       />
     </ReactFlowProvider>
