@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Effect, Exit, Fiber } from "effect";
+import { Console, Effect } from "effect";
 import { DEFAULT_PORT } from "./server/constants/index.js";
 import { startStudioServer } from "./server/start.js";
 
@@ -14,66 +14,42 @@ function staticDir() {
     : path.resolve(here, "../../dist/studio");
 }
 
-function describeFailure(error: { readonly _tag: string } & Record<string, unknown>) {
-  if (error._tag === "ServerListenError") {
-    return error.code === "EADDRINUSE"
-      ? `Port ${String(error.port)} is in use. Pass --port to pick another.`
-      : `Failed to start studio: ${String(error.message)}`;
-  }
-  if (error._tag === "FileReadError")
-    return `Failed to read input: ${String(error.path)} ${String(error.cause)}`;
-  return `Failed to start studio: ${error._tag}`;
+/** What the terminal says once the studio listens: the file, the address and the database. */
+export function studioBanner(options: {
+  readonly file: string;
+  readonly url: string;
+  readonly database: {
+    readonly connected: boolean;
+    readonly url: string | null;
+    readonly error: string | null;
+  };
+}) {
+  const db = options.database.connected
+    ? `\n   Database: ${options.database.url}`
+    : options.database.error !== null
+      ? `\n   Database not connected: ${options.database.error}`
+      : "";
+  return `💧 sizuku studio is editing ${options.file} at ${options.url}${db}`;
 }
 
 /**
- * Starts the studio and resolves once it listens (or fails to). The server keeps running after
- * that, until Ctrl+C closes its scope: the database connection and the server are released then.
+ * Serves the studio until the fiber is interrupted (Ctrl+C): the database connection and the
+ * server are released then, as the scope closes.
  */
-export function startStudio(options: {
+export function runStudio(options: {
   readonly file: string;
   readonly port: number;
   readonly url: string | null;
 }) {
-  const ready = Promise.withResolvers<{ ok: true; value: string } | { ok: false; error: string }>();
-  const program = Effect.scoped(
-    startStudioServer({
+  return Effect.gen(function* () {
+    const started = yield* startStudioServer({
       schemaPath: options.file,
       port: options.port,
       staticDir: staticDir(),
       databaseUrl: options.url,
       cwd: process.cwd(),
-    }).pipe(
-      Effect.tap(({ url, database }) =>
-        Effect.sync(() => {
-          const db = database.connected
-            ? `\n   Database: ${database.url}`
-            : database.error !== null
-              ? `\n   Database not connected: ${database.error}`
-              : "";
-          ready.resolve({
-            ok: true,
-            value: `💧 sizuku studio is editing ${options.file} at ${url}${db}`,
-          });
-        }),
-      ),
-      Effect.andThen(Effect.never),
-    ),
-  );
-  const fiber = Effect.runFork(program);
-  fiber.addObserver((exit) => {
-    if (Exit.isFailure(exit)) {
-      const error = exit.cause.reasons.find((r) => r._tag === "Fail");
-      ready.resolve({
-        ok: false,
-        error:
-          error && error._tag === "Fail"
-            ? describeFailure(error.error as never)
-            : `Failed to start studio: ${String(exit.cause)}`,
-      });
-    }
-  });
-  process.once("SIGINT", () => {
-    void Effect.runPromise(Fiber.interrupt(fiber)).then(() => process.exit(0));
-  });
-  return ready.promise;
+    });
+    yield* Console.log(studioBanner({ file: options.file, ...started }));
+    return yield* Effect.never;
+  }).pipe(Effect.scoped);
 }

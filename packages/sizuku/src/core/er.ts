@@ -1,22 +1,7 @@
-import { dirname } from "node:path";
-import { mkdir, writeFile, writeFileBinary } from "../fsp/index.js";
+import { emitRaw } from "../emit/index.js";
 import { erPng, erSvg } from "../generator/index.js";
 
-export async function sizukuER(code: string[], output: string, theme?: "light" | "dark") {
-  const mkdirResult = await mkdir(dirname(output));
-  if (!mkdirResult.ok) {
-    return { ok: false, error: `❌ Failed to create directory: ${mkdirResult.error}` } as const;
-  }
-  if (output.endsWith(".png")) {
-    const writeResult = await writeFileBinary(output, Buffer.from(erPng(code, theme)));
-    if (!writeResult.ok) {
-      return { ok: false, error: `❌ Failed to write PNG: ${writeResult.error}` } as const;
-    }
-    return { ok: true, value: undefined } as const;
-  }
-  const writeResult = await writeFile(output, erSvg(code, theme));
-  if (!writeResult.ok) {
-    return { ok: false, error: `❌ Failed to write SVG: ${writeResult.error}` } as const;
-  }
-  return { ok: true, value: undefined } as const;
+/** Writes the ER diagram of a Drizzle schema to `output`: a PNG for `.png`, an SVG otherwise. */
+export function sizukuER(code: string[], output: string, theme?: "light" | "dark") {
+  return emitRaw(output.endsWith(".png") ? erPng(code, theme) : erSvg(code, theme), output);
 }

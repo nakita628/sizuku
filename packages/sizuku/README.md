@@ -28,10 +28,13 @@ sizuku <input> -o <output> [options]
 sizuku studio <input> [--port <port>] [--url <database-url>]
 ```
 
+The flags can come before or after the input. A command line that cannot run (a missing `-o`,
+an unknown format, a file that is not there) prints why and exits with code 1.
+
 ### Options
 
 ```
--o <path>                         Output file path (.ts, .md, .dbml, .svg, .png)
+-o, --output <path>               Output file path (.ts, .md, .dbml, .svg, .png)
 --zod                             Generate Zod validation schema
 --valibot                         Generate Valibot validation schema
 --arktype                         Generate ArkType validation schema
@@ -41,9 +44,10 @@ sizuku studio <input> [--port <port>] [--url <database-url>]
 --no-with-comment                 Do not add JSDoc comments
 --no-with-relation                Do not generate relation schemas
 --theme <light|dark>              Colour scheme of the .svg / .png ER diagram
---port <port>                     Port for sizuku studio (default: 4983)
---url <database-url>              Database for sizuku studio (default: $DATABASE_URL)
--h, --help                        Display help message
+-p, --port <port>                 Port for sizuku studio (default: 4983)
+-u, --url <database-url>          Database for sizuku studio (default: $DATABASE_URL)
+-h, --help                        Display help message (sizuku studio --help for the studio's)
+-v, --version                     Print the version
 ```
 
 ### Quick Start

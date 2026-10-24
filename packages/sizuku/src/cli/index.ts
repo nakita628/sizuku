@@ -1,3 +1,6 @@
+import { Config, Console, Effect, Option } from "effect";
+import { Argument, CliError, Command, Flag } from "effect/cli";
+import { version } from "../../package.json" with { type: "json" };
 import {
   sizukuArktype,
   sizukuDbml,
@@ -7,171 +10,203 @@ import {
   sizukuValibot,
   sizukuZod,
 } from "../core/index.js";
-import { readFileSync } from "../fsp/index.js";
-import { DEFAULT_PORT, startStudio } from "../studio/index.js";
+import { exists, readFile } from "../file/index.js";
+import { DEFAULT_PORT } from "../studio/server/constants/index.js";
 import { stripImports } from "../utils/index.js";
 
-const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
+const COMMAND_NAME = "sizuku";
 
-Usage:
-  sizuku <input> -o <output> [options]
-  sizuku studio <input> [--port <port>] [--url <database-url>]
-                                    Edit the schema, its ER diagram, docs and data
-
-Options:
-  -o <path>                         Output file path (.ts, .md, .dbml, .svg, .png)
-  --zod                             Generate Zod validation schema
-  --valibot                         Generate Valibot validation schema
-  --arktype                         Generate ArkType validation schema
-  --effect                          Generate Effect Schema validation schema
-  --zod-version <version>           Zod variant: 'v4' | 'mini' | '@hono/zod-openapi'
-  --no-export-types                 Do not export inferred types
-  --no-with-comment                 Do not add JSDoc comments
-  --no-with-relation                Do not generate relation schemas
-  --theme <light|dark>              Colour scheme of the .svg / .png ER diagram
-  --port <port>                     Port for sizuku studio (default: 4983)
-  --url <database-url>              Database for sizuku studio (default: $DATABASE_URL)
-  -h, --help                        Display this help message`;
-
-// The value of `--name value` or `--name=value`.
-function flagValue(args: readonly string[], name: string) {
-  const index = args.findIndex((a) => a === name || a.startsWith(`${name}=`));
-  if (index === -1) return undefined;
-  return args[index].includes("=") ? args[index].split("=")[1] : args[index + 1];
+/** What an output path asks for, by its extension; null for one sizuku does not write. */
+export function outputKind(output: string) {
+  if (output.endsWith(".dbml")) return "dbml" as const;
+  if (output.endsWith(".png") || output.endsWith(".svg")) return "diagram" as const;
+  if (output.endsWith(".md")) return "mermaid" as const;
+  if (output.endsWith(".ts")) return "typescript" as const;
+  return null;
 }
 
-function parseFlags(args: readonly string[]) {
-  const ZOD_VERSIONS = ["v4", "mini", "@hono/zod-openapi"] as const;
-  const zodVersionValue = flagValue(args, "--zod-version");
+const LIBRARIES = [
+  { flag: "zod", label: "Zod" },
+  { flag: "valibot", label: "Valibot" },
+  { flag: "arktype", label: "ArkType" },
+  { flag: "effect", label: "Effect" },
+] as const;
 
-  return {
-    zod: args.includes("--zod"),
-    valibot: args.includes("--valibot"),
-    arktype: args.includes("--arktype"),
-    effect: args.includes("--effect"),
-    zodVersion: ZOD_VERSIONS.find((v) => v === zodVersionValue),
-    exportTypes: !args.includes("--no-export-types"),
-    withComment: !args.includes("--no-with-comment"),
-    withRelation: !args.includes("--no-with-relation"),
-  };
+const generateFlags = {
+  input: Argument.String("input").pipe(
+    Argument.withDescription("The Drizzle schema file to read"),
+    Argument.optional,
+  ),
+  output: Flag.String("output").pipe(
+    Flag.withAlias("o"),
+    Flag.withDescription("Output file path (.ts, .md, .dbml, .svg, .png)"),
+    Flag.withMetavar("path"),
+    Flag.optional,
+  ),
+  zod: Flag.Boolean("zod").pipe(
+    Flag.withDescription("Generate Zod validation schema"),
+    Flag.withDefault(false),
+  ),
+  valibot: Flag.Boolean("valibot").pipe(
+    Flag.withDescription("Generate Valibot validation schema"),
+    Flag.withDefault(false),
+  ),
+  arktype: Flag.Boolean("arktype").pipe(
+    Flag.withDescription("Generate ArkType validation schema"),
+    Flag.withDefault(false),
+  ),
+  effect: Flag.Boolean("effect").pipe(
+    Flag.withDescription("Generate Effect Schema validation schema"),
+    Flag.withDefault(false),
+  ),
+  zodVersion: Flag.Literals("zod-version", ["v4", "mini", "@hono/zod-openapi"]).pipe(
+    Flag.withDescription("Zod variant"),
+    Flag.withDefault("v4"),
+  ),
+  exportTypes: Flag.Boolean("export-types").pipe(
+    Flag.withDescription("Export inferred types (--no-export-types to leave them out)"),
+    Flag.withDefault(true),
+  ),
+  withComment: Flag.Boolean("with-comment").pipe(
+    Flag.withDescription("Add JSDoc comments (--no-with-comment to leave them out)"),
+    Flag.withDefault(true),
+  ),
+  withRelation: Flag.Boolean("with-relation").pipe(
+    Flag.withDescription("Generate relation schemas (--no-with-relation to leave them out)"),
+    Flag.withDefault(true),
+  ),
+  theme: Flag.Literals("theme", ["light", "dark"]).pipe(
+    Flag.withDescription("Colour scheme of the .svg / .png ER diagram"),
+    Flag.withDefault("light"),
+  ),
+};
+
+type GenerateArgs = Command.Command.Config.Infer<typeof generateFlags>;
+
+function userError(cause: string) {
+  return new CliError.UserError({ cause });
 }
 
-export async function sizuku() {
-  const args = process.argv.slice(2);
-  if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
-    return { ok: true, value: HELP_TEXT } as const;
-  }
-  if (args[0] === "studio") {
-    const file = args[1];
-    if (!file || file.startsWith("-")) {
-      return {
-        ok: false,
-        error: "Usage: sizuku studio <input> [--port <port>] [--url <database-url>]",
-      } as const;
+/** The schema's text with its imports taken out, or a UserError naming the file. */
+function readSchema(input: string) {
+  return Effect.gen(function* () {
+    if (!(yield* exists(input)))
+      return yield* userError(`Failed to read input: ${input} does not exist`);
+    const text = yield* readFile(input).pipe(
+      Effect.mapError((error) => userError(`Failed to read input: ${error.message}`)),
+    );
+    return stripImports(text);
+  });
+}
+
+/** Reads the schema and writes what the output path asks for; the line it prints names it. */
+export function generate(args: GenerateArgs) {
+  return Effect.gen(function* () {
+    // Without a schema there is nothing to do: the usage is the answer.
+    if (Option.isNone(args.input)) {
+      return yield* new CliError.ShowHelp({ commandPath: [COMMAND_NAME], errors: [] });
     }
-    const port = Number(flagValue(args, "--port") ?? DEFAULT_PORT);
-    if (!Number.isInteger(port) || port < 0 || port > 65535) {
-      return {
-        ok: false,
-        error: `--port takes a port number, not "${flagValue(args, "--port")}"`,
-      } as const;
+    const input = args.input.value;
+    if (Option.isNone(args.output)) {
+      return yield* userError("Missing -o flag. Usage: sizuku <input> -o <output>");
     }
-    const url = flagValue(args, "--url") ?? process.env.DATABASE_URL ?? null;
-    return startStudio({ file, port, url });
-  }
-  const input = args[0];
-  if (!input || input.startsWith("-")) {
-    return { ok: false, error: HELP_TEXT } as const;
-  }
-  const oIndex = args.indexOf("-o");
-  if (oIndex === -1) {
-    return { ok: false, error: "Missing -o flag. Usage: sizuku <input> -o <output>" } as const;
-  }
-  const output = args[oIndex + 1];
-  if (!output) {
-    return { ok: false, error: "Missing output file path after -o" } as const;
-  }
-  const outputType = output.endsWith(".dbml")
-    ? ("dbml" as const)
-    : output.endsWith(".png") || output.endsWith(".svg")
-      ? ("diagram" as const)
-      : output.endsWith(".md")
-        ? ("mermaid" as const)
-        : output.endsWith(".ts")
-          ? ("typescript" as const)
-          : null;
-  if (!outputType) {
-    return {
-      ok: false,
-      error: `Unsupported output format: ${output}. Supported: .dbml, .svg, .png, .md, .ts`,
-    } as const;
-  }
-  const flags = outputType === "typescript" ? parseFlags(args) : null;
-  const lib =
-    flags === null
-      ? null
-      : flags.zod
-        ? ({ name: "zod", label: "Zod" } as const)
-        : flags.valibot
-          ? ({ name: "valibot", label: "Valibot" } as const)
-          : flags.arktype
-            ? ({ name: "arktype", label: "ArkType" } as const)
-            : flags.effect
-              ? ({ name: "effect", label: "Effect" } as const)
-              : null;
-  if (outputType === "typescript" && !lib) {
-    return {
-      ok: false,
-      error: "Specify --zod, --valibot, --arktype, or --effect for .ts output",
-    } as const;
-  }
-  const contentResult = readFileSync(input);
-  if (!contentResult.ok) {
-    return { ok: false, error: `Failed to read input: ${contentResult.error}` } as const;
-  }
-  const code = stripImports(contentResult.value);
-  if (outputType === "dbml") {
-    const result = await sizukuDbml(code, output);
-    if (!result.ok) return result;
-    return { ok: true, value: `💧 Generated DBML at: ${output}` } as const;
-  }
-  if (outputType === "diagram") {
-    const theme = flagValue(args, "--theme");
-    if (theme !== undefined && theme !== "light" && theme !== "dark") {
-      return { ok: false, error: `--theme takes light or dark, not "${theme}"` } as const;
-    }
-    const result = await sizukuER(code, output, theme);
-    if (!result.ok) return result;
-    const label = output.endsWith(".png") ? "PNG" : "SVG";
-    return { ok: true, value: `💧 Generated ${label} ER diagram at: ${output}` } as const;
-  }
-  if (outputType === "mermaid") {
-    const result = await sizukuMermaidER(code, output);
-    if (!result.ok) return result;
-    return { ok: true, value: `💧 Generated Mermaid ER at: ${output}` } as const;
-  }
-  if (!lib || !flags) {
-    return { ok: false, error: "internal: missing lib/flags" } as const;
-  }
-  const result = await (() => {
-    if (lib.name === "zod") {
-      return sizukuZod(
-        code,
-        output,
-        flags.withComment,
-        flags.exportTypes,
-        flags.zodVersion,
-        flags.withRelation,
+    const output = args.output.value;
+    const kind = outputKind(output);
+    if (kind === null) {
+      return yield* userError(
+        `Unsupported output format: ${output}. Supported: .dbml, .svg, .png, .md, .ts`,
       );
     }
-    if (lib.name === "valibot") {
-      return sizukuValibot(code, output, flags.withComment, flags.exportTypes, flags.withRelation);
+    const library = LIBRARIES.find((entry) => args[entry.flag]) ?? null;
+    if (kind === "typescript" && library === null) {
+      return yield* userError("Specify --zod, --valibot, --arktype, or --effect for .ts output");
     }
-    if (lib.name === "arktype") {
-      return sizukuArktype(code, output, flags.withComment, flags.exportTypes, flags.withRelation);
-    }
-    return sizukuEffect(code, output, flags.withComment, flags.exportTypes, flags.withRelation);
-  })();
-  if (!result.ok) return result;
-  return { ok: true, value: `💧 Generated ${lib.label} schema at: ${output}` } as const;
+    const code = yield* readSchema(input);
+    const written = (() => {
+      if (kind === "dbml") return sizukuDbml(code, output);
+      if (kind === "diagram") return sizukuER(code, output, args.theme);
+      if (kind === "mermaid") return sizukuMermaidER(code, output);
+      const { withComment, exportTypes, withRelation } = args;
+      if (library?.flag === "zod") {
+        return sizukuZod(code, output, withComment, exportTypes, args.zodVersion, withRelation);
+      }
+      if (library?.flag === "valibot") {
+        return sizukuValibot(code, output, withComment, exportTypes, withRelation);
+      }
+      if (library?.flag === "arktype") {
+        return sizukuArktype(code, output, withComment, exportTypes, withRelation);
+      }
+      return sizukuEffect(code, output, withComment, exportTypes, withRelation);
+    })();
+    yield* written.pipe(
+      Effect.mapError((error) => userError(`Failed to write ${output}: ${error.message}`)),
+    );
+    const what =
+      kind === "dbml"
+        ? "DBML"
+        : kind === "mermaid"
+          ? "Mermaid ER"
+          : kind === "diagram"
+            ? `${output.endsWith(".png") ? "PNG" : "SVG"} ER diagram`
+            : `${library?.label ?? ""} schema`;
+    yield* Console.log(`💧 Generated ${what} at: ${output}`);
+  });
+}
+
+const studioFlags = {
+  input: Argument.String("input").pipe(Argument.withDescription("The Drizzle schema file to edit")),
+  port: Flag.Int("port").pipe(
+    Flag.withAlias("p"),
+    Flag.withDescription(`Port to listen on (default: ${DEFAULT_PORT})`),
+    Flag.withMetavar("port"),
+    Flag.filter(
+      (port) => port >= 1 && port <= 65_535,
+      () => "a port from 1 to 65535",
+    ),
+    Flag.withDefault(DEFAULT_PORT),
+  ),
+  url: Flag.String("url").pipe(
+    Flag.withAlias("u"),
+    Flag.withDescription("Database to browse, edit and query (default: $DATABASE_URL)"),
+    Flag.withMetavar("database-url"),
+    Flag.withFallbackConfig(Config.String("DATABASE_URL")),
+    Flag.optional,
+  ),
+};
+
+// The server pulls in Hono, the drivers and the language service, which `--help`, `--version`
+// and a rejected command line must not pay for, so it is imported when it runs.
+function studio() {
+  return Command.make("studio", studioFlags, (args) =>
+    Effect.gen(function* () {
+      const { runStudio } = yield* Effect.promise(() => import("../studio/index.js"));
+      return yield* runStudio({
+        file: args.input,
+        port: args.port,
+        url: Option.getOrNull(args.url),
+      }).pipe(
+        Effect.mapError((error) =>
+          userError(
+            error._tag === "ServerListenError"
+              ? error.code === "EADDRINUSE"
+                ? `Port ${error.port} is in use. Pass --port to pick another.`
+                : `Failed to start studio: ${error.message}`
+              : `Failed to read input: ${error.path} ${error.cause}`,
+          ),
+        ),
+      );
+    }),
+  ).pipe(Command.withDescription("Edit the schema, its ER diagram, docs and data"));
+}
+
+function cli() {
+  return Command.make(COMMAND_NAME, generateFlags, generate).pipe(
+    Command.withDescription("💧 Drizzle ORM schema tools"),
+    Command.withSubcommands([studio()]),
+  );
+}
+
+/** The `sizuku` command line, run with the arguments the `Stdio` service supplies. */
+export function sizuku() {
+  return Command.run(cli(), { version });
 }

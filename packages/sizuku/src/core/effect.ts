@@ -1,6 +1,7 @@
-import path from "node:path";
-import { effect, emit } from "../generator/index.js";
+import { emit } from "../emit/index.js";
+import { effect } from "../generator/index.js";
 
+/** Writes the Effect schemas of a Drizzle schema to `output`, formatted. */
 export function sizukuEffect(
   code: string[],
   output: string,
@@ -8,5 +9,5 @@ export function sizukuEffect(
   type?: boolean,
   relation?: boolean,
 ) {
-  return emit(effect(code, comment, type, relation), path.dirname(output), output);
+  return emit(effect(code, comment, type, relation), output);
 }

@@ -1,7 +1,15 @@
+import { NodeServices } from "@effect/platform-node";
+import { Effect } from "effect";
+import type { FileSystem } from "effect";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { sizukuArktype } from "./arktype.js";
+
+/** Runs what a core function returns, on the real file system. */
+function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
+}
 
 // Test run
 // pnpm vitest run ./src/generator/arktype/index.test.ts
@@ -56,7 +64,7 @@ describe("sizukuArktype", () => {
   });
 
   it("sizukuArktype", async () => {
-    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts");
+    await runEffect(sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts"));
     const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 
@@ -73,7 +81,7 @@ export const PostSchema = type({
   });
 
   it("sizukuArktype type true", async () => {
-    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", false, true);
+    await runEffect(sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", false, true));
     const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 
@@ -94,7 +102,7 @@ export type Post = typeof PostSchema.infer
   });
 
   it("sizukuArktype with comment", async () => {
-    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", true);
+    await runEffect(sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", true));
     const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 
@@ -132,7 +140,7 @@ export const PostSchema = type({
   });
 
   it("sizukuArktype with comment and type", async () => {
-    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", true, true);
+    await runEffect(sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", true, true));
     const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 
@@ -174,7 +182,7 @@ export type Post = typeof PostSchema.infer
   });
 
   it("sizukuArktype with relation", async () => {
-    await sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", false, false, true);
+    await runEffect(sizukuArktype(TEST_CODE, "tmp-arktype/arktype-test.ts", false, false, true));
     const result = await fsp.readFile("tmp-arktype/arktype-test.ts", "utf-8");
     const expected = `import { type } from 'arktype'
 

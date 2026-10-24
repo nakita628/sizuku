@@ -1,7 +1,15 @@
+import { NodeServices } from "@effect/platform-node";
+import { Effect } from "effect";
+import type { FileSystem } from "effect";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { sizukuZod } from "./zod.js";
+
+/** Runs what a core function returns, on the real file system. */
+function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
+}
 
 // Test run
 // pnpm vitest run ./src/generator/zod/index.test.ts
@@ -115,7 +123,7 @@ describe("sizukuZod", () => {
   });
 
   it("sizukuZod", async () => {
-    await sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts");
+    await runEffect(sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts"));
     const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import * as z from 'zod'
 
@@ -132,7 +140,7 @@ export const PostSchema = z.object({
   });
 
   it("sizukuZod comment true", async () => {
-    await sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts", true);
+    await runEffect(sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts", true));
     const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
 
     const expected = `import * as z from 'zod'
@@ -171,7 +179,7 @@ export const PostSchema = z.object({
   });
 
   it("sizukuZod type true", async () => {
-    await sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts", false, true);
+    await runEffect(sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts", false, true));
     const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import * as z from 'zod'
 
@@ -192,7 +200,7 @@ export type Post = z.infer<typeof PostSchema>
   });
 
   it("sizukuZod zod @hono/zod-openapi", async () => {
-    await sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts", false, false, "@hono/zod-openapi");
+    await runEffect(sizukuZod(TEST_CODE, "tmp-zod/zod-test.ts", false, false, "@hono/zod-openapi"));
     const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import { z } from '@hono/zod-openapi'
 
@@ -209,7 +217,7 @@ export const PostSchema = z.object({
   });
 
   it("sizukuZod with strictObject and looseObject", async () => {
-    await sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, "tmp-zod/zod-test.ts");
+    await runEffect(sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, "tmp-zod/zod-test.ts"));
     const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import * as z from 'zod'
 
@@ -226,13 +234,8 @@ export const PostSchema = z.looseObject({
   });
 
   it("sizukuZod with strictObject and looseObject with relation", async () => {
-    await sizukuZod(
-      TEST_CODE_WITH_OBJECT_TYPES,
-      "tmp-zod/zod-test.ts",
-      false,
-      false,
-      undefined,
-      true,
+    await runEffect(
+      sizukuZod(TEST_CODE_WITH_OBJECT_TYPES, "tmp-zod/zod-test.ts", false, false, undefined, true),
     );
     const result = await fsp.readFile("tmp-zod/zod-test.ts", "utf-8");
     const expected = `import * as z from 'zod'

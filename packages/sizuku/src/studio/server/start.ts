@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import { serve } from "@hono/node-server";
 import type { ServerType } from "@hono/node-server";
@@ -7,6 +6,7 @@ import { createStudioApp } from "./app.js";
 import { STUDIO_HOSTNAME } from "./constants/index.js";
 import { FileReadError, ServerListenError } from "./errors/index.js";
 import { connectDatabase } from "./services/database.js";
+import { exists } from "./services/file.js";
 import { configureStudio } from "./services/studio.js";
 
 /** Listens on loopback until the scope closes; a port already in use fails with ServerListenError. */
@@ -43,7 +43,7 @@ export function startStudioServer(options: {
   readonly cwd: string;
 }) {
   return Effect.gen(function* () {
-    if (!fs.existsSync(options.schemaPath)) {
+    if (!(yield* exists(options.schemaPath))) {
       return yield* new FileReadError({ path: options.schemaPath, cause: "does not exist" });
     }
     const database = yield* connectDatabase({ url: options.databaseUrl, cwd: options.cwd });

@@ -1,9 +1,17 @@
+import { NodeServices } from "@effect/platform-node";
+import { Effect } from "effect";
+import type { FileSystem } from "effect";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { stripImports } from "../utils/index.js";
 import { sizukuER } from "./er.js";
+
+/** Runs what a core function returns, on the real file system. */
+function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
+}
 
 const ecSchemaContent = `import { mysqlTable, varchar, int, decimal, timestamp } from 'drizzle-orm/mysql-core'
 
@@ -40,9 +48,8 @@ describe("E2E: ER diagram generation", () => {
 
   it("generates valid PNG binary for EC schema", async () => {
     const output = path.join(tmpdir, "output", "er.png");
-    const result = await sizukuER(stripImports(ecSchemaContent), output);
+    await runEffect(sizukuER(stripImports(ecSchemaContent), output));
 
-    expect(result.ok).toBe(true);
     const buffer = fs.readFileSync(output);
     // PNG magic bytes: 89 50 4E 47 (‰PNG)
     expect([...buffer.subarray(0, 4)]).toStrictEqual([0x89, 0x50, 0x4e, 0x47]);
@@ -51,17 +58,15 @@ describe("E2E: ER diagram generation", () => {
 
   it("generates valid PNG for single-table schema", async () => {
     const output = path.join(tmpdir, "output", "config.png");
-    const result = await sizukuER(stripImports(singleTableSchema), output);
+    await runEffect(sizukuER(stripImports(singleTableSchema), output));
 
-    expect(result.ok).toBe(true);
     expect([...fs.readFileSync(output).subarray(0, 4)]).toStrictEqual([0x89, 0x50, 0x4e, 0x47]);
   });
 
   it("generates an SVG with a card per table and the relation between them", async () => {
     const output = path.join(tmpdir, "output", "er.svg");
-    const result = await sizukuER(stripImports(ecSchemaContent), output);
+    await runEffect(sizukuER(stripImports(ecSchemaContent), output));
 
-    expect(result.ok).toBe(true);
     const svg = fs.readFileSync(output, "utf-8");
     expect(svg.startsWith("<svg")).toBe(true);
     expect(svg.match(/class="model-node"/g)?.length).toBe(2);
@@ -72,7 +77,7 @@ describe("E2E: ER diagram generation", () => {
 
   it("draws the dark palette with --theme dark", async () => {
     const output = path.join(tmpdir, "er.svg");
-    await sizukuER(stripImports(singleTableSchema), output, "dark");
+    await runEffect(sizukuER(stripImports(singleTableSchema), output, "dark"));
 
     expect(fs.readFileSync(output, "utf-8")).toContain("#0f1117");
   });

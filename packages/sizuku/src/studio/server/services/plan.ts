@@ -2,6 +2,7 @@
  * The execution plans the databases print, read into one shape: the steps, parents first. What a
  * driver hands back is checked here, at the edge, so the rest of the studio reads plain data.
  */
+import { Effect } from "effect";
 import * as z from "zod";
 
 const PlanNode = z
@@ -148,12 +149,11 @@ export function makePostgresPlan(input: z.infer<typeof MakePostgresPlanInput>) {
   return { nodes, raw: JSON.stringify(document, null, 2) };
 }
 
+/** The JSON document a driver handed back as text, or null when it is not JSON. */
 function parseJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
+  return Effect.runSync(
+    Effect.try(() => JSON.parse(text) as unknown).pipe(Effect.orElseSucceed(() => null)),
+  );
 }
 
 const MysqlTable = z

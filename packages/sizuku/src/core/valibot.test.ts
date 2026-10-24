@@ -1,7 +1,15 @@
+import { NodeServices } from "@effect/platform-node";
+import { Effect } from "effect";
+import type { FileSystem } from "effect";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { sizukuValibot } from "./valibot.js";
+
+/** Runs what a core function returns, on the real file system. */
+function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
+}
 
 // Test run
 // pnpm vitest run ./src/generator/valibot/index.test.ts
@@ -115,7 +123,7 @@ describe("sizukuValibot", () => {
   });
 
   it("sizukuValibot", async () => {
-    await sizukuValibot(TEST_CODE, "tmp-valibot/valibot-test.ts");
+    await runEffect(sizukuValibot(TEST_CODE, "tmp-valibot/valibot-test.ts"));
     const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 
@@ -135,7 +143,7 @@ export const PostSchema = v.object({
   });
 
   it("sizukuValibot comment true", async () => {
-    await sizukuValibot(TEST_CODE, "tmp-valibot/valibot-test.ts", true);
+    await runEffect(sizukuValibot(TEST_CODE, "tmp-valibot/valibot-test.ts", true));
     const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 
@@ -173,7 +181,7 @@ export const PostSchema = v.object({
   });
 
   it("sizukuValibot type true", async () => {
-    await sizukuValibot(TEST_CODE, "tmp-valibot/valibot-test.ts", false, true);
+    await runEffect(sizukuValibot(TEST_CODE, "tmp-valibot/valibot-test.ts", false, true));
     const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 
@@ -197,7 +205,7 @@ export type Post = v.InferOutput<typeof PostSchema>
   });
 
   it("sizukuValibot with strictObject and looseObject", async () => {
-    await sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, "tmp-valibot/valibot-test.ts");
+    await runEffect(sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, "tmp-valibot/valibot-test.ts"));
     const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'
 
@@ -217,12 +225,8 @@ export const PostSchema = v.looseObject({
   });
 
   it("sizukuValibot with strictObject and looseObject with relation", async () => {
-    await sizukuValibot(
-      TEST_CODE_WITH_OBJECT_TYPES,
-      "tmp-valibot/valibot-test.ts",
-      false,
-      false,
-      true,
+    await runEffect(
+      sizukuValibot(TEST_CODE_WITH_OBJECT_TYPES, "tmp-valibot/valibot-test.ts", false, false, true),
     );
     const result = await fsp.readFile("tmp-valibot/valibot-test.ts", "utf-8");
     const expected = `import * as v from 'valibot'

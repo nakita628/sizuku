@@ -1,7 +1,15 @@
+import { NodeServices } from "@effect/platform-node";
+import { Effect } from "effect";
+import type { FileSystem } from "effect";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { sizukuEffect } from "./effect.js";
+
+/** Runs what a core function returns, on the real file system. */
+function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
+}
 
 // Test run
 // pnpm vitest run ./src/generator/effect/index.test.ts
@@ -56,7 +64,7 @@ describe("sizukuEffect", () => {
   });
 
   it("sizukuEffect", async () => {
-    await sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts");
+    await runEffect(sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts"));
     const result = await fsp.readFile("tmp-effect/effect-test.ts", "utf-8");
     const expected = `import { Schema } from 'effect'
 
@@ -76,7 +84,7 @@ export const PostSchema = Schema.Struct({
   });
 
   it("sizukuEffect type true", async () => {
-    await sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts", false, true);
+    await runEffect(sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts", false, true));
     const result = await fsp.readFile("tmp-effect/effect-test.ts", "utf-8");
     const expected = `import { Schema } from 'effect'
 
@@ -100,7 +108,7 @@ export type Post = typeof PostSchema.Type
   });
 
   it("sizukuEffect with relation", async () => {
-    await sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts", false, false, true);
+    await runEffect(sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts", false, false, true));
     const result = await fsp.readFile("tmp-effect/effect-test.ts", "utf-8");
     const expected = `import { Schema } from 'effect'
 
@@ -127,7 +135,7 @@ export const PostRelationsSchema = Schema.Struct({ ...PostSchema.fields, user: U
   });
 
   it("sizukuEffect type true with relation", async () => {
-    await sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts", false, true, true);
+    await runEffect(sizukuEffect(TEST_CODE, "tmp-effect/effect-test.ts", false, true, true));
     const result = await fsp.readFile("tmp-effect/effect-test.ts", "utf-8");
     const expected = `import { Schema } from 'effect'
 

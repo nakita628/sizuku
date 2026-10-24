@@ -1,18 +1,17 @@
+import { Effect, Exit } from "effect";
 import { describe, expect, it } from "vite-plus/test";
-import { fmt } from ".";
-
-// Test run
-// pnpm vitest run ./src/format/index.test.ts
+import { fmt } from "./index.js";
 
 describe("fmt", () => {
-  it.concurrent("returns formatted code", async () => {
-    const code = "const takibi = 'hono-takibi';";
-    const result = await fmt(code);
-    expect(result).toStrictEqual({ ok: true, value: `const takibi = 'hono-takibi'\n` });
+  it.concurrent("returns the code formatted in sizuku's output style", async () => {
+    expect(await Effect.runPromise(fmt("const takibi = 'hono-takibi';"))).toBe(
+      "const takibi = 'hono-takibi'\n",
+    );
   });
 
-  it.concurrent("returns error for invalid code", async () => {
-    const result = await fmt("const = ;");
-    expect(result.ok).toBe(false);
+  it.concurrent("fails with FormatError for code that does not parse", async () => {
+    const exit = await Effect.runPromiseExit(fmt("const = ;"));
+    expect(Exit.isFailure(exit)).toBe(true);
+    expect(String(exit)).toContain("FormatError");
   });
 });

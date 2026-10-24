@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { OpenAPIHono } from "@hono/zod-openapi";
@@ -6,6 +5,7 @@ import { Effect } from "effect";
 import { createMiddleware } from "hono/factory";
 import { FORBIDDEN_HOST_MESSAGE } from "./constants/index.js";
 import api from "./index.js";
+import { readText } from "./services/file.js";
 
 function isLoopbackHostname(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
@@ -45,12 +45,11 @@ function zodIssues(value: unknown) {
   if (typeof error !== "object" || error === null) return null;
   if ("issues" in error && isIssues(error.issues)) return error.issues;
   if (!("message" in error) || typeof error.message !== "string") return null;
-  try {
-    const parsed: unknown = JSON.parse(error.message);
-    return isIssues(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
+  const text = error.message;
+  const parsed = Effect.runSync(
+    Effect.try(() => JSON.parse(text) as unknown).pipe(Effect.orElseSucceed(() => null)),
+  );
+  return isIssues(parsed) ? parsed : null;
 }
 
 // The generated routes validate with @hono/zod-openapi's own answer, a 400 with the zod error;
@@ -115,13 +114,15 @@ export function missingAssetsMessage(staticDir: string) {
 export function createStudioApp(staticDir: string) {
   const app = createStudioApi();
   app.use("/*", serveStatic({ root: path.relative(process.cwd(), staticDir) || "." }));
-  app.get("/*", async (c) => {
-    if (c.req.path.startsWith("/api/")) return c.notFound();
-    try {
-      return c.html(await fs.readFile(path.join(staticDir, "index.html"), "utf-8"));
-    } catch {
-      return c.text(missingAssetsMessage(staticDir), 500);
-    }
-  });
+  app.get("/*", (c) =>
+    c.req.path.startsWith("/api/")
+      ? c.notFound()
+      : Effect.runPromise(
+          Effect.match(readText(path.join(staticDir, "index.html")), {
+            onSuccess: (html) => c.html(html),
+            onFailure: () => c.text(missingAssetsMessage(staticDir), 500),
+          }),
+        ),
+  );
   return app;
 }

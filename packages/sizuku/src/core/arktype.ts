@@ -1,6 +1,7 @@
-import path from "node:path";
-import { arktype, emit } from "../generator/index.js";
+import { emit } from "../emit/index.js";
+import { arktype } from "../generator/index.js";
 
+/** Writes the Arktype schemas of a Drizzle schema to `output`, formatted. */
 export function sizukuArktype(
   code: string[],
   output: string,
@@ -8,5 +9,5 @@ export function sizukuArktype(
   type?: boolean,
   relation?: boolean,
 ) {
-  return emit(arktype(code, comment, type, relation), path.dirname(output), output);
+  return emit(arktype(code, comment, type, relation), output);
 }

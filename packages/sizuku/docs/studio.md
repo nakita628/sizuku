@@ -9,10 +9,10 @@ npx sizuku studio db/schema.ts --url file:./dev.db
 npx sizuku studio db/schema.ts --url postgres://user:pass@localhost:5432/app --port 5000
 ```
 
-| Option                 | Default         | What it does                                                   |
-| ---------------------- | --------------- | -------------------------------------------------------------- |
-| `--url <database-url>` | `$DATABASE_URL` | The database the **Data** and **SQL** pages work on. Optional. |
-| `--port <port>`        | `4983`          | The port to listen on. The server answers on `127.0.0.1` only. |
+| Option                     | Default         | What it does                                                             |
+| -------------------------- | --------------- | ------------------------------------------------------------------------ |
+| `-u, --url <database-url>` | `$DATABASE_URL` | The database the table, **Query** and **SQL** pages work on. Optional.   |
+| `-p, --port <port>`        | `4983`          | The port to listen on (1–65535). The server answers on `127.0.0.1` only. |
 
 Stop the server with **Ctrl+C**; the database connection is closed with it.
 

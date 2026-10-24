@@ -1,3 +1,6 @@
+import { NodeServices } from "@effect/platform-node";
+import { Effect } from "effect";
+import type { FileSystem } from "effect";
 import { run } from "@softwaretechnik/dbml-renderer";
 import fs from "node:fs";
 import os from "node:os";
@@ -7,8 +10,14 @@ import { dbml } from "../generator/index.js";
 import { stripImports } from "../utils/index.js";
 import { sizukuDbml } from "./dbml.js";
 
+/** Runs what a core function returns, on the real file system. */
+function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
+}
+
 const ecSchemaContent = `import { mysqlTable, varchar, int, decimal, timestamp } from 'drizzle-orm/mysql-core'
 import { relations } from 'drizzle-orm'
+
 
 export const user = mysqlTable('user', {
   id: varchar('id', { length: 36 }).primaryKey(),
@@ -67,9 +76,8 @@ describe("E2E: DBML generation", () => {
     const output = path.join(tmpdir, "output", "schema.dbml");
 
     const code = stripImports(ecSchemaContent);
-    const result = await sizukuDbml(code, output);
+    await runEffect(sizukuDbml(code, output));
 
-    expect(result.ok).toBe(true);
     expect(fs.existsSync(output)).toBe(true);
 
     const content = fs.readFileSync(output, "utf-8");
@@ -107,9 +115,8 @@ describe("E2E: DBML generation", () => {
     const output = path.join(tmpdir, "output", "auth.dbml");
 
     const code = stripImports(pgAuthSchema);
-    const result = await sizukuDbml(code, output);
+    await runEffect(sizukuDbml(code, output));
 
-    expect(result.ok).toBe(true);
     const content = fs.readFileSync(output, "utf-8");
 
     expect(content.includes("Table account {")).toBe(true);
@@ -122,9 +129,8 @@ describe("E2E: DBML generation", () => {
     const output = path.join(tmpdir, "output", "config.dbml");
 
     const code = stripImports(singleTableSchema);
-    const result = await sizukuDbml(code, output);
+    await runEffect(sizukuDbml(code, output));
 
-    expect(result.ok).toBe(true);
     const content = fs.readFileSync(output, "utf-8");
 
     expect(content.includes("Table config {")).toBe(true);

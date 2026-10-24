@@ -1,11 +1,21 @@
+import path from "node:path";
+import { Effect } from "effect";
+import { makeDirectory, writeFile } from "../file/index.js";
 import { fmt } from "../format/index.js";
-import { mkdir, writeFile } from "../fsp/index.js";
 
-export async function emit(code: string, dir: string, output: string) {
-  const [fmtResult, mkdirResult] = await Promise.all([fmt(code), mkdir(dir)]);
-  if (!fmtResult.ok) return { ok: false, error: fmtResult.error } as const;
-  if (!mkdirResult.ok) return { ok: false, error: mkdirResult.error } as const;
-  const writeResult = await writeFile(output, fmtResult.value);
-  if (!writeResult.ok) return { ok: false, error: writeResult.error } as const;
-  return { ok: true, value: undefined } as const;
+/** Formats TypeScript source and writes it, creating the directory. */
+export function emit(code: string, output: string) {
+  return Effect.gen(function* () {
+    const formatted = yield* fmt(code);
+    yield* makeDirectory(path.dirname(output));
+    yield* writeFile(output, formatted);
+  });
+}
+
+/** Writes text or bytes as they are, creating the directory. */
+export function emitRaw(data: string | Uint8Array, output: string) {
+  return Effect.gen(function* () {
+    yield* makeDirectory(path.dirname(output));
+    yield* writeFile(output, data);
+  });
 }
