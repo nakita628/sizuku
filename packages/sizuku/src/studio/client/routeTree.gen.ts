@@ -83,10 +83,32 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/docs" | "/query" | "/schema" | "/sql" | "/enums/$name" | "/tables/$name";
+  fullPaths:
+    | "/"
+    | "/docs"
+    | "/query"
+    | "/schema"
+    | "/sql"
+    | "/enums/$name"
+    | "/tables/$name";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/docs" | "/query" | "/schema" | "/sql" | "/enums/$name" | "/tables/$name";
-  id: "__root__" | "/" | "/docs" | "/query" | "/schema" | "/sql" | "/enums/$name" | "/tables/$name";
+  to:
+    | "/"
+    | "/docs"
+    | "/query"
+    | "/schema"
+    | "/sql"
+    | "/enums/$name"
+    | "/tables/$name";
+  id:
+    | "__root__"
+    | "/"
+    | "/docs"
+    | "/query"
+    | "/schema"
+    | "/sql"
+    | "/enums/$name"
+    | "/tables/$name";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
