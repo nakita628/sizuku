@@ -770,9 +770,9 @@ export const DocRelationSchema = z
 
 export const DocQuerySchema = z
   .object({
-    name: z
-      .string()
-      .openapi({ description: "What it does, as a title: `Find by key`, `Insert`, ..." }),
+    name: z.string().openapi({
+      description: "What it does, as a title: `Select`, `Count`, `Find many`, `With relations`",
+    }),
     description: z.string().openapi({ description: "A sentence about it" }),
     code: z.string().openapi({ description: "The code, as the Query page runs it" }),
   })

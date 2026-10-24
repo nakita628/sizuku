@@ -3563,11 +3563,11 @@ A Drizzle query to try against a table, for the docs.
 
 ### Properties
 
-| Name        | Type   | Required | Restrictions | Description                                            |
-| ----------- | ------ | -------- | ------------ | ------------------------------------------------------ |
-| name        | string | true     | none         | What it does, as a title: `Find by key`, `Insert`, ... |
-| description | string | true     | none         | A sentence about it                                    |
-| code        | string | true     | none         | The code, as the Query page runs it                    |
+| Name        | Type   | Required | Restrictions | Description                                                                |
+| ----------- | ------ | -------- | ------------ | -------------------------------------------------------------------------- |
+| name        | string | true     | none         | What it does, as a title: `Select`, `Count`, `Find many`, `With relations` |
+| description | string | true     | none         | A sentence about it                                                        |
+| code        | string | true     | none         | The code, as the Query page runs it                                        |
 
 <h2 id="tocS_DocTable">DocTable</h2>
 <!-- backwards compatibility -->

@@ -1,12 +1,5 @@
 import * as z from "zod";
-import type {
-  Cardinality,
-  SchemaEnum,
-  SchemaField,
-  SchemaModel,
-  SchemaRelation,
-} from "../../../types/index.js";
-import { Dialect } from "./sql.js";
+import type { Cardinality, SchemaEnum, SchemaModel, SchemaRelation } from "../../../types/index.js";
 
 function isMany(cardinality: Cardinality) {
   return cardinality === "many" || cardinality === "zero-many";
@@ -51,115 +44,31 @@ function referencedByOf(name: string, relations: readonly SchemaRelation[]) {
     }));
 }
 
-const NUMERIC =
-  /^(int|integer|smallint|bigint|tinyint|mediumint|serial|smallserial|bigserial|real|double|doublePrecision|float|numeric|decimal)$/u;
-const DATES = /^(timestamp|date|datetime|time)$/u;
-const GENERATED =
-  /^\.(?:default|defaultNow|defaultRandom|\$defaultFn|\$default|generatedAlwaysAs)\(/u;
-
-/** A value of the column's type to put in an example: a number, a date, an enum's first value, text. */
-function sampleValue(field: SchemaField, enums: readonly SchemaEnum[]) {
-  if (field.kind === "enum") {
-    const first = enums.find((e) => e.name === field.type)?.values[0]?.name;
-    return JSON.stringify(first ?? "value");
-  }
-  const value = NUMERIC.test(field.type)
-    ? "1"
-    : field.type === "boolean"
-      ? "true"
-      : DATES.test(field.type)
-        ? "new Date()"
-        : field.type === "json" || field.type === "jsonb"
-          ? "{}"
-          : JSON.stringify(field.name);
-  return field.isList ? `[${value}]` : value;
-}
-
-/** The columns a row needs a value for: not null, with no default, and not a numeric key the database counts up. */
-function requiredFields(model: SchemaModel) {
-  const key = new Set(model.primaryKey ?? []);
-  return model.fields.filter(
-    (field) =>
-      field.isRequired &&
-      !(field.attributes ?? []).some((attribute) => GENERATED.test(attribute)) &&
-      !((field.isId || key.has(field.name)) && NUMERIC.test(field.type) && !field.isForeignKey),
-  );
-}
-
 /**
- * Drizzle queries to start from on the Query page: read a page, find a row by its key, count,
- * read with its relations, and insert, update and delete one. Every one runs as written.
+ * Drizzle queries to start from on the Query page, written with nothing to fill in: read the
+ * rows, count them, and read them through the relational API, with their relations when the
+ * table has some. Every one runs as written.
  */
 function makeQueries(input: {
   readonly model: SchemaModel;
-  readonly key: readonly string[];
   readonly relationNames: readonly string[];
-  readonly enums: readonly SchemaEnum[];
-  readonly dialect: Dialect;
 }) {
-  const { model, key, enums } = input;
-  const t = model.name;
-  const field = (name: string) => model.fields.find((f) => f.name === name);
-  const condition = (() => {
-    const parts = key.flatMap((name) => {
-      const f = field(name);
-      return f ? [`eq(${t}.${name}, ${sampleValue(f, enums)})`] : [];
-    });
-    return parts.length === 1 ? parts[0] : `and(${parts.join(", ")})`;
-  })();
-  const values = requiredFields(model).map((f) => `    ${f.name}: ${sampleValue(f, enums)},`);
-  const returning = input.dialect === "mysql" ? "" : ".returning()";
-  const changeable = model.fields.find((f) => !key.includes(f.name) && !f.isForeignKey);
+  const t = input.model.name;
   return [
-    {
-      name: "List",
-      description: `The first ten rows of ${t}.`,
-      code: `db.select().from(${t}).limit(10)`,
-    },
-    ...(condition === undefined
-      ? []
-      : [
-          {
-            name: "Find by key",
-            description: `One row of ${t}, found by ${key.join(" and ")}.`,
-            code: `db.select().from(${t}).where(${condition})`,
-          },
-        ]),
+    { name: "Select", description: `Every row of ${t}.`, code: `db.select().from(${t})` },
     { name: "Count", description: `How many rows ${t} has.`, code: `db.$count(${t})` },
+    {
+      name: "Find many",
+      description: `The rows of ${t}, through the relational query API.`,
+      code: `db.query.${t}.findMany()`,
+    },
     ...(input.relationNames.length === 0
       ? []
       : [
           {
             name: "With relations",
-            description: `Rows of ${t} with what they relate to, through the relational query API.`,
-            code: `db.query.${t}.findMany({\n  with: { ${input.relationNames.map((name) => `${name}: true`).join(", ")} },\n  limit: 10,\n})`,
-          },
-        ]),
-    {
-      name: "Insert",
-      description: `Add a row to ${t}; the columns left out take their defaults.`,
-      code: [
-        `db.insert(${t})`,
-        values.length === 0 ? "  .values({})" : ["  .values({", ...values, "  })"].join("\n"),
-        ...(returning === "" ? [] : [`  ${returning}`]),
-      ].join("\n"),
-    },
-    ...(changeable === undefined || condition === undefined
-      ? []
-      : [
-          {
-            name: "Update",
-            description: `Change ${changeable.name} of the row found by ${key.join(" and ")}.`,
-            code: `db.update(${t})\n  .set({ ${changeable.name}: ${sampleValue(changeable, enums)} })\n  .where(${condition})`,
-          },
-        ]),
-    ...(condition === undefined
-      ? []
-      : [
-          {
-            name: "Delete",
-            description: `Delete the row found by ${key.join(" and ")}.`,
-            code: `db.delete(${t}).where(${condition})`,
+            description: `The rows of ${t} with what they relate to.`,
+            code: `db.query.${t}.findMany({ with: { ${input.relationNames.map((name) => `${name}: true`).join(", ")} } })`,
           },
         ]),
   ];
@@ -191,7 +100,6 @@ const MakeDocsInput = z
       .meta({ description: "The relations between them" }),
     enums: z.array(z.custom<SchemaEnum>()).readonly().meta({ description: "The enums" }),
     relationFields: RelationFields,
-    dialect: Dialect.meta({ description: "The dialect the queries are written for" }),
   })
   .readonly()
   .meta({ description: "A parsed schema and what its queries are written against" });
@@ -202,8 +110,7 @@ const MakeDocsInput = z
  * Drizzle queries to start from for every table.
  */
 export function makeDocs(input: z.infer<typeof MakeDocsInput>) {
-  const { models, relations, enums, dialect } = input;
-  const keys = new Map(makeDbTables({ models }).map((t) => [t.name, t.key]));
+  const { models, relations, enums } = input;
   const tables = models.map((model) => {
     const primaryKey = new Set(model.primaryKey ?? []);
     return {
@@ -238,12 +145,9 @@ export function makeDocs(input: z.infer<typeof MakeDocsInput>) {
       referencedBy: referencedByOf(model.name, relations),
       queries: makeQueries({
         model,
-        key: keys.get(model.name) ?? [],
         relationNames: input.relationFields
           .filter((f) => f.table === model.name)
           .map((f) => f.name),
-        enums,
-        dialect,
       }),
     };
   });

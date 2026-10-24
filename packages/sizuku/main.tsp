@@ -370,7 +370,7 @@ model DocRelation {
 
 /** A Drizzle query to try against a table, for the docs. */
 model DocQuery {
-  /** What it does, as a title: `Find by key`, `Insert`, ... */
+  /** What it does, as a title: `Select`, `Count`, `Find many`, `With relations` */
   name: string;
 
   /** A sentence about it */

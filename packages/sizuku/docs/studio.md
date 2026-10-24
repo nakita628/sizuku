@@ -87,10 +87,11 @@ The documentation of the saved file, generated from the schema and its `///` com
   `onDelete` / `onUpdate` actions. A relation declared only with `/// @relation` is marked, since
   no foreign key backs it;
 - every `pgEnum` and its values;
-- Drizzle queries to start from for each table: **List**, **Find by key**, **Count**,
-  **With relations**, **Insert**, **Update** and **Delete**, written against its primary key (a
-  composite one with `and()`) and with a value for every column a row needs. **Open in Query**
-  puts one in the Query page's editor.
+- Drizzle queries to start from for each table, with nothing to fill in: **Select**
+  (`db.select().from(post)`), **Count** (`db.$count(post)`), **Find many**
+  (`db.query.post.findMany()`) and, for a table with relations, **With relations**
+  (`db.query.post.findMany({ with: { author: true } })`). **Open in Query** puts one in the Query
+  page's editor.
 
 ### Tables and enums
 

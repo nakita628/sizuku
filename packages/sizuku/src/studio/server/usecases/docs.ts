@@ -1,7 +1,6 @@
 import { Effect } from "effect";
 import * as DocsDomain from "../domain/docs.js";
 import * as ParseDomain from "../domain/parse.js";
-import * as QueryDomain from "../domain/query.js";
 import { readText } from "../services/file.js";
 import * as ParseService from "../services/parse.js";
 import { getStudio } from "../services/studio.js";
@@ -18,7 +17,6 @@ export function readDocs() {
     const docs = DocsDomain.makeDocs({
       ...ParseService.readSchema(source),
       relationFields: ParseService.readRelationFields(source),
-      dialect: QueryDomain.makeSchemaDialect({ source }) ?? "postgresql",
     });
     return { ...docs, parseError: null };
   });

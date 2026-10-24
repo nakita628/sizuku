@@ -218,17 +218,8 @@ throw new Error("stop here");`);
     const queries = docs.tables.flatMap(
       (table: { queries: { name: string; code: string }[] }) => table.queries,
     );
-    // The ids here come from a helper in another file, so no primary key can be read off the
-    // schema: a row is found by all its columns, and with none left to change there is no Update.
     expect(queries.map((q: { name: string }) => q.name)).toEqual(
-      expect.arrayContaining([
-        "List",
-        "Find by key",
-        "Count",
-        "With relations",
-        "Insert",
-        "Delete",
-      ]),
+      expect.arrayContaining(["Select", "Count", "Find many", "With relations"]),
     );
     for (const query of queries) {
       const out = await run(query.code);
@@ -298,33 +289,22 @@ export const userTag = sqliteTable(
   });
 
   it(
-    "finds rows by the primary key, composite keys with and(), and runs every one",
+    "offers every table, a composite-keyed one too, queries that run as written",
     { timeout: 60_000 },
     async () => {
       const docs = await (await request("/api/docs")).json();
-      const byTable = Object.fromEntries(
-        docs.tables.map((t: { name: string; queries: { name: string; code: string }[] }) => [
-          t.name,
-          Object.fromEntries(t.queries.map((q) => [q.name, q.code])),
-        ]),
-      );
-      expect(byTable.user["Find by key"]).toBe("db.select().from(user).where(eq(user.id, 1))");
-      expect(byTable.user.Insert).toBe(
-        'db.insert(user)\n  .values({\n    email: "email",\n    name: "name",\n  })\n  .returning()',
-      );
-      expect(byTable.user.Update).toBe(
-        'db.update(user)\n  .set({ email: "email" })\n  .where(eq(user.id, 1))',
-      );
-      expect(byTable.userTag["Find by key"]).toBe(
-        "db.select().from(userTag).where(and(eq(userTag.userId, 1), eq(userTag.tagId, 1)))",
-      );
-      // In order: the inserts make the rows the finds, updates and deletes then work on.
-      for (const table of ["user", "tag", "userTag"]) {
-        for (const name of ["Insert", "List", "Find by key", "Count", "Update", "Delete"]) {
-          const code = byTable[table][name];
-          if (code === undefined) continue;
+      for (const table of docs.tables as {
+        name: string;
+        queries: { name: string; code: string }[];
+      }[]) {
+        expect(table.queries.map((q) => q.name)).toStrictEqual(["Select", "Count", "Find many"]);
+        for (const { name, code } of table.queries) {
           const out = await (await request("/api/drizzle", { code })).json();
-          expect({ table, name, error: out.error }).toStrictEqual({ table, name, error: null });
+          expect({ table: table.name, name, error: out.error }).toStrictEqual({
+            table: table.name,
+            name,
+            error: null,
+          });
         }
       }
     },

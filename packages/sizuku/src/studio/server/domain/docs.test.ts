@@ -41,30 +41,26 @@ describe("makeDbTables", () => {
 });
 
 describe("makeDocs", () => {
-  const docs = (dialect: "sqlite" | "mysql") =>
-    makeDocs({
-      models: [user],
-      relations: [],
-      enums: [],
-      relationFields: [{ table: "user", name: "posts", target: "post" }],
-      dialect,
-    });
-  const queries = (dialect: "sqlite" | "mysql") =>
-    Object.fromEntries(docs(dialect).tables[0]?.queries.map((q) => [q.name, q.code]) ?? []);
+  const queries = (relationNames: readonly string[]) =>
+    Object.fromEntries(
+      makeDocs({
+        models: [user],
+        relations: [],
+        enums: [],
+        relationFields: relationNames.map((name) => ({ table: "user", name, target: "post" })),
+      }).tables[0]?.queries.map((q) => [q.name, q.code]) ?? [],
+    );
 
-  it("writes the queries against the key, with a value for each column a row needs", () => {
-    const sqlite = queries("sqlite");
-    expect(sqlite["Find by key"]).toBe("db.select().from(user).where(eq(user.id, 1))");
-    // The numeric key is counted up by the database and createdAt has a default.
-    expect(sqlite.Insert).toBe(
-      'db.insert(user)\n  .values({\n    email: "email",\n  })\n  .returning()',
-    );
-    expect(sqlite["With relations"]).toBe(
-      "db.query.user.findMany({\n  with: { posts: true },\n  limit: 10,\n})",
-    );
+  it("offers queries with nothing to fill in", () => {
+    expect(queries(["posts"])).toStrictEqual({
+      Select: "db.select().from(user)",
+      Count: "db.$count(user)",
+      "Find many": "db.query.user.findMany()",
+      "With relations": "db.query.user.findMany({ with: { posts: true } })",
+    });
   });
 
-  it("leaves out returning() for MySQL, which has none", () => {
-    expect(queries("mysql").Insert).toBe('db.insert(user)\n  .values({\n    email: "email",\n  })');
+  it("leaves out the relations query for a table without relations", () => {
+    expect(Object.keys(queries([]))).toStrictEqual(["Select", "Count", "Find many"]);
   });
 });
