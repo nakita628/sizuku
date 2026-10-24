@@ -5,12 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import {
   LuCopy,
   LuDownload,
-  LuFileCode,
+  LuFileText,
+  LuGitCompare,
   LuInfo,
   LuPlus,
   LuTrash2,
   LuX,
-  LuZap,
 } from "react-icons/lu";
 
 import { ColumnsPicker } from "../../components/columns-picker.js";
@@ -275,13 +275,21 @@ export function TableView({
             </>
           ) : (
             <>
-              <Link className={buttonVariants({ variant: "ghost" })} to="/">
-                <LuFileCode size={15} />
-                Schema
+              <Link
+                className={buttonVariants({ variant: "ghost" })}
+                to="/"
+                search={{ focus: table.name }}
+              >
+                <LuGitCompare size={15} />
+                Show in diagram
               </Link>
-              <Link className={buttonVariants({ variant: "ghost" })} to="/query">
-                <LuZap size={15} />
-                Query
+              <Link
+                className={buttonVariants({ variant: "ghost" })}
+                to="/schema"
+                search={{ focus: table.name }}
+              >
+                <LuFileText size={15} />
+                Drizzle schema
               </Link>
             </>
           )}

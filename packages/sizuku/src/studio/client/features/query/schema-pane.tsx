@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePostDiagramSchema, usePostDrizzleTouched, useSchema } from "../../hooks/index.js";
+import { usePostDrizzleTouched } from "../../hooks/index.js";
 import { SchemaCanvas } from "../diagram/canvas.js";
-import type { CanvasSchema, SchemaHighlight } from "../diagram/types.js";
+import { useSavedDiagram } from "../diagram/saved-diagram.js";
+import type { SchemaHighlight } from "../diagram/types.js";
 
 const TOUCHED_DEBOUNCE_MS = 300;
 
@@ -10,10 +11,8 @@ const TOUCHED_DEBOUNCE_MS = 300;
  * typed, with the columns it names marked, and the rest step back.
  */
 export function QuerySchemaPane({ code }: { readonly code: string }) {
-  const snapshot = useSchema().data ?? null;
-  const draw = usePostDiagramSchema();
+  const { snapshot, schema } = useSavedDiagram();
   const analyze = usePostDrizzleTouched();
-  const [schema, setSchema] = useState<CanvasSchema | null>(null);
   const [tables, setTables] = useState<
     readonly {
       readonly table: string;
@@ -21,15 +20,7 @@ export function QuerySchemaPane({ code }: { readonly code: string }) {
     }[]
   >([]);
 
-  // The saved file, drawn again when it changes on disk; one that does not parse keeps the last drawing.
   const source = snapshot?.source ?? null;
-  useEffect(() => {
-    if (source === null) return;
-    draw.mutate(
-      { json: { source } },
-      { onSuccess: (result) => result.schema !== null && setSchema(result.schema) },
-    );
-  }, [source]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A stale answer is dropped, so a slow one never paints over what is typed now.
   const seq = useRef(0);

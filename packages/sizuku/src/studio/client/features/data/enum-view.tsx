@@ -1,6 +1,6 @@
 import { buttonVariants, Table } from "@heroui/react";
 import { Link } from "@tanstack/react-router";
-import { LuFileCode } from "react-icons/lu";
+import { LuFileText } from "react-icons/lu";
 
 import { CopyButton } from "../../components/copy-button.js";
 
@@ -33,9 +33,13 @@ export function EnumView({ tables, value }: { readonly tables: Tables; readonly 
         <span className="text-lead text-muted">
           enum · {value.values.length} {value.values.length === 1 ? "value" : "values"}
         </span>
-        <Link className={buttonVariants({ variant: "ghost" })} to="/">
-          <LuFileCode size={15} />
-          Schema
+        <Link
+          className={buttonVariants({ variant: "ghost" })}
+          to="/schema"
+          search={{ focus: value.name }}
+        >
+          <LuFileText size={15} />
+          Drizzle schema
         </Link>
       </header>
       {value.description ? (

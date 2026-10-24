@@ -6,7 +6,8 @@ import { Autocomplete } from "react-aria-components";
 import {
   LuBook,
   LuColumns3,
-  LuFileCode,
+  LuFileText,
+  LuGitCompare,
   LuList,
   LuSearch,
   LuTable,
@@ -94,7 +95,11 @@ export function CommandPalette() {
   }, [openPalette]);
 
   const entries = useMemo<readonly Entry[]>(() => {
-    const page = (to: "/" | "/docs" | "/query" | "/sql", label: string, icon: ReactNode) => ({
+    const page = (
+      to: "/" | "/schema" | "/docs" | "/query" | "/sql",
+      label: string,
+      icon: ReactNode,
+    ) => ({
       id: `page:${to}`,
       label,
       kind: "Page",
@@ -104,10 +109,11 @@ export function CommandPalette() {
       },
     });
     return [
-      page("/", "Schema", <LuFileCode />),
-      page("/docs", "Docs", <LuBook />),
-      page("/query", "Query", <LuZap />),
+      page("/", "Schema", <LuGitCompare />),
+      page("/schema", "Drizzle schema", <LuFileText />),
       page("/sql", "SQL", <LuTerminal />),
+      page("/query", "Query", <LuZap />),
+      page("/docs", "Docs", <LuBook />),
       ...(docs?.tables ?? []).map((table) => ({
         id: `table:${table.name}`,
         label: table.name,

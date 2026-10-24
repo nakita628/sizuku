@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import {
   LuBook,
   LuDroplet,
-  LuFileCode,
+  LuFileText,
+  LuGitCompare,
   LuList,
   LuMoon,
   LuPanelLeft,
@@ -32,7 +33,7 @@ function NavLink({
   icon,
   children,
 }: {
-  readonly to: "/" | "/docs" | "/query" | "/sql";
+  readonly to: "/" | "/schema" | "/docs" | "/query" | "/sql";
   readonly icon: ReactNode;
   readonly children: ReactNode;
 }) {
@@ -109,14 +110,17 @@ export function Sidebar() {
         <PaletteButton />
       </div>
       <nav className="flex flex-col gap-0.5 px-2.5 pb-3">
-        <NavLink to="/" icon={<LuFileCode />}>
+        <NavLink to="/" icon={<LuGitCompare />}>
           Schema
         </NavLink>
-        <NavLink to="/query" icon={<LuZap />}>
-          Query
+        <NavLink to="/schema" icon={<LuFileText />}>
+          Drizzle schema
         </NavLink>
         <NavLink to="/sql" icon={<LuTerminal />}>
           SQL
+        </NavLink>
+        <NavLink to="/query" icon={<LuZap />}>
+          Query
         </NavLink>
         <NavLink to="/docs" icon={<LuBook />}>
           Docs

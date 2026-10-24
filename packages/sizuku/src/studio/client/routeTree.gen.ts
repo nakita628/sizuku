@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from "./routes/__root";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as DocsRouteImport } from "./routes/docs";
 import { Route as QueryRouteImport } from "./routes/query";
+import { Route as SchemaRouteImport } from "./routes/schema";
 import { Route as SqlRouteImport } from "./routes/sql";
 import { Route as EnumsNameRouteImport } from "./routes/enums.$name";
 import { Route as TablesNameRouteImport } from "./routes/tables.$name";
@@ -29,6 +30,11 @@ const DocsRoute = DocsRouteImport.update({
 const QueryRoute = QueryRouteImport.update({
   id: "/query",
   path: "/query",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const SchemaRoute = SchemaRouteImport.update({
+  id: "/schema",
+  path: "/schema",
   getParentRoute: () => rootRouteImport,
 } as any);
 const SqlRoute = SqlRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/docs": typeof DocsRoute;
   "/query": typeof QueryRoute;
+  "/schema": typeof SchemaRoute;
   "/sql": typeof SqlRoute;
   "/enums/$name": typeof EnumsNameRoute;
   "/tables/$name": typeof TablesNameRoute;
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/docs": typeof DocsRoute;
   "/query": typeof QueryRoute;
+  "/schema": typeof SchemaRoute;
   "/sql": typeof SqlRoute;
   "/enums/$name": typeof EnumsNameRoute;
   "/tables/$name": typeof TablesNameRoute;
@@ -68,22 +76,46 @@ export interface FileRoutesById {
   "/": typeof IndexRoute;
   "/docs": typeof DocsRoute;
   "/query": typeof QueryRoute;
+  "/schema": typeof SchemaRoute;
   "/sql": typeof SqlRoute;
   "/enums/$name": typeof EnumsNameRoute;
   "/tables/$name": typeof TablesNameRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/docs" | "/query" | "/sql" | "/enums/$name" | "/tables/$name";
+  fullPaths:
+    | "/"
+    | "/docs"
+    | "/query"
+    | "/schema"
+    | "/sql"
+    | "/enums/$name"
+    | "/tables/$name";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/docs" | "/query" | "/sql" | "/enums/$name" | "/tables/$name";
-  id: "__root__" | "/" | "/docs" | "/query" | "/sql" | "/enums/$name" | "/tables/$name";
+  to:
+    | "/"
+    | "/docs"
+    | "/query"
+    | "/schema"
+    | "/sql"
+    | "/enums/$name"
+    | "/tables/$name";
+  id:
+    | "__root__"
+    | "/"
+    | "/docs"
+    | "/query"
+    | "/schema"
+    | "/sql"
+    | "/enums/$name"
+    | "/tables/$name";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   DocsRoute: typeof DocsRoute;
   QueryRoute: typeof QueryRoute;
+  SchemaRoute: typeof SchemaRoute;
   SqlRoute: typeof SqlRoute;
   EnumsNameRoute: typeof EnumsNameRoute;
   TablesNameRoute: typeof TablesNameRoute;
@@ -110,6 +142,13 @@ declare module "@tanstack/react-router" {
       path: "/query";
       fullPath: "/query";
       preLoaderRoute: typeof QueryRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/schema": {
+      id: "/schema";
+      path: "/schema";
+      fullPath: "/schema";
+      preLoaderRoute: typeof SchemaRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/sql": {
@@ -140,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
   QueryRoute: QueryRoute,
+  SchemaRoute: SchemaRoute,
   SqlRoute: SqlRoute,
   EnumsNameRoute: EnumsNameRoute,
   TablesNameRoute: TablesNameRoute,

@@ -20,11 +20,25 @@ Stop the server with **Ctrl+C**; the database connection is closed with it.
 
 ### Schema
 
+The saved schema's ER diagram across the page: a canvas of cards, one per table and enum, drawn
+with [React Flow](https://reactflow.dev/), redrawn when the file changes on disk. The header counts
+the tables, relations and enums; **Show in diagram** on a table's page fits the canvas to it.
+
+- Cards can be dragged; where you leave them is remembered in the browser for that schema file,
+  and shared with the diagrams of the other pages. **Auto layout** lays them out again. A new
+  table is placed by the layout; one that left the schema is forgotten.
+- Clicking a card selects it and picks out its relations. The arrow on a card opens the table's
+  or the enum's page.
+- **SVG** / **PNG** download the diagram as it is laid out on the canvas, in the current theme.
+- Drag the background to pan, scroll to zoom, and use the controls and the minimap in the corners.
+
+### Drizzle schema
+
 The schema file in [Monaco](https://microsoft.github.io/monaco-editor/) on the left and its ER
 diagram on the right, redrawn about a quarter of a second after you stop typing — unsaved text
-included. The diagram is a canvas of cards, one per table and enum, drawn with
-[React Flow](https://reactflow.dev/); the card of the table the cursor is in is selected, and the
-relations it takes part in are picked out.
+included. The card of the table the cursor is in is selected, and the relations it takes part in
+are picked out. A table's page (**Drizzle schema**) opens the editor on its declaration, and the
+error banner of the other pages on the line of the error.
 
 - A syntax error is underlined in the editor and named under the diagram, with its line and
   column; click it to jump there. The last diagram that parsed stays on screen meanwhile.
@@ -35,14 +49,7 @@ relations it takes part in are picked out.
   [oxfmt](https://oxc.rs/docs/guide/usage/formatter) on the server, the way `oxfmt` formats the
   project: with its `.oxfmtrc.json` (or `.oxfmtrc.jsonc`) when it has one, oxfmt's defaults when
   not. The studio has no formatter settings of its own, and never writes that file.
-- Cards can be dragged; where you leave them is remembered in the browser for that schema file.
-  **Auto layout** lays them out again. A new table is placed by the layout; one that left the
-  schema is forgotten.
-- Clicking a card selects it and picks out its relations. The arrow on a table's card opens its
-  rows on the Data page; on an enum's card, its place in the Docs.
-- **SVG** / **PNG** download the diagram as it is laid out on the canvas, in the current theme.
-- Drag the background to pan, scroll to zoom, and use the controls and the minimap in the corners.
-  The divider between the panes can be dragged, or moved with the arrow keys.
+- The divider between the panes can be dragged, or moved with the arrow keys.
 
 #### Completion and type errors
 

@@ -97,9 +97,10 @@ export function DetailsPanel({ table }: { readonly table: GridTable }) {
       </div>
       <Link
         className="inline-flex items-center gap-1 font-semibold text-accent-text hover:underline"
-        to="/"
+        to="/schema"
+        search={{ focus: table.name }}
       >
-        Open the schema <LuArrowRight size={13} />
+        Open the Drizzle schema <LuArrowRight size={13} />
       </Link>
     </aside>
   );
