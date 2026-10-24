@@ -1,6 +1,6 @@
 {
   "name": "sizuku",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Sizuku reads a Drizzle schema, with its comments as descriptions, into ER diagrams (SVG, PNG, Mermaid) and DBML, and opens it in sizuku studio: the diagram, docs, data, Drizzle queries and SQL.",
   "keywords": [
     "dbml",
