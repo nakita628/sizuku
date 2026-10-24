@@ -1,11 +1,11 @@
 import { Effect } from "effect";
 import * as DocsDomain from "../domain/docs.js";
-import * as ParseDomain from "../domain/parse.js";
 import * as SqlDomain from "../domain/sql.js";
 import type { CellValue } from "../domain/sql.js";
 import { DatabaseUnavailableError, InvalidInputError, UnknownTableError } from "../errors/index.js";
 import { NO_DATABASE_MESSAGE } from "../constants/index.js";
 import { readText } from "../services/file.js";
+import * as ParseService from "../services/parse.js";
 import { getStudio } from "../services/studio.js";
 
 type Values = Readonly<Record<string, CellValue>>;
@@ -14,8 +14,8 @@ type Values = Readonly<Record<string, CellValue>>;
 function tables() {
   return Effect.gen(function* () {
     const source = yield* readText(getStudio().schemaPath);
-    return ParseDomain.makeParseError({ source }) === null
-      ? DocsDomain.makeDbTables({ source })
+    return ParseService.findSyntaxError(source) === null
+      ? DocsDomain.makeDbTables({ models: ParseService.readSchema(source).models })
       : [];
   });
 }

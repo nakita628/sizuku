@@ -1,4 +1,4 @@
-import { diagramSchema, extractRelationSchemas } from "../../../helper/index.js";
+import * as z from "zod";
 import type {
   Cardinality,
   SchemaEnum,
@@ -6,9 +6,7 @@ import type {
   SchemaModel,
   SchemaRelation,
 } from "../../../types/index.js";
-import { stripImports } from "../../../utils/index.js";
-import { makeSchemaDialect } from "./query.js";
-import type { Dialect } from "./sql.js";
+import { Dialect } from "./sql.js";
 
 function isMany(cardinality: Cardinality) {
   return cardinality === "many" || cardinality === "zero-many";
@@ -53,10 +51,6 @@ function referencedByOf(name: string, relations: readonly SchemaRelation[]) {
     }));
 }
 
-/**
- * The documentation of a Drizzle schema: every table with its columns, keys, defaults, indexes
- * and relations in both directions, and every enum, each with the `///` description it carries.
- */
 const NUMERIC =
   /^(int|integer|smallint|bigint|tinyint|mediumint|serial|smallserial|bigserial|real|double|doublePrecision|float|numeric|decimal)$/u;
 const DATES = /^(timestamp|date|datetime|time)$/u;
@@ -171,19 +165,36 @@ function makeQueries(input: {
   ];
 }
 
-export function makeDocs(input: { readonly source: string }) {
-  const code = stripImports(input.source);
-  const { models, relations, enums } = diagramSchema(code);
-  const dialect = makeSchemaDialect({ source: input.source }) ?? "postgresql";
-  const keys = new Map(makeDbTables({ source: input.source }).map((t) => [t.name, t.key]));
-  // The names `relations()` gives a table's relations, which `db.query.*.findMany({ with })` takes.
-  const relationNames = new Map<string, readonly string[]>();
-  for (const block of extractRelationSchemas(code, "zod")) {
-    relationNames.set(block.baseName, [
-      ...(relationNames.get(block.baseName) ?? []),
-      ...block.fields.map((f) => f.name),
-    ]);
-  }
+const Models = z.array(z.custom<SchemaModel>()).readonly().meta({ description: "The tables" });
+
+const MakeDocsInput = z
+  .object({
+    models: Models,
+    relations: z
+      .array(z.custom<SchemaRelation>())
+      .readonly()
+      .meta({ description: "The relations between them" }),
+    enums: z.array(z.custom<SchemaEnum>()).readonly().meta({ description: "The enums" }),
+    relationNames: z
+      .record(z.string(), z.array(z.string()).readonly())
+      .readonly()
+      .meta({
+        description: "The names `relations()` gives each table's relations, by table",
+        example: { user: ["posts"] },
+      }),
+    dialect: Dialect.meta({ description: "The dialect the queries are written for" }),
+  })
+  .readonly()
+  .meta({ description: "A parsed schema and what its queries are written against" });
+
+/**
+ * The documentation of a Drizzle schema: every table with its columns, keys, defaults, indexes
+ * and relations in both directions, every enum, each with the `///` description it carries, and
+ * Drizzle queries to start from for every table.
+ */
+export function makeDocs(input: z.infer<typeof MakeDocsInput>) {
+  const { models, relations, enums, dialect } = input;
+  const keys = new Map(makeDbTables({ models }).map((t) => [t.name, t.key]));
   const tables = models.map((model) => {
     const primaryKey = new Set(model.primaryKey ?? []);
     return {
@@ -219,7 +230,7 @@ export function makeDocs(input: { readonly source: string }) {
       queries: makeQueries({
         model,
         key: keys.get(model.name) ?? [],
-        relationNames: relationNames.get(model.name) ?? [],
+        relationNames: input.relationNames[model.name] ?? [],
         enums,
         dialect,
       }),
@@ -236,14 +247,18 @@ export function makeDocs(input: { readonly source: string }) {
   };
 }
 
+const MakeDbTablesInput = z
+  .object({ models: Models })
+  .readonly()
+  .meta({ description: "The tables of a parsed schema" });
+
 /**
  * The tables as the data views read and write them: the database names of the table and its
  * columns, and the columns that identify a row — the primary key, else the unique columns, else
  * every column.
  */
-export function makeDbTables(input: { readonly source: string }) {
-  const { models } = diagramSchema(stripImports(input.source));
-  return models.map((model) => {
+export function makeDbTables(input: z.infer<typeof MakeDbTablesInput>) {
+  return input.models.map((model) => {
     const ids = model.primaryKey ?? model.fields.filter((f) => f.isId).map((f) => f.name);
     const unique = model.fields.filter((f) => f.isUnique).map((f) => f.name);
     const key = ids.length > 0 ? ids : unique.length > 0 ? unique : model.fields.map((f) => f.name);

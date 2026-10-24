@@ -1,6 +1,6 @@
-import { parseSync } from "oxc-parser";
-import type { Dialect } from "./sql.js";
+import * as z from "zod";
 import { makePosition } from "./parse.js";
+import { Dialect } from "./sql.js";
 
 /**
  * What drizzle-orm exports for writing queries, in scope without an import. One that the
@@ -51,8 +51,13 @@ const PROXIES = {
   mysql: { module: "drizzle-orm/mysql-proxy", type: "MySqlRemoteDatabase" },
 } as const;
 
+const MakeSchemaDialectInput = z
+  .object({ source: z.string().meta({ description: "The schema source" }) })
+  .readonly()
+  .meta({ description: "A schema source" });
+
 /** The dialect the schema is written for, read from the table builder it calls. */
-export function makeSchemaDialect(input: { readonly source: string }): Dialect | null {
+export function makeSchemaDialect(input: z.infer<typeof MakeSchemaDialectInput>): Dialect | null {
   if (/\bpgTable\s*\(/u.test(input.source)) return "postgresql";
   if (/\bmysqlTable\s*\(/u.test(input.source)) return "mysql";
   if (/\bsqliteTable\s*\(/u.test(input.source)) return "sqlite";
@@ -66,49 +71,80 @@ function scope(names: readonly string[]) {
   return { tables, operators };
 }
 
-const WRAP_START = "async function __sizuku_query() {\n";
+const SPAN = {
+  start: z.number().meta({ description: "Its first offset in the query" }),
+  end: z.number().meta({ description: "The offset just past it" }),
+} as const;
+
+const MakeQueryBodyInput = z
+  .object({
+    code: z
+      .string()
+      .meta({ description: "The query as written", example: "db.select().from(user)" }),
+    error: z
+      .object({
+        message: z.string().meta({ description: "What the parser says" }),
+        offset: z.number().meta({ description: "Where the error starts in the query" }),
+      })
+      .readonly()
+      .nullable()
+      .meta({ description: "Its first syntax error; null when it parsed" }),
+    last: z
+      .object({
+        ...SPAN,
+        expression: z
+          .object(SPAN)
+          .readonly()
+          .meta({ description: "The expression the statement is made of" }),
+      })
+      .readonly()
+      .nullable()
+      .meta({ description: "Its last statement, when that is an expression statement" }),
+  })
+  .readonly()
+  .meta({ description: "A query and what the parser found in it" });
 
 /**
  * The query as the body of an async function, its last expression statement turned into a
  * `return`, so `db.select().from(user)` gives its rows the way a REPL gives a value. A query
  * that does not parse fails with the line and column of the error in the query's own text.
  */
-export function makeQueryBody(input: { readonly code: string }) {
-  const wrapped = `${WRAP_START}${input.code}\n}`;
-  const { program, errors } = parseSync("query.ts", wrapped, { lang: "ts", sourceType: "module" });
-  const [first] = errors;
-  if (first !== undefined) {
-    const offset = Math.max(0, (first.labels[0]?.start ?? 0) - WRAP_START.length);
-    const position = makePosition({
-      source: input.code,
-      offset: Math.min(offset, input.code.length),
-    });
-    return { body: null, error: { message: first.message, ...position } } as const;
+export function makeQueryBody(input: z.infer<typeof MakeQueryBodyInput>) {
+  const { code, error, last } = input;
+  if (error !== null) {
+    const position = makePosition({ source: code, offset: error.offset });
+    return { body: null, error: { message: error.message, ...position } } as const;
   }
-  const fn = program.body[0];
-  const statements = fn?.type === "FunctionDeclaration" ? (fn.body?.body ?? []) : [];
-  const last = statements.at(-1);
-  if (last?.type !== "ExpressionStatement") return { body: input.code, error: null } as const;
-  const start = last.start - WRAP_START.length;
-  const end = last.end - WRAP_START.length;
-  const expression = wrapped.slice(last.expression.start, last.expression.end);
+  if (last === null) return { body: code, error: null } as const;
+  const expression = code.slice(last.expression.start, last.expression.end);
   return {
-    body: `${input.code.slice(0, start)}return (${expression});${input.code.slice(end)}`,
+    body: `${code.slice(0, last.start)}return (${expression});${code.slice(last.end)}`,
     error: null,
   } as const;
 }
+
+const Names = z
+  .array(z.string())
+  .readonly()
+  .meta({ description: "The names the schema exports", example: ["user", "post"] });
+
+const MakeTypePreambleInput = z
+  .object({
+    dialect: Dialect,
+    schemaImport: z
+      .string()
+      .meta({ description: "The schema as the query file imports it", example: "./schema.ts" }),
+    names: Names,
+  })
+  .readonly()
+  .meta({ description: "What a query is type-checked against" });
 
 /**
  * The lines the language service reads in front of a query: `db` typed as the schema's Drizzle
  * database, the schema's exports and the operators imported, and the query inside an async
  * function so `await` and `return` mean what they do when it runs. `suffix` closes it.
  */
-export function makeTypePreamble(input: {
-  readonly dialect: Dialect;
-  /** The schema as the query file imports it: `./schema.ts`. */
-  readonly schemaImport: string;
-  readonly names: readonly string[];
-}) {
+export function makeTypePreamble(input: z.infer<typeof MakeTypePreambleInput>) {
   const proxy = PROXIES[input.dialect];
   const { tables, operators } = scope(input.names);
   const lines = [
@@ -123,16 +159,21 @@ export function makeTypePreamble(input: {
   return { preamble: lines.join("\n"), suffix: "\n}\n" };
 }
 
+const MakeRuntimeModuleInput = z
+  .object({
+    dialect: Dialect,
+    schemaUrl: z.string().meta({ description: "The file URL the schema is loaded from" }),
+    names: Names,
+    body: z.string().meta({ description: "The query as the body of the function" }),
+  })
+  .readonly()
+  .meta({ description: "What a query runs with" });
+
 /**
  * The module a query runs as: Drizzle's proxy driver for the dialect over `callback`, which the
  * studio answers from its own connection, with the schema loaded from `schemaUrl`.
  */
-export function makeRuntimeModule(input: {
-  readonly dialect: Dialect;
-  readonly schemaUrl: string;
-  readonly names: readonly string[];
-  readonly body: string;
-}) {
+export function makeRuntimeModule(input: z.infer<typeof MakeRuntimeModuleInput>) {
   const proxy = PROXIES[input.dialect];
   const { tables, operators } = scope(input.names);
   // MySQL's relational queries need to be told the server is not PlanetScale.

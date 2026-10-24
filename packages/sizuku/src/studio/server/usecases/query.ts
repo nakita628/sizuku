@@ -3,6 +3,7 @@ import { NO_DATABASE_MESSAGE } from "../constants/index.js";
 import * as ParseDomain from "../domain/parse.js";
 import { DatabaseUnavailableError, SchemaParseError } from "../errors/index.js";
 import { readText } from "../services/file.js";
+import * as ParseService from "../services/parse.js";
 import * as QueryService from "../services/query.js";
 import { getLanguage, getStudio } from "../services/studio.js";
 import { schemaExports } from "../services/typescript.js";
@@ -19,7 +20,10 @@ export function runQuery(input: { readonly code: string }) {
     }
     const typescript = yield* getLanguage().typescript;
     const schemaSource = yield* readText(schemaPath);
-    const parseError = ParseDomain.makeParseError({ source: schemaSource });
+    const parseError = ParseDomain.makeParseError({
+      source: schemaSource,
+      error: ParseService.findSyntaxError(schemaSource),
+    });
     if (parseError !== null) return yield* new SchemaParseError(parseError);
     return yield* QueryService.runQuery({
       code: input.code,

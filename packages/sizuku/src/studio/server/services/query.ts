@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { Effect } from "effect";
 import type ts from "typescript";
 import * as QueryDomain from "../domain/query.js";
+import * as ParseService from "./parse.js";
 import type { Dialect } from "../domain/sql.js";
 import { QueryError } from "../errors/index.js";
 import type { Driver } from "./database.js";
@@ -188,7 +189,10 @@ export function runQuery(input: {
   readonly typescript: typeof ts;
 }) {
   return Effect.gen(function* () {
-    const { body, error } = QueryDomain.makeQueryBody({ code: input.code });
+    const { body, error } = QueryDomain.makeQueryBody({
+      code: input.code,
+      ...ParseService.parseQuery(input.code),
+    });
     if (error !== null) return yield* new QueryError(error);
     registerHooks(input.typescript);
     const schemaUrl = pathToFileURL(path.resolve(input.schemaPath));

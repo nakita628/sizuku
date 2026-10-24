@@ -1,12 +1,52 @@
-export type Dialect = "sqlite" | "postgresql" | "mysql";
+import * as z from "zod";
 
-/** A value as the API carries it: what JSON can hold in a cell. */
-export type CellValue = string | number | boolean | null;
+export const Dialect = z
+  .enum(["sqlite", "postgresql", "mysql"])
+  .meta({ description: "The SQL dialect a database speaks" });
+export type Dialect = z.infer<typeof Dialect>;
+
+const CellValue = z
+  .union([z.string(), z.number(), z.boolean(), z.null()])
+  .meta({ description: "A value as the API carries it: what JSON can hold in a cell" });
+export type CellValue = z.infer<typeof CellValue>;
 
 export type Statement = { readonly sql: string; readonly params: readonly unknown[] };
 
+const Values = z
+  .record(z.string(), CellValue)
+  .readonly()
+  .meta({ description: "Values by property name", example: { title: "Hello" } });
+
+const Table = z
+  .object({
+    table: z.string().meta({ description: "The database table name", example: "posts" }),
+    columns: z
+      .array(
+        z
+          .object({
+            name: z.string().meta({ description: "The property name", example: "authorId" }),
+            column: z.string().meta({ description: "The column name", example: "author_id" }),
+          })
+          .readonly(),
+      )
+      .readonly()
+      .meta({ description: "Its columns" }),
+    key: z
+      .array(z.string())
+      .readonly()
+      .meta({ description: "The properties that identify a row", example: ["id"] }),
+  })
+  .readonly()
+  .meta({ description: "A table as the data views read and write it" });
+type Table = z.infer<typeof Table>;
+
+const Url = z
+  .object({ url: z.string().meta({ description: "A connection URL", example: "file:./dev.db" }) })
+  .readonly()
+  .meta({ description: "A connection URL" });
+
 /** The dialect a connection URL speaks; null for a scheme sizuku does not know. */
-export function makeDialect(input: { readonly url: string }): Dialect | null {
+export function makeDialect(input: z.infer<typeof Url>): Dialect | null {
   const { url } = input;
   if (/^postgres(ql)?:\/\//u.test(url)) return "postgresql";
   if (/^(mysql|mariadb):\/\//u.test(url)) return "mysql";
@@ -17,16 +57,22 @@ export function makeDialect(input: { readonly url: string }): Dialect | null {
 }
 
 /** The file a SQLite URL names: `file:./dev.db` and `sqlite:./dev.db` both mean `./dev.db`. */
-export function makeSqlitePath(input: { readonly url: string }) {
+export function makeSqlitePath(input: z.infer<typeof Url>) {
   return input.url.replace(/^(file|sqlite):(\/\/)?/u, "");
 }
 
 /** The URL with its password replaced, for showing on the page. */
-export function makeRedactedUrl(input: { readonly url: string }) {
+export function makeRedactedUrl(input: z.infer<typeof Url>) {
   return input.url.replace(/(\/\/[^:/@]+:)[^@]*@/u, "$1****@");
 }
 
-export function makeIdentifier(input: { readonly dialect: Dialect; readonly name: string }) {
+const MakeIdentifierInput = z
+  .object({ dialect: Dialect, name: z.string().meta({ description: "A table or column name" }) })
+  .readonly()
+  .meta({ description: "A name to quote" });
+
+/** The name quoted as the dialect quotes identifiers. */
+export function makeIdentifier(input: z.infer<typeof MakeIdentifierInput>) {
   return input.dialect === "mysql"
     ? `\`${input.name.replaceAll("`", "``")}\``
     : `"${input.name.replaceAll('"', '""')}"`;
@@ -37,8 +83,13 @@ function placeholder(dialect: Dialect, n: number) {
   return dialect === "postgresql" ? `$${n}` : "?";
 }
 
+const MakeParamInput = z
+  .object({ dialect: Dialect, value: CellValue })
+  .readonly()
+  .meta({ description: "A value to bind" });
+
 /** A value as the driver takes it: SQLite has no boolean, so true and false go as 1 and 0. */
-export function makeParam(input: { readonly dialect: Dialect; readonly value: CellValue }) {
+export function makeParam(input: z.infer<typeof MakeParamInput>) {
   if (input.dialect === "sqlite" && typeof input.value === "boolean") return input.value ? 1 : 0;
   return input.value;
 }
@@ -56,38 +107,45 @@ export function makeCell(value: unknown): CellValue {
   return JSON.stringify(value);
 }
 
-type Table = {
-  readonly table: string;
-  readonly columns: readonly { readonly name: string; readonly column: string }[];
-  readonly key: readonly string[];
-};
-
 function columnOf(table: Table, name: string) {
   return table.columns.find((c) => c.name === name)?.column ?? null;
 }
 
+const MakeUnknownFieldsInput = z
+  .object({ table: Table, values: Values })
+  .readonly()
+  .meta({ description: "Values to write to a table" });
+
 /** The fields of `values` that the table does not have, for a 422. */
-export function makeUnknownFields(input: {
-  readonly table: Table;
-  readonly values: Readonly<Record<string, CellValue>>;
-}) {
+export function makeUnknownFields(input: z.infer<typeof MakeUnknownFieldsInput>) {
   return Object.keys(input.values).filter((name) => columnOf(input.table, name) === null);
 }
 
-export function makeCountStatement(input: { readonly dialect: Dialect; readonly table: Table }) {
+const MakeCountStatementInput = z
+  .object({ dialect: Dialect, table: Table })
+  .readonly()
+  .meta({ description: "A table to count" });
+
+/** How many rows the table has. */
+export function makeCountStatement(input: z.infer<typeof MakeCountStatementInput>) {
   return {
     sql: `SELECT COUNT(*) AS count FROM ${makeIdentifier({ dialect: input.dialect, name: input.table.table })}`,
     params: [],
   };
 }
 
+const MakeSelectStatementInput = z
+  .object({
+    dialect: Dialect,
+    table: Table,
+    skip: z.number().meta({ description: "How many rows to skip", example: 0 }),
+    take: z.number().meta({ description: "How many rows to read", example: 50 }),
+  })
+  .readonly()
+  .meta({ description: "A page of a table" });
+
 /** One page of rows, ordered by the key so that paging is stable. */
-export function makeSelectStatement(input: {
-  readonly dialect: Dialect;
-  readonly table: Table;
-  readonly skip: number;
-  readonly take: number;
-}): Statement {
+export function makeSelectStatement(input: z.infer<typeof MakeSelectStatementInput>): Statement {
   const { dialect, table } = input;
   const order = table.key
     .map((name) => columnOf(table, name))
@@ -103,11 +161,19 @@ export function makeSelectStatement(input: {
   };
 }
 
+const MakeRowInput = z
+  .object({
+    table: Table,
+    row: z
+      .record(z.string(), z.unknown())
+      .readonly()
+      .meta({ description: "A row as the driver returned it, by column name" }),
+  })
+  .readonly()
+  .meta({ description: "A row of a table" });
+
 /** A database row keyed back by property name; a column the schema does not know keeps its own. */
-export function makeRow(input: {
-  readonly table: Table;
-  readonly row: Readonly<Record<string, unknown>>;
-}) {
+export function makeRow(input: z.infer<typeof MakeRowInput>) {
   return Object.fromEntries(
     Object.entries(input.row).map(([column, value]) => [
       input.table.columns.find((c) => c.column === column)?.name ?? column,
@@ -116,11 +182,12 @@ export function makeRow(input: {
   );
 }
 
-export function makeInsertStatement(input: {
-  readonly dialect: Dialect;
-  readonly table: Table;
-  readonly values: Readonly<Record<string, CellValue>>;
-}): Statement {
+const MakeInsertStatementInput = z
+  .object({ dialect: Dialect, table: Table, values: Values })
+  .readonly()
+  .meta({ description: "A row to add; the columns left out take their defaults" });
+
+export function makeInsertStatement(input: z.infer<typeof MakeInsertStatementInput>): Statement {
   const { dialect, table } = input;
   const entries = Object.entries(input.values);
   const name = makeIdentifier({ dialect, name: table.table });
@@ -146,7 +213,7 @@ export function makeInsertStatement(input: {
 function whereClause(
   dialect: Dialect,
   table: Table,
-  where: Readonly<Record<string, CellValue>>,
+  where: z.infer<typeof Values>,
   offset: number,
 ) {
   const entries = Object.entries(where);
@@ -163,12 +230,17 @@ function whereClause(
   };
 }
 
-export function makeUpdateStatement(input: {
-  readonly dialect: Dialect;
-  readonly table: Table;
-  readonly where: Readonly<Record<string, CellValue>>;
-  readonly values: Readonly<Record<string, CellValue>>;
-}): Statement {
+const MakeUpdateStatementInput = z
+  .object({
+    dialect: Dialect,
+    table: Table,
+    where: Values.meta({ description: "The key of the row to change" }),
+    values: Values.meta({ description: "The values to set" }),
+  })
+  .readonly()
+  .meta({ description: "A change to one row" });
+
+export function makeUpdateStatement(input: z.infer<typeof MakeUpdateStatementInput>): Statement {
   const { dialect, table } = input;
   const entries = Object.entries(input.values);
   const set = entries.map(
@@ -182,11 +254,16 @@ export function makeUpdateStatement(input: {
   };
 }
 
-export function makeDeleteStatement(input: {
-  readonly dialect: Dialect;
-  readonly table: Table;
-  readonly where: Readonly<Record<string, CellValue>>;
-}): Statement {
+const MakeDeleteStatementInput = z
+  .object({
+    dialect: Dialect,
+    table: Table,
+    where: Values.meta({ description: "The key of the row to delete" }),
+  })
+  .readonly()
+  .meta({ description: "A row to delete" });
+
+export function makeDeleteStatement(input: z.infer<typeof MakeDeleteStatementInput>): Statement {
   const where = whereClause(input.dialect, input.table, input.where, 0);
   return {
     sql: `DELETE FROM ${makeIdentifier({ dialect: input.dialect, name: input.table.table })} WHERE ${where.sql}`,

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { Effect } from "effect";
 import * as ParseDomain from "../domain/parse.js";
+import * as ParseService from "../services/parse.js";
 import { readText, writeText } from "../services/file.js";
 import { getStudio } from "../services/studio.js";
 
@@ -9,7 +10,7 @@ function snapshot(schemaPath: string, source: string) {
     path: schemaPath,
     file: path.basename(schemaPath),
     source,
-    parseError: ParseDomain.makeParseError({ source }),
+    parseError: ParseDomain.makeParseError({ source, error: ParseService.findSyntaxError(source) }),
   };
 }
 
