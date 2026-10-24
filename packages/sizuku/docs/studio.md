@@ -163,6 +163,13 @@ path is resolved from the directory the studio was started in.
 When the connection fails, the studio still starts: the Schema and Docs pages work, and the
 sidebar shows why the database is not connected.
 
+## Search
+
+**Ctrl/Cmd + K** (or **Search the schema** in the sidebar) opens a palette that jumps to any
+page, table, enum or column by name. The letters only have to appear in order, so `ua` finds
+`userAccount` and `usemail` finds `user.email`; matches on word starts rank first. A table opens
+its rows, an enum and a column open their place in the docs.
+
 ## Theme
 
 The sun / moon button at the bottom of the sidebar switches between light and dark; the first

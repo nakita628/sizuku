@@ -14,6 +14,7 @@ import {
 } from "react-icons/lu";
 import { useDb, useDbCounts, useSchema } from "../../hooks/index.js";
 import { useUiStore } from "../../lib/store.js";
+import { PaletteButton } from "../palette/palette.js";
 
 const NAV = "flex items-center gap-2.5 rounded-lg px-3 py-2 text-ui";
 const NAV_ACTIVE = { className: `${NAV} bg-accent-soft font-semibold text-accent-text` } as const;
@@ -89,6 +90,9 @@ export function Sidebar() {
         >
           <LuPanelLeft />
         </Button>
+      </div>
+      <div className="px-2 pb-2">
+        <PaletteButton />
       </div>
       <nav className="flex flex-col gap-0.5 px-2">
         <NavLink to="/" icon={<LuFileCode />}>

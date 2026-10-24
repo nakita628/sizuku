@@ -3,6 +3,7 @@ import { Outlet } from "@tanstack/react-router";
 import { LuPanelLeft } from "react-icons/lu";
 import { useSchemaFileEvents } from "../../lib/events.js";
 import { useUiStore } from "../../lib/store.js";
+import { CommandPalette, PaletteButton } from "../palette/palette.js";
 import { Sidebar } from "./sidebar.js";
 
 /** The frame around every page: the sidebar and the routed page. */
@@ -28,11 +29,13 @@ export function Shell() {
           >
             <LuPanelLeft />
           </Button>
+          <PaletteButton compact />
         </div>
       )}
       <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
         <Outlet />
       </main>
+      <CommandPalette />
     </div>
   );
 }

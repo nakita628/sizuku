@@ -28,13 +28,18 @@ function initialTheme(): Theme {
 type UiStore = {
   readonly theme: Theme;
   readonly sidebarOpen: boolean;
+  readonly paletteOpen: boolean;
   readonly toggleTheme: () => void;
   readonly toggleSidebar: () => void;
+  readonly openPalette: () => void;
+  readonly closePalette: () => void;
 };
 
 export const useUiStore = create<UiStore>()((set, get) => ({
   theme: initialTheme(),
   sidebarOpen: loadString(SIDEBAR_KEY) !== "closed",
+  // The palette is a moment, not a setting: it opens on the shortcut and is gone again.
+  paletteOpen: false,
   toggleTheme: () => {
     const theme = get().theme === "dark" ? "light" : "dark";
     saveString(THEME_KEY, theme);
@@ -45,5 +50,11 @@ export const useUiStore = create<UiStore>()((set, get) => ({
     const sidebarOpen = !get().sidebarOpen;
     saveString(SIDEBAR_KEY, sidebarOpen ? "open" : "closed");
     set({ sidebarOpen });
+  },
+  openPalette: () => {
+    set({ paletteOpen: true });
+  },
+  closePalette: () => {
+    set({ paletteOpen: false });
   },
 }));
