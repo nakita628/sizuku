@@ -36,12 +36,12 @@ export const postLanguageCompleteRouteHandler: RouteHandler<typeof postLanguageC
               Effect.succeed(
                 c.json(
                   {
-                    type: "/problems/service-unavailable" as const,
-                    title: "Service Unavailable" as const,
-                    status: 503 as const,
+                    type: "/problems/service-unavailable",
+                    title: "Service Unavailable",
+                    status: 503,
                     detail: reason,
                     instance: c.req.path,
-                  },
+                  } as const,
                   503,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -75,12 +75,12 @@ export const postLanguageCompleteDetailRouteHandler: RouteHandler<
               Effect.succeed(
                 c.json(
                   {
-                    type: "/problems/service-unavailable" as const,
-                    title: "Service Unavailable" as const,
-                    status: 503 as const,
+                    type: "/problems/service-unavailable",
+                    title: "Service Unavailable",
+                    status: 503,
                     detail: reason,
                     instance: c.req.path,
-                  },
+                  } as const,
                   503,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -111,12 +111,12 @@ export const postLanguageHoverRouteHandler: RouteHandler<typeof postLanguageHove
               Effect.succeed(
                 c.json(
                   {
-                    type: "/problems/service-unavailable" as const,
-                    title: "Service Unavailable" as const,
-                    status: 503 as const,
+                    type: "/problems/service-unavailable",
+                    title: "Service Unavailable",
+                    status: 503,
                     detail: reason,
                     instance: c.req.path,
-                  },
+                  } as const,
                   503,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -149,12 +149,12 @@ export const postLanguageSignatureRouteHandler: RouteHandler<typeof postLanguage
               Effect.succeed(
                 c.json(
                   {
-                    type: "/problems/service-unavailable" as const,
-                    title: "Service Unavailable" as const,
-                    status: 503 as const,
+                    type: "/problems/service-unavailable",
+                    title: "Service Unavailable",
+                    status: 503,
                     detail: reason,
                     instance: c.req.path,
-                  },
+                  } as const,
                   503,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -183,12 +183,12 @@ export const postLanguageDiagnosticsRouteHandler: RouteHandler<
               Effect.succeed(
                 c.json(
                   {
-                    type: "/problems/service-unavailable" as const,
-                    title: "Service Unavailable" as const,
-                    status: 503 as const,
+                    type: "/problems/service-unavailable",
+                    title: "Service Unavailable",
+                    status: 503,
                     detail: reason,
                     instance: c.req.path,
-                  },
+                  } as const,
                   503,
                   { "Content-Type": "application/problem+json" },
                 ),

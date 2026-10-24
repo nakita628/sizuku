@@ -67,16 +67,16 @@ const validationProblems = createMiddleware(async (c, next) => {
   if (issues === null) return;
   c.res = c.json(
     {
-      type: "/problems/validation-failed" as const,
-      title: "Validation Failed" as const,
-      status: 422 as const,
+      type: "/problems/validation-failed",
+      title: "Validation Failed",
+      status: 422,
       detail: "The request failed validation. See `errors` for the offending fields.",
       instance: c.req.path,
       errors: issues.map((issue) => ({
         field: issue.path.map(String).join("."),
         message: issue.message,
       })),
-    },
+    } as const,
     422,
     { "Content-Type": "application/problem+json" },
   );
@@ -91,12 +91,12 @@ export function createStudioApi() {
     Effect.runSync(Effect.logError("unhandled error", error));
     return c.json(
       {
-        type: "/problems/internal-server-error" as const,
-        title: "Internal Server Error" as const,
-        status: 500 as const,
+        type: "/problems/internal-server-error",
+        title: "Internal Server Error",
+        status: 500,
         detail: "An unexpected error occurred.",
         instance: c.req.path,
-      },
+      } as const,
       500,
       { "Content-Type": "application/problem+json" },
     );
