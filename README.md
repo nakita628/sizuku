@@ -315,7 +315,8 @@ npx sizuku studio db/schema.ts --url postgres://localhost/app # pg from your pro
 
 Opens `http://127.0.0.1:4983` with five pages:
 
-- **Schema**: the file in Monaco with its ER diagram beside it as draggable cards, redrawn as you
+- **Schema**: the saved schema's ER diagram across the page, as draggable cards.
+- **Drizzle schema**: the file in Monaco with the diagram beside it, redrawn as you
   type; the table under the cursor is selected. Completion, hovers, signature help and type errors
   come from the project's TypeScript and drizzle-orm's types; syntax errors are underlined with
   their line while the last good drawing stays. Ctrl/Cmd + S saves, **Format** runs oxfmt, and
@@ -325,7 +326,9 @@ Opens `http://127.0.0.1:4983` with five pages:
 - **Query**: Drizzle against the database (`db.select().from(post)`,
   `db.query.post.findMany({ with: { author: true } })`), with completion, the result as a table
   or JSON, the SQL it sent, and a diagram that lights up the tables the code touches.
-- **Data**: each table's rows, with adding, editing and deleting a row (composite keys included).
+- **Tables and enums**: a page per table with its rows — searched, edited in place, copied,
+  exported, added and deleted (composite keys included) — and its columns, relations and
+  indexes; a page per enum with its values and the columns that hold it.
 - **SQL**: SQL read as it is typed — its data flow, the lineage and types of its columns, its
   parameters, the problems in it and its plan — and run on the same database.
 
