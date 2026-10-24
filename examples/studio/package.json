@@ -1,0 +1,19 @@
+{
+  "name": "@examples/studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "node sqlite/seed.mjs --if-missing && sizuku studio sqlite/schema.ts --url file:./sqlite/dev.db",
+    "studio:diagram": "sizuku studio db/schema.ts",
+    "seed": "node sqlite/seed.mjs",
+    "generate": "sizuku db/schema.ts -o docs/er.svg && sizuku db/schema.ts -o docs/er.png && sizuku db/schema.ts -o docs/er-dark.png --theme dark && sizuku db/schema.ts -o docs/ER.md && sizuku db/schema.ts -o docs/schema.dbml",
+    "reset": "git checkout -- db/schema.ts sqlite/schema.ts && node sqlite/seed.mjs"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "sizuku": "workspace:^"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

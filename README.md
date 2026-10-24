@@ -2,17 +2,15 @@
 
 # Sizuku
 
-**[Sizuku](https://www.npmjs.com/package/sizuku)** is a CLI tool that generates validation schemas for Zod, Valibot, ArkType, and Effect Schema, as well as ER diagrams, from [Drizzle](https://orm.drizzle.team/) schemas.
+**[Sizuku](https://www.npmjs.com/package/sizuku)** reads a [Drizzle](https://orm.drizzle.team/) schema — with the comments you already write as its descriptions — into ER diagrams and DBML, and opens it in a local studio.
 
 ## Features
 
-- 💎 Generates [Zod](https://zod.dev/) schemas from your Drizzle schema
-- 🤖 Generates [Valibot](https://valibot.dev/) schemas from your Drizzle schema
-- 🏹 Generates [ArkType](https://arktype.io/) schemas from your Drizzle schema
-- ⚡ Generates [Effect Schema](https://effect.website/docs/schema/introduction/) from your Drizzle schema
 - 📊 Creates [Mermaid](https://mermaid.js.org/) ER diagrams
 - 📝 Generates [DBML](https://dbml.dbdiagram.io/) (Database Markup Language) files
-- 🖼️ Outputs ER diagrams as **PNG** images
+- 🖼️ Draws ER diagrams as **SVG** / **PNG** images (light and dark)
+- 💬 Describes tables and columns from plain TypeScript comments (`/** … */` or `//`), nothing sizuku-specific
+- ✏️ `sizuku studio`: edit the schema in Monaco beside its live ER diagram, read its generated docs, run Drizzle queries and SQL, and browse and edit the database's rows
 
 ## Installation
 
@@ -24,220 +22,62 @@ npm install -D sizuku
 
 ```
 sizuku <input> -o <output> [options]
+sizuku studio <input> [--port <port>] [--url <database-url>]
 ```
+
+The flags can come before or after the input. A command line that cannot run (a missing `-o`,
+an unknown format, a file that is not there) prints why and exits with code 1.
 
 ### Options
 
 ```
--o <path>                         Output file path
---zod                             Generate Zod validation schema
---valibot                         Generate Valibot validation schema
---arktype                         Generate ArkType validation schema
---effect                          Generate Effect Schema validation schema
---zod-version <version>           Zod variant: 'v4' | 'mini' | '@hono/zod-openapi'
---no-export-types                 Do not export inferred types
---no-with-comment                 Do not add JSDoc comments
---no-with-relation                Do not generate relation schemas
--h, --help                        Display help message
+-o, --output <path>               Output file path (.md, .dbml, .svg, .png)
+--theme <light|dark>              Colour scheme of the .svg / .png ER diagram
+-p, --port <port>                 Port for sizuku studio (default: 4983)
+-u, --url <database-url>          Database for sizuku studio (default: $DATABASE_URL)
+-h, --help                        Display help message (sizuku studio --help for the studio's)
+-v, --version                     Print the version
 ```
 
 ### Quick Start
 
 ```sh
-# Generate Zod schema
-npx sizuku db/schema.ts -o zod/index.ts --zod
-
-# Generate Valibot schema
-npx sizuku db/schema.ts -o valibot/index.ts --valibot
-
 # Generate DBML
 npx sizuku db/schema.ts -o docs/schema.dbml
 
-# Generate ER diagram PNG
-npx sizuku db/schema.ts -o docs/er.png
+# Generate ER diagram (SVG or PNG)
+npx sizuku db/schema.ts -o docs/er.svg
+npx sizuku db/schema.ts -o docs/er.png --theme dark
 
 # Generate Mermaid ER diagram
 npx sizuku db/schema.ts -o docs/ER.md
+
+# Edit the schema, its ER diagram, docs and data in the browser
+npx sizuku studio db/schema.ts --url file:./dev.db
 ```
 
-## Schema Annotations
+## Comments
 
-Add `///` comments to your Drizzle schema fields with library-specific annotations:
+A comment written directly above a table, a column or an enum is its description — in the DBML
+notes, the Mermaid diagram, the ER diagram's cards and the studio's docs. Any TypeScript comment
+will do: a JSDoc block, a block comment, or `//` lines.
 
 ```ts
-import { relations } from "drizzle-orm";
-import { mysqlTable, varchar } from "drizzle-orm/mysql-core";
-
+/** Everyone who can sign in */
 export const user = mysqlTable("user", {
-  /// Primary key
-  /// @z.uuid()
-  /// @v.pipe(v.string(), v.uuid())
-  /// @a."string.uuid"
-  /// @e.Schema.UUID
+  /** Primary key */
   id: varchar("id", { length: 36 }).primaryKey(),
-  /// Display name
-  /// @z.string().min(1).max(50)
-  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(50))
-  /// @a."1 <= string <= 50"
-  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50))
+  // Display name
   name: varchar("name", { length: 50 }).notNull(),
 });
-
-export const post = mysqlTable("post", {
-  /// @z.uuid()
-  /// @v.pipe(v.string(), v.uuid())
-  /// @a."string.uuid"
-  /// @e.Schema.UUID
-  id: varchar("id", { length: 36 }).primaryKey(),
-  /// @z.string().min(1).max(100)
-  /// @v.pipe(v.string(), v.minLength(1), v.maxLength(100))
-  /// @a."1 <= string <= 100"
-  /// @e.Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))
-  title: varchar("title", { length: 100 }).notNull(),
-  /// @z.uuid()
-  /// @v.pipe(v.string(), v.uuid())
-  /// @a."string.uuid"
-  /// @e.Schema.UUID
-  userId: varchar("user_id", { length: 36 })
-    .notNull()
-    .references(() => user.id),
-});
-
-export const userRelations = relations(user, ({ many }) => ({
-  posts: many(post),
-}));
-
-export const postRelations = relations(post, ({ one }) => ({
-  user: one(user, {
-    fields: [post.userId],
-    references: [user.id],
-  }),
-}));
 ```
 
-Annotations are optional. Generators work without them (DBML/Mermaid don't need annotations at all).
+- The lines of a comment, or of a run of `//` lines, are joined into one description.
+- A comment that ends a line of code (`id: int(), // ...`) belongs to that line, and one
+  separated by a blank line (a file header) describes nothing.
+- Lines starting with `@` are tags, not description: `@relation` (below) is one.
 
 ## Output Examples
-
-### Zod
-
-```sh
-npx sizuku db/schema.ts -o zod/index.ts --zod
-```
-
-```ts
-import * as z from "zod";
-
-export const UserSchema = z.object({
-  /**
-   * Primary key
-   */
-  id: z.uuid(),
-  /**
-   * Display name
-   */
-  name: z.string().min(1).max(50),
-});
-
-export type User = z.infer<typeof UserSchema>;
-
-export const UserRelationsSchema = z.object({
-  ...UserSchema.shape,
-  posts: z.array(PostSchema),
-});
-
-export type UserRelations = z.infer<typeof UserRelationsSchema>;
-```
-
-### Valibot
-
-```sh
-npx sizuku db/schema.ts -o valibot/index.ts --valibot
-```
-
-```ts
-import * as v from "valibot";
-
-export const UserSchema = v.object({
-  /**
-   * Primary key
-   */
-  id: v.pipe(v.string(), v.uuid()),
-  /**
-   * Display name
-   */
-  name: v.pipe(v.string(), v.minLength(1), v.maxLength(50)),
-});
-
-export type User = v.InferOutput<typeof UserSchema>;
-
-export const UserRelationsSchema = v.object({
-  ...UserSchema.entries,
-  posts: v.array(PostSchema),
-});
-
-export type UserRelations = v.InferOutput<typeof UserRelationsSchema>;
-```
-
-### ArkType
-
-```sh
-npx sizuku db/schema.ts -o arktype/index.ts --arktype
-```
-
-```ts
-import { type } from "arktype";
-
-export const UserSchema = type({
-  /**
-   * Primary key
-   */
-  id: "string.uuid",
-  /**
-   * Display name
-   */
-  name: "1 <= string <= 50",
-});
-
-export type User = typeof UserSchema.infer;
-
-export const UserRelationsSchema = type({
-  ...UserSchema.t,
-  posts: PostSchema.array(),
-});
-
-export type UserRelations = typeof UserRelationsSchema.infer;
-```
-
-### Effect Schema
-
-```sh
-npx sizuku db/schema.ts -o effect/index.ts --effect
-```
-
-```ts
-import { Schema } from "effect";
-
-export const UserSchema = Schema.Struct({
-  /**
-   * Primary key
-   */
-  id: Schema.UUID,
-  /**
-   * Display name
-   */
-  name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(50)),
-});
-
-export type User = typeof UserSchema.Type;
-
-export const UserRelationsSchema = Schema.Struct({
-  ...UserSchema.fields,
-  posts: Schema.Array(PostSchema),
-});
-
-export type UserRelations = typeof UserRelationsSchema.Type;
-```
 
 ### DBML
 
@@ -249,6 +89,7 @@ npx sizuku db/schema.ts -o docs/schema.dbml
 Table user {
   id varchar [pk, note: 'Primary key']
   name varchar [note: 'Display name']
+  Note: 'Everyone who can sign in'
 }
 
 Table post {
@@ -280,10 +121,59 @@ erDiagram
     }
 ```
 
+### ER Diagram (SVG / PNG)
+
+```sh
+npx sizuku db/schema.ts -o docs/er.svg
+npx sizuku db/schema.ts -o docs/er.png --theme dark
+```
+
+![ER diagram](https://github.com/nakita628/sizuku/blob/main/fixtures/example/docs/er-diagram.png)
+
+Tables are laid out left to right along their relations. Each card shows its columns with
+the primary key, foreign keys, `UK` for unique columns, `?` for nullable ones, defaults
+(`.default()`, `.defaultNow()`, `$defaultFn()`, `$onUpdate()`), the comments' descriptions and the
+indexes, unique and composite key constraints of the table. `pgEnum`s get a card of their own.
+Edges use crow's-foot notation and name the relation and its `onDelete` / `onUpdate` action;
+an edge declared only by `@relation` is dashed, since nothing in the database backs it.
+
+## Studio
+
+```sh
+npx sizuku studio db/schema.ts
+npx sizuku studio db/schema.ts --url file:./dev.db          # SQLite (node:sqlite)
+npx sizuku studio db/schema.ts --url postgres://localhost/app # pg from your project
+```
+
+Opens `http://127.0.0.1:4983` with these pages:
+
+- **Schema**: the saved schema's ER diagram across the page, as draggable cards.
+- **Drizzle schema**: the file in Monaco with the diagram beside it, redrawn as you
+  type; the table under the cursor is selected. Completion, hovers, signature help and type errors
+  come from the project's TypeScript and drizzle-orm's types; syntax errors are underlined with
+  their line while the last good drawing stays. Ctrl/Cmd + S saves, **Format** runs oxfmt, and
+  the diagram downloads as SVG or PNG, laid out as on the canvas.
+- **Docs**: every table, column, key, default, index, relation (both ways) and enum, with the
+  comments' descriptions, and Drizzle queries for each table to open in the Query page.
+- **Query**: Drizzle against the database (`db.select().from(post)`,
+  `db.query.post.findMany({ with: { author: true } })`), with completion, the result as a table
+  or JSON, the SQL it sent, and a diagram that lights up the tables the code touches.
+- **Tables and enums**: a page per table with its rows — searched, edited in place, copied,
+  exported, added and deleted (composite keys included) — and its columns, relations and
+  indexes; a page per enum with its values and the columns that hold it.
+- **SQL**: SQL read as it is typed — its data flow, the lineage and types of its columns, its
+  parameters, the problems in it and its plan — and run on the same database.
+
+**Format** follows the project's `.oxfmtrc.json` when it has one. The server listens on
+`127.0.0.1` only.
+
+See [docs/studio.md](https://github.com/nakita628/sizuku/blob/main/packages/sizuku/docs/studio.md) for the full guide and
+[docs/studio-api.md](https://github.com/nakita628/sizuku/blob/main/packages/sizuku/docs/studio-api.md) for its API.
+
 ## Relation Detection
 
 Sizuku detects relations from four sources. They are reflected consistently
-across every ER output format (Mermaid, DBML, and PNG).
+across every ER output format (Mermaid, DBML, SVG and PNG).
 
 ### 1. `.references()` chain
 
@@ -294,10 +184,12 @@ userId: varchar("user_id").references(() => user.id);
 ### 2. `foreignKey()` constraint
 
 ```ts
-export const post = pgTable('post', { ... }, (t) => ({
-  fk: foreignKey({ columns: [t.userId], foreignColumns: [user.id] }),
-}))
+export const post = pgTable('post', { ... }, (t) => [
+  foreignKey({ columns: [t.userId], foreignColumns: [user.id] }),
+])
 ```
+
+The older object form, `(t) => ({ fk: foreignKey(...) })`, is read as well.
 
 ### 3. `relations()` block
 
@@ -307,14 +199,17 @@ export const postRelations = relations(post, ({ one }) => ({
 }));
 ```
 
-### 4. `/// @relation` annotation (no foreign key required)
+### 4. `@relation` tag (no foreign key required)
 
-Document a relation for the ER diagram without a Drizzle foreign key by adding a
-`/// @relation <parent>.<field> <child>.<field> <cardinality>` annotation. No
-`.references()` is needed:
+Document a relation for the ER diagram without a Drizzle foreign key by writing
+`@relation <parent>.<field> <child>.<field> <cardinality>` in a comment — a JSDoc block or a
+`//` line, anywhere in the file. No `.references()` is needed:
 
 ```ts
-/// @relation user.id post.userId one-to-many
+/**
+ * Everyone who can sign in.
+ * @relation user.id post.userId one-to-many
+ */
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

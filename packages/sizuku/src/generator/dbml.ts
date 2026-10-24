@@ -55,7 +55,10 @@ export function dbml(code: string[]) {
       const constraintStr = constraints.length > 0 ? ` [${constraints.join(", ")}]` : "";
       return `  ${field.name} ${type}${constraintStr}`;
     });
-    return [`Table ${table.name} {`, ...columns, "}"].join("\n");
+    // The comment above the table, as DBML's table note.
+    const note =
+      table.description === null ? [] : [`  Note: '${table.description.replace(/'/g, "\\'")}'`];
+    return [`Table ${table.name} {`, ...columns, ...note, "}"].join("\n");
   });
 
   const refSections = relations.map((r) => {

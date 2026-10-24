@@ -1,10 +1,23 @@
-import type { CallExpression, Expression, PropertyAssignment, SourceFile } from "ts-morph";
-import { Node, Project, SyntaxKind } from "ts-morph";
+import type { CallExpression, Expression, ObjectProperty, Program } from "oxc-parser";
+import {
+  arrowObject,
+  descriptionBefore,
+  callsIn,
+  declaratorName,
+  exportedDeclarations,
+  isArrow,
+  isCall,
+  isObject,
+  isPropertyAssignment,
+  parseSource,
+  textOf,
+  unwrapParens,
+} from "./ast.js";
 
-function baseBuilderName(expr: Expression): string {
-  if (Node.isIdentifier(expr)) return expr.getText();
-  if (Node.isCallExpression(expr) || Node.isPropertyAccessExpression(expr))
-    return baseBuilderName(expr.getExpression());
+function baseBuilderName(expr: Expression, text: string): string {
+  if (expr.type === "Identifier") return textOf(text, expr);
+  if (expr.type === "CallExpression") return baseBuilderName(expr.callee, text);
+  if (expr.type === "MemberExpression" && !expr.computed) return baseBuilderName(expr.object, text);
   return "";
 }
 
@@ -14,24 +27,9 @@ function extractKeyType(initText: string) {
   return null;
 }
 
-function findImmediateComment(code: readonly string[], lineIdx: number) {
-  return (
-    code
-      .slice(0, lineIdx)
-      .reverse()
-      .find((line) => {
-        const t = line.trim();
-        return (
-          t.startsWith("///") &&
-          !t.includes("@z.") &&
-          !t.includes("@v.") &&
-          !t.includes("@a.") &&
-          !t.includes("@e.") &&
-          !t.includes("@relation")
-        );
-      })
-      ?.replace(/^\s*\/\/\/\s*/, "") ?? ""
-  );
+// The name of a `key: value` property when the key is a plain identifier.
+function identifierKey(prop: ObjectProperty) {
+  return !prop.computed && prop.key.type === "Identifier" ? prop.key.name : null;
 }
 
 // Reads the `() => table.col` target from a `.references()` call via the AST so
@@ -39,23 +37,22 @@ function findImmediateComment(code: readonly string[], lineIdx: number) {
 // extraction — a text-based match on `.references(... )` would lose the relation
 // whenever a referential-action config is present.
 function extractReferenceInfo(initExpr: CallExpression) {
-  const referencesCall = [
-    initExpr,
-    ...initExpr.getDescendantsOfKind(SyntaxKind.CallExpression),
-  ].find((call) => {
-    const callee = call.getExpression();
-    return Node.isPropertyAccessExpression(callee) && callee.getName() === "references";
-  });
+  const referencesCall = callsIn(initExpr).find(
+    (call) =>
+      call.callee.type === "MemberExpression" &&
+      !call.callee.computed &&
+      call.callee.property.type === "Identifier" &&
+      call.callee.property.name === "references",
+  );
   if (!referencesCall) return null;
-  const [target] = referencesCall.getArguments();
-  if (!(target && Node.isArrowFunction(target))) return null;
-  const body = target.getBody();
-  if (!Node.isPropertyAccessExpression(body)) return null;
-  const table = body.getExpression();
-  if (!Node.isIdentifier(table)) return null;
+  const [target] = referencesCall.arguments;
+  if (!isArrow(target)) return null;
+  const body = target.body;
+  if (body.type !== "MemberExpression" || body.computed) return null;
+  if (body.object.type !== "Identifier" || body.property.type !== "Identifier") return null;
   return {
-    referencedTable: table.getText(),
-    referencedField: body.getName(),
+    referencedTable: body.object.name,
+    referencedField: body.property.name,
   };
 }
 
@@ -63,38 +60,35 @@ function isFieldRequired(initText: string) {
   return initText.includes(".notNull()");
 }
 
-function extractFieldInfo(prop: PropertyAssignment, code: readonly string[]) {
-  const keyNode = prop.getNameNode();
-  if (!Node.isIdentifier(keyNode)) return null;
-  const fieldName = keyNode.getText();
+function extractFieldInfo(prop: ObjectProperty, source: Parameters<typeof descriptionBefore>[0]) {
+  const { text } = source;
+  const fieldName = identifierKey(prop);
+  if (fieldName === null) return null;
 
-  const initExpr = prop.getInitializer();
-  if (!(initExpr && Node.isCallExpression(initExpr))) return null;
+  const initExpr = prop.value;
+  if (!isCall(initExpr)) return null;
 
-  const fieldType = baseBuilderName(initExpr);
-  const initText = initExpr.getText();
-  const lineIdx = prop.getStartLineNumber() - 1;
-
-  const immediateComment = findImmediateComment(code, lineIdx);
+  const fieldType = baseBuilderName(initExpr, text);
+  const initText = textOf(text, initExpr);
+  const description = descriptionBefore(source, prop.start);
   const keyType = extractKeyType(initText);
 
   return {
     name: fieldName,
     type: fieldType,
     keyType,
-    description: immediateComment || null,
+    description,
   };
 }
 
-function extractRelationFromField(prop: PropertyAssignment, tableName: string) {
-  const keyNode = prop.getNameNode();
-  if (!Node.isIdentifier(keyNode)) return null;
-  const fieldName = keyNode.getText();
+function extractRelationFromField(prop: ObjectProperty, tableName: string, text: string) {
+  const fieldName = identifierKey(prop);
+  if (fieldName === null) return null;
 
-  const initExpr = prop.getInitializer();
-  if (!(initExpr && Node.isCallExpression(initExpr))) return null;
+  const initExpr = prop.value;
+  if (!isCall(initExpr)) return null;
 
-  const initText = initExpr.getText();
+  const initText = textOf(text, initExpr);
   if (!initText.includes(".references(")) return null;
 
   const refInfo = extractReferenceInfo(initExpr);
@@ -111,25 +105,30 @@ function extractRelationFromField(prop: PropertyAssignment, tableName: string) {
   };
 }
 
+// The entries of a table's third argument: `(t) => [index(...)]` or the older
+// `(t) => ({ name: index(...) })`.
+export function constraintEntries(arg: CallExpression["arguments"][number] | undefined) {
+  if (!isArrow(arg)) return [];
+  const body = arg.body.type === "BlockStatement" ? null : unwrapParens(arg.body);
+  if (body?.type === "ArrayExpression") {
+    return body.elements.filter((e): e is Expression => e !== null && e.type !== "SpreadElement");
+  }
+  const obj = arrowObject(arg);
+  return obj ? obj.properties.filter(isPropertyAssignment).map((p) => p.value) : [];
+}
+
 // Pattern: foreignKey({ columns: [Table.field], foreignColumns: [OtherTable.field] })
-function extractRelationsFromForeignKeyConstraints(tableName: string, constraintArg: Expression) {
-  // Handle arrow function: (Table) => ({ ... })
-  if (!Node.isArrowFunction(constraintArg)) return [];
-  const body = constraintArg.getBody();
-  if (!body) return [];
-  // Handle parenthesized expression: ({ ... })
-  const objExpr = Node.isParenthesizedExpression(body) ? body.getExpression() : body;
-  if (!Node.isObjectLiteralExpression(objExpr)) return [];
+function extractRelationsFromForeignKeyConstraints(
+  tableName: string,
+  constraintArg: CallExpression["arguments"][number],
+  text: string,
+) {
+  return constraintEntries(constraintArg).flatMap((entry) => {
+    const constraintText = textOf(text, entry);
+    if (!constraintText.includes("foreignKey(")) return [];
 
-  return objExpr.getProperties().flatMap((prop) => {
-    if (!Node.isPropertyAssignment(prop)) return [];
-    const initExpr = prop.getInitializer();
-    if (!initExpr) return [];
-    const text = initExpr.getText();
-    if (!text.includes("foreignKey(")) return [];
-
-    const columnsMatch = text.match(/columns:\s*\[\s*(\w+)\.(\w+)\s*\]/);
-    const foreignColumnsMatch = text.match(/foreignColumns:\s*\[\s*(\w+)\.(\w+)\s*\]/);
+    const columnsMatch = constraintText.match(/columns:\s*\[\s*(\w+)\.(\w+)\s*\]/);
+    const foreignColumnsMatch = constraintText.match(/foreignColumns:\s*\[\s*(\w+)\.(\w+)\s*\]/);
     if (!columnsMatch || !foreignColumnsMatch) return [];
 
     return [
@@ -139,7 +138,7 @@ function extractRelationsFromForeignKeyConstraints(tableName: string, constraint
         fromField: foreignColumnsMatch[2],
         toField: columnsMatch[2],
         // For foreignKey constraints, we assume required unless explicitly nullable
-        isRequired: !text.includes(".nullable()"),
+        isRequired: !constraintText.includes(".nullable()"),
       },
     ];
   });
@@ -151,160 +150,134 @@ function isFkLikeName(name: string) {
 }
 
 // Pattern: relations(TableRef, ({ one, many }) => ({ ... }))
-function extractRelationsFromRelationBlocks(file: SourceFile) {
-  return file
-    .getVariableStatements()
-    .filter((stmt) => stmt.isExported())
-    .flatMap((stmt) => {
-      const decl = stmt.getDeclarations()[0];
-      if (!Node.isVariableDeclaration(decl)) return [];
-      const varName = decl.getName();
-      if (!varName.toLowerCase().includes("relation")) return [];
+function extractRelationsFromRelationBlocks(program: Program, text: string) {
+  return exportedDeclarations(program).flatMap(({ declarator }) => {
+    const varName = declaratorName(declarator);
+    if (varName === null || !varName.toLowerCase().includes("relation")) return [];
 
-      const init = decl.getInitializer();
-      if (!(init && Node.isCallExpression(init))) return [];
-      if (init.getExpression().getText() !== "relations") return [];
+    const init = declarator.init;
+    if (!isCall(init)) return [];
+    if (textOf(text, init.callee) !== "relations") return [];
 
-      const args = init.getArguments();
-      if (args.length < 2) return [];
+    const args = init.arguments;
+    if (args.length < 2) return [];
 
-      const tableRef = args[0];
-      const arrowFn = args[1];
-      if (!Node.isIdentifier(tableRef) || !Node.isArrowFunction(arrowFn)) return [];
-      const tableName = tableRef.getText();
+    const tableRef = args[0];
+    const arrowFn = args[1];
+    if (tableRef.type !== "Identifier" || !isArrow(arrowFn)) return [];
+    const tableName = tableRef.name;
 
-      const body = arrowFn.getBody();
-      if (!body) return [];
-      const objExpr = Node.isParenthesizedExpression(body) ? body.getExpression() : body;
-      if (!Node.isObjectLiteralExpression(objExpr)) return [];
+    const objExpr = arrowObject(arrowFn);
+    if (!objExpr) return [];
 
-      return objExpr.getProperties().flatMap((prop) => {
-        if (!Node.isPropertyAssignment(prop)) return [];
-        const initExpr = prop.getInitializer();
-        if (!(initExpr && Node.isCallExpression(initExpr))) return [];
-        // Only process 'one' relations (many doesn't have field info)
-        if (initExpr.getExpression().getText() !== "one") return [];
+    return objExpr.properties.flatMap((prop) => {
+      if (!isPropertyAssignment(prop)) return [];
+      const initExpr = prop.value;
+      if (!isCall(initExpr)) return [];
+      // Only process 'one' relations (many doesn't have field info)
+      if (textOf(text, initExpr.callee) !== "one") return [];
 
-        const relArgs = initExpr.getArguments();
-        if (relArgs.length < 2) return [];
-        const refTableArg = relArgs[0];
-        const configArg = relArgs[1];
-        if (!Node.isIdentifier(refTableArg) || !Node.isObjectLiteralExpression(configArg)) {
-          return [];
-        }
-        const refTable = refTableArg.getText();
+      const relArgs = initExpr.arguments;
+      if (relArgs.length < 2) return [];
+      const refTableArg = relArgs[0];
+      const configArg = relArgs[1];
+      if (refTableArg.type !== "Identifier" || !isObject(configArg)) return [];
+      const refTable = refTableArg.name;
 
-        const configText = configArg.getText();
-        const fieldsMatch = configText.match(/fields:\s*\[\s*(\w+)\.(\w+)\s*\]/);
-        const referencesMatch = configText.match(/references:\s*\[\s*(\w+)\.(\w+)\s*\]/);
-        if (!fieldsMatch || !referencesMatch) return [];
+      const configText = textOf(text, configArg);
+      const fieldsMatch = configText.match(/fields:\s*\[\s*(\w+)\.(\w+)\s*\]/);
+      const referencesMatch = configText.match(/references:\s*\[\s*(\w+)\.(\w+)\s*\]/);
+      if (!fieldsMatch || !referencesMatch) return [];
 
-        const currentField = fieldsMatch[2];
-        const refField = referencesMatch[2];
-        const currentIsFk = isFkLikeName(currentField);
-        const refIsFk = isFkLikeName(refField);
+      const currentField = fieldsMatch[2];
+      const refField = referencesMatch[2];
+      const currentIsFk = isFkLikeName(currentField);
+      const refIsFk = isFkLikeName(refField);
 
-        // FK direction: the side with FK-looking field name is the child; default to current.
-        if (!currentIsFk && refIsFk) {
-          return [
-            {
-              fromModel: tableName, // Parent
-              toModel: refTable, // Child
-              fromField: currentField, // PK in parent
-              toField: refField, // FK in child
-              isRequired: true,
-            },
-          ] as const;
-        }
+      // FK direction: the side with FK-looking field name is the child; default to current.
+      if (!currentIsFk && refIsFk) {
         return [
           {
-            fromModel: refTable,
-            toModel: tableName,
-            fromField: refField,
-            toField: currentField,
+            fromModel: tableName, // Parent
+            toModel: refTable, // Child
+            fromField: currentField, // PK in parent
+            toField: refField, // FK in child
             isRequired: true,
           },
         ] as const;
-      });
+      }
+      return [
+        {
+          fromModel: refTable,
+          toModel: tableName,
+          fromField: refField,
+          toField: currentField,
+          isRequired: true,
+        },
+      ] as const;
     });
+  });
+}
+
+// The exported `xxxTable("name", { ...columns }, constraints)` calls, with the
+// variable they are bound to.
+export function tableCalls(program: Program, text: string) {
+  return exportedDeclarations(program).flatMap(({ declarator, start, end }) => {
+    const varName = declaratorName(declarator);
+    if (varName === null || varName.toLowerCase().includes("relation")) return [];
+
+    const init = declarator.init;
+    if (!isCall(init)) return [];
+
+    const callee = textOf(text, init.callee);
+    if (!callee.endsWith("Table") || callee === "relations") return [];
+
+    return [{ varName, args: init.arguments, start, end }];
+  });
 }
 
 export function parseTableInfo(code: readonly string[]) {
-  const source = code.join("\n");
-  const file = new Project({ useInMemoryFileSystem: true }).createSourceFile("temp.ts", source);
+  const source = parseSource(code);
+  const { program, text } = source;
 
-  return file
-    .getVariableStatements()
-    .filter((stmt) => stmt.isExported())
-    .flatMap((stmt) => {
-      const decl = stmt.getDeclarations()[0];
-      if (!Node.isVariableDeclaration(decl)) return [];
+  return tableCalls(program, text).flatMap(({ varName, args, start }) => {
+    const objLit = args[1];
+    if (!isObject(objLit)) return [];
 
-      const varName = decl.getName();
-      if (varName.toLowerCase().includes("relation")) return [];
+    const fields = objLit.properties
+      .filter(isPropertyAssignment)
+      .map((prop) => extractFieldInfo(prop, source))
+      .filter((f): f is NonNullable<typeof f> => f !== null);
 
-      const init = decl.getInitializer();
-      if (!(init && Node.isCallExpression(init))) return [];
-
-      const callee = init.getExpression().getText();
-      if (!callee.endsWith("Table") || callee === "relations") return [];
-
-      const objLit = init.getArguments()[1];
-      if (!(objLit && Node.isObjectLiteralExpression(objLit))) return [];
-
-      const fields = objLit
-        .getProperties()
-        .filter(Node.isPropertyAssignment)
-        .map((prop) => extractFieldInfo(prop, code))
-        .filter((f): f is NonNullable<typeof f> => f !== null);
-
-      return [{ name: varName, fields }];
-    });
+    return [{ name: varName, description: descriptionBefore(source, start), fields }];
+  });
 }
 
 // Sources scanned: .references() calls, foreignKey() constraints, relations() blocks
 export function extractRelationsFromSchema(code: readonly string[]) {
-  const source = code.join("\n");
-  const file = new Project({ useInMemoryFileSystem: true }).createSourceFile("temp.ts", source);
+  const { program, text } = parseSource(code);
 
-  const tableRelations = file
-    .getVariableStatements()
-    .filter((stmt) => stmt.isExported())
-    .flatMap((stmt) => {
-      const decl = stmt.getDeclarations()[0];
-      if (!Node.isVariableDeclaration(decl)) return [];
-      const varName = decl.getName();
-      if (varName.toLowerCase().includes("relation")) return [];
+  const tableRelations = tableCalls(program, text).flatMap(({ varName, args }) => {
+    const objLit = args[1];
+    const constraintArg = args[2];
 
-      const init = decl.getInitializer();
-      if (!(init && Node.isCallExpression(init))) return [];
-      const callee = init.getExpression().getText();
-      if (!callee.endsWith("Table") || callee === "relations") return [];
+    // Second argument: field definitions object
+    const fieldRelations = isObject(objLit)
+      ? objLit.properties
+          .filter(isPropertyAssignment)
+          .map((prop) => extractRelationFromField(prop, varName, text))
+          .filter((r): r is NonNullable<typeof r> => r !== null)
+      : [];
 
-      const args = init.getArguments();
-      const objLit = args[1];
-      const constraintArg = args[2];
+    // Third argument: constraints (foreignKey, indexes, etc.)
+    const fkRelations = constraintArg
+      ? extractRelationsFromForeignKeyConstraints(varName, constraintArg, text)
+      : [];
 
-      // Second argument: field definitions object
-      const fieldRelations =
-        objLit && Node.isObjectLiteralExpression(objLit)
-          ? objLit
-              .getProperties()
-              .filter(Node.isPropertyAssignment)
-              .map((prop) => extractRelationFromField(prop, varName))
-              .filter((r): r is NonNullable<typeof r> => r !== null)
-          : [];
+    return [...fieldRelations, ...fkRelations];
+  });
 
-      // Third argument: constraints (foreignKey, indexes, etc.)
-      const fkRelations =
-        constraintArg && Node.isExpression(constraintArg)
-          ? extractRelationsFromForeignKeyConstraints(varName, constraintArg)
-          : [];
-
-      return [...fieldRelations, ...fkRelations];
-    });
-
-  const allRelations = [...tableRelations, ...extractRelationsFromRelationBlocks(file)];
+  const allRelations = [...tableRelations, ...extractRelationsFromRelationBlocks(program, text)];
 
   // Deduplicate relations based on fromModel.fromField -> toModel.toField
   const seen = new Set<string>();

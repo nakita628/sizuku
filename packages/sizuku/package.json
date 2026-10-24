@@ -1,13 +1,13 @@
 {
   "name": "sizuku",
-  "version": "0.7.1",
-  "description": "Sizuku is a tool that generates validation schemas for Zod and Valibot, as well as ER diagrams and DBML, from Drizzle schemas annotated with comments.",
+  "version": "0.8.0",
+  "description": "Sizuku reads a Drizzle schema, with its comments as descriptions, into ER diagrams (SVG, PNG, Mermaid) and DBML, and opens it in sizuku studio: the diagram, docs, data, Drizzle queries and SQL.",
   "keywords": [
     "dbml",
     "drizzle",
+    "er-diagram",
     "mermaid",
-    "valibot",
-    "zod"
+    "studio"
   ],
   "homepage": "https://github.com/nakita628/sizuku",
   "bugs": {
@@ -31,22 +31,62 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && vp build -c vite.studio.config.ts",
     "test": "vp test",
     "coverage": "vp test --coverage",
-    "release": "npm pkg fix && pnpm build && npm publish"
+    "release": "npm pkg fix && pnpm build && npm publish",
+    "studio:api": "hono-takibi",
+    "studio:dev": "vp dev -c vite.studio.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/studio/client/tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.1",
+    "@effect/platform-node": "^4.0.6",
+    "@hono/node-server": "^2.1.5",
+    "@hono/zod-openapi": "^1.6.3",
     "@resvg/resvg-js": "^2.6.2",
-    "@softwaretechnik/dbml-renderer": "^1.0.31",
+    "effect": "^4.0.6",
+    "hono": "^4.13.13",
+    "oxc-parser": "^0.155.0",
     "oxfmt": "^0.54.0",
-    "ts-morph": "^28.0.0"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.4",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-sql": "^6.10.0",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@heroui/react": "^3.2.6",
+    "@lezer/highlight": "^1.2.5",
+    "@monaco-editor/react": "^4.7.0",
+    "@softwaretechnik/dbml-renderer": "^1.0.31",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/react-query": "^5.104.5",
+    "@tanstack/react-router": "^1.170.46",
+    "@tanstack/router-plugin": "^1.168.48",
     "@types/node": "^25.9.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@typespec/compiler": "^1.17.0",
+    "@typespec/http": "^1.17.0",
+    "@typespec/openapi": "^1.17.0",
+    "@typespec/openapi3": "^1.17.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@xyflow/react": "^12.12.0",
     "drizzle-orm": "^0.45.2",
+    "hono-takibi": "^0.22.0",
+    "monaco-editor": "^0.57.0",
+    "react": "^19.3.1",
+    "react-aria-components": "^1.22.1",
+    "react-dom": "^19.3.1",
+    "react-icons": "^5.7.0",
+    "tailwindcss": "^4.3.3",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
-    "valibot": "1.4.1"
+    "zustand": "^5.0.16"
   }
 }

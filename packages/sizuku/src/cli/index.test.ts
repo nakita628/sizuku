@@ -1,25 +1,12 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { NodeServices } from "@effect/platform-node";
+import { Effect, Exit, Stdio } from "effect";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { version } from "../../package.json" with { type: "json" };
 import { stripImports } from "../utils/index.js";
-
-const HELP_TEXT = `💧 sizuku - Drizzle ORM schema tools
-
-Usage:
-  sizuku <input> -o <output> [options]
-
-Options:
-  -o <path>                         Output file path
-  --zod                             Generate Zod validation schema
-  --valibot                         Generate Valibot validation schema
-  --arktype                         Generate ArkType validation schema
-  --effect                          Generate Effect Schema validation schema
-  --zod-version <version>           Zod variant: 'v4' | 'mini' | '@hono/zod-openapi'
-  --no-export-types                 Do not export inferred types
-  --no-with-comment                 Do not add JSDoc comments
-  --no-with-relation                Do not generate relation schemas
-  -h, --help                        Display this help message`;
+import { outputKind, sizuku } from "./index.js";
 
 // ============================================================================
 // Fixture: MySQL EC schema (User + Order + OrderItem with relations)
@@ -107,7 +94,7 @@ describe("stripImports", () => {
 
   it("handles empty content", () => {
     const result = stripImports("");
-    expect(result).toStrictEqual([""]);
+    expect(result).toStrictEqual([]);
   });
 
   it("strips multiple import lines with blank lines between them", () => {
@@ -130,14 +117,14 @@ export const user = sqliteTable('user', {})`;
     expect(result[1]).toBe("export const user = sqliteTable('user', {})");
   });
 
-  it("handles content with only imports returns last import via slice(-1)", () => {
+  it("handles content with only imports", () => {
     const code = `import { pgTable } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'`;
     const result = stripImports(code);
-    expect(result).toStrictEqual(["import { relations } from 'drizzle-orm'"]);
+    expect(result).toStrictEqual([]);
   });
 
-  it("multi-line import: stripImports only checks line-level import prefix", () => {
+  it("strips an import written over several lines", () => {
     const code = `import {
   pgTable,
   uuid,
@@ -146,9 +133,13 @@ import { relations } from 'drizzle-orm'`;
 
 export const user = pgTable('user', {})`;
     const result = stripImports(code);
-    // stripImports checks per-line startsWith('import') — continuation lines
-    // like "  pgTable," don't start with "import", so they become the first result
-    expect(result[0]).toBe("  pgTable,");
+    expect(result).toStrictEqual(["export const user = pgTable('user', {})"]);
+  });
+
+  it("falls back to dropping import lines when the source does not parse", () => {
+    expect(stripImports("import { a } from 'a'\nexport const x = (")).toStrictEqual([
+      "export const x = (",
+    ]);
   });
 
   it("preserves blank lines within schema definitions", () => {
@@ -172,359 +163,152 @@ export const post = mysqlTable('post', {
 // sizuku() - argv parsing integration (via process.argv mock)
 // ============================================================================
 
-describe("sizuku argv parsing", () => {
-  const originalArgv = process.argv;
-
-  afterEach(() => {
-    process.argv = originalArgv;
+/**
+ * Runs the CLI as `dist/index.mjs` does — same command, same platform services — with the
+ * arguments put in through `Stdio` and `console` recorded, which is everything a user would see.
+ */
+async function cli(args: readonly string[]) {
+  const out: string[] = [];
+  const err: string[] = [];
+  vi.spyOn(console, "log").mockImplementation((...parts: unknown[]) => {
+    out.push(parts.map(String).join(" "));
   });
-
-  it("returns help text when no arguments provided", async () => {
-    process.argv = ["node", "sizuku"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(HELP_TEXT);
-    }
+  vi.spyOn(console, "error").mockImplementation((...parts: unknown[]) => {
+    err.push(parts.map(String).join(" "));
   });
+  const exit = await Effect.runPromiseExit(
+    sizuku().pipe(
+      Effect.provide(Stdio.layerTest({ args: Effect.succeed(args) })),
+      Effect.provide(NodeServices.layer),
+    ),
+  );
+  vi.restoreAllMocks();
+  return { exit, out: out.join("\n"), printed: [...out, ...err].join("\n") };
+}
 
-  it("returns help text when input starts with -", async () => {
-    process.argv = ["node", "sizuku", "-o", "output.dbml"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe(HELP_TEXT);
-    }
-  });
-
-  it("returns help text with --help flag", async () => {
-    process.argv = ["node", "sizuku", "--help"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(HELP_TEXT);
-    }
-  });
-
-  it("returns help text with -h flag", async () => {
-    process.argv = ["node", "sizuku", "-h"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(HELP_TEXT);
-    }
-  });
-
-  it("returns error when -o flag is missing", async () => {
-    process.argv = ["node", "sizuku", "schema.ts"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe("Missing -o flag. Usage: sizuku <input> -o <output>");
-    }
-  });
-
-  it("returns error when output path is missing after -o", async () => {
-    process.argv = ["node", "sizuku", "schema.ts", "-o"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe("Missing output file path after -o");
-    }
-  });
-
-  it("returns error for unsupported output format .txt", async () => {
-    process.argv = ["node", "sizuku", "schema.ts", "-o", "output.txt"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe(
-        "Unsupported output format: output.txt. Supported: .dbml, .png, .md, .ts",
-      );
-    }
-  });
-
-  it("returns error for .ts output without schema flag", async () => {
-    process.argv = ["node", "sizuku", "schema.ts", "-o", "output.ts"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe("Specify --zod, --valibot, --arktype, or --effect for .ts output");
-    }
-  });
-
-  it("returns error when input file does not exist", async () => {
-    process.argv = ["node", "sizuku", "/tmp/nonexistent-schema-file.ts", "-o", "/tmp/out.dbml"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe(
-        "Failed to read input: ENOENT: no such file or directory, open '/tmp/nonexistent-schema-file.ts'",
-      );
-    }
+describe("outputKind", () => {
+  it("reads what an output path asks for from its extension", () => {
+    expect(["a.dbml", "a.png", "a.svg", "a.md", "a.ts", "a.txt"].map(outputKind)).toStrictEqual([
+      "dbml",
+      "diagram",
+      "diagram",
+      "mermaid",
+      null,
+      null,
+    ]);
   });
 });
 
-// ============================================================================
-// sizuku() direct schema mode (process.argv mock + tmpfile)
-// ============================================================================
-
-const annotatedSchema = `import { mysqlTable, varchar } from 'drizzle-orm/mysql-core'
-
-export const user = mysqlTable('user', {
-  /// @z.string().uuid()
-  /// @v.pipe(v.string(), v.uuid())
-  /// @a."string.uuid"
-  /// @e.Schema.UUID
-  id: varchar('id', { length: 36 }).primaryKey(),
-  /// @z.string().min(1)
-  /// @v.pipe(v.string(), v.minLength(1))
-  /// @a."string>=1"
-  /// @e.Schema.String.pipe(Schema.minLength(1))
-  name: varchar('name', { length: 50 }).notNull(),
-})`;
-
-describe("sizuku() direct schema via process.argv", () => {
-  const originalArgv = process.argv;
-  let tmpdir: string;
-
-  beforeEach(() => {
-    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-direct-schema-"));
-    fs.writeFileSync(path.join(tmpdir, "schema.ts"), annotatedSchema, "utf-8");
-  });
-
-  afterEach(() => {
-    process.argv = originalArgv;
-    fs.rmSync(tmpdir, { recursive: true, force: true });
-  });
-
-  it("generates Zod schema via --zod", async () => {
-    const output = path.join(tmpdir, "out", "zod.ts");
-    process.argv = ["node", "sizuku", path.join(tmpdir, "schema.ts"), "-o", output, "--zod"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(`💧 Generated Zod schema at: ${output}`);
+describe("sizuku --help and --version", () => {
+  it("shows the usage, the generate flags and the studio subcommand", async () => {
+    // Without arguments the usage is the answer: shown as help (the binary exits 0), not as an error.
+    for (const args of [[], ["--help"], ["-h"]]) {
+      const { out, printed } = await cli(args);
+      expect(printed).not.toContain("ERROR");
+      expect(out).toContain("USAGE");
+      expect(out).toContain("--output");
+      expect(out).toContain("--theme");
+      expect(out).not.toContain("--zod");
+      expect(out).toContain("studio");
     }
-    const content = fs.readFileSync(output, "utf-8");
-    expect(content.includes("from 'zod'")).toBe(true);
-    expect(content.includes("UserSchema")).toBe(true);
   });
 
-  it("generates Valibot schema via --valibot", async () => {
-    const output = path.join(tmpdir, "out", "valibot.ts");
-    process.argv = ["node", "sizuku", path.join(tmpdir, "schema.ts"), "-o", output, "--valibot"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(`💧 Generated Valibot schema at: ${output}`);
-    }
-    const content = fs.readFileSync(output, "utf-8");
-    expect(content.includes("from 'valibot'")).toBe(true);
-    expect(content.includes("UserSchema")).toBe(true);
+  it("prints the version", async () => {
+    expect((await cli(["--version"])).out).toContain(version);
   });
 
-  it("generates ArkType schema via --arktype", async () => {
-    const output = path.join(tmpdir, "out", "arktype.ts");
-    process.argv = ["node", "sizuku", path.join(tmpdir, "schema.ts"), "-o", output, "--arktype"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(`💧 Generated ArkType schema at: ${output}`);
-    }
-    const content = fs.readFileSync(output, "utf-8");
-    expect(content.includes("from 'arktype'")).toBe(true);
-    expect(content.includes("UserSchema")).toBe(true);
-  });
-
-  it("generates Effect schema via --effect", async () => {
-    const output = path.join(tmpdir, "out", "effect.ts");
-    process.argv = ["node", "sizuku", path.join(tmpdir, "schema.ts"), "-o", output, "--effect"];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(`💧 Generated Effect schema at: ${output}`);
-    }
-    const content = fs.readFileSync(output, "utf-8");
-    expect(content.includes("from 'effect'")).toBe(true);
-    expect(content.includes("UserSchema")).toBe(true);
-  });
-
-  it("generates Zod schema without types via --no-export-types", async () => {
-    const output = path.join(tmpdir, "out", "no-types.ts");
-    process.argv = [
-      "node",
-      "sizuku",
-      path.join(tmpdir, "schema.ts"),
-      "-o",
-      output,
-      "--zod",
-      "--no-export-types",
-    ];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(true);
-    const content = fs.readFileSync(output, "utf-8");
-    expect(content.includes("UserSchema")).toBe(true);
-    expect(content.includes("export type User")).toBe(false);
-  });
-
-  it("generates Zod schema without comments via --no-with-comment", async () => {
-    const output = path.join(tmpdir, "out", "no-comment.ts");
-    process.argv = [
-      "node",
-      "sizuku",
-      path.join(tmpdir, "schema.ts"),
-      "-o",
-      output,
-      "--zod",
-      "--no-with-comment",
-    ];
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-    expect(result.ok).toBe(true);
-    const content = fs.readFileSync(output, "utf-8");
-    expect(content.includes("UserSchema")).toBe(true);
-  });
-
-  it("each library produces distinct output", async () => {
-    const zodOut = path.join(tmpdir, "out", "z.ts");
-    const valibotOut = path.join(tmpdir, "out", "v.ts");
-    const arktypeOut = path.join(tmpdir, "out", "a.ts");
-    const effectOut = path.join(tmpdir, "out", "e.ts");
-    const schemaPath = path.join(tmpdir, "schema.ts");
-
-    for (const [flag, out] of [
-      ["--zod", zodOut],
-      ["--valibot", valibotOut],
-      ["--arktype", arktypeOut],
-      ["--effect", effectOut],
-    ]) {
-      process.argv = ["node", "sizuku", schemaPath, "-o", out, flag];
-      const { sizuku } = await import("./index.js");
-      await sizuku();
-    }
-
-    const zodContent = fs.readFileSync(zodOut, "utf-8");
-    const valibotContent = fs.readFileSync(valibotOut, "utf-8");
-    const arktypeContent = fs.readFileSync(arktypeOut, "utf-8");
-    const effectContent = fs.readFileSync(effectOut, "utf-8");
-
-    // Each has distinct import
-    expect(zodContent.includes("from 'zod'")).toBe(true);
-    expect(valibotContent.includes("from 'valibot'")).toBe(true);
-    expect(arktypeContent.includes("from 'arktype'")).toBe(true);
-    expect(effectContent.includes("from 'effect'")).toBe(true);
-
-    // All different
-    expect(zodContent).not.toBe(valibotContent);
-    expect(zodContent).not.toBe(arktypeContent);
-    expect(zodContent).not.toBe(effectContent);
-    expect(valibotContent).not.toBe(arktypeContent);
+  it("shows the studio subcommand's own flags", async () => {
+    const { out } = await cli(["studio", "--help"]);
+    expect(out).toContain("--port");
+    expect(out).toContain("--url");
   });
 });
 
-// ============================================================================
-// E2E: DBML generation
-// ============================================================================
+describe("sizuku rejects a command line it cannot run", () => {
+  const cases = [
+    [["schema.ts"], "Missing -o flag. Usage: sizuku <input> -o <output>"],
+    [["schema.ts", "-o", "output.txt"], "Unsupported output format: output.txt"],
+    [["schema.ts", "-o", "output.ts"], "Unsupported output format: output.ts"],
+    [["/tmp/nonexistent-schema-file.ts", "-o", "/tmp/out.dbml"], "does not exist"],
+    [["schema.ts", "-o", "a.svg", "--theme", "blue"], 'Expected: "light" | "dark"'],
+    [["schema.ts", "-o", "a.dbml", "--zod"], "--zod"],
+    [["studio"], "Missing required argument: input"],
+    [["studio", "schema.ts", "--port", "70000"], "a port from 1 to 65535"],
+  ] as const;
+  for (const [args, message] of cases) {
+    it(`sizuku ${args.join(" ")}`, async () => {
+      const { exit, printed } = await cli(args);
+      expect(Exit.isFailure(exit)).toBe(true);
+      expect(printed).toContain(message);
+    });
+  }
+});
 
-// ============================================================================
-// E2E: Full pipeline via sizuku() with process.argv
-// ============================================================================
-
-describe("E2E: sizuku() full pipeline", () => {
+describe("sizuku writes DBML, Mermaid and the ER diagram", () => {
   let tmpdir: string;
-  const originalArgv = process.argv;
+  let schemaPath: string;
 
   beforeEach(() => {
-    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-e2e-full-"));
-    fs.writeFileSync(path.join(tmpdir, "schema.ts"), ecSchemaContent, "utf-8");
+    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-e2e-"));
+    schemaPath = path.join(tmpdir, "schema.ts");
+    fs.writeFileSync(schemaPath, ecSchemaContent, "utf-8");
   });
 
   afterEach(() => {
-    process.argv = originalArgv;
     fs.rmSync(tmpdir, { recursive: true, force: true });
   });
 
-  it("sizuku() generates DBML file via CLI args", async () => {
-    const schemaPath = path.join(tmpdir, "schema.ts");
-    const outputPath = path.join(tmpdir, "out", "schema.dbml");
-    process.argv = ["node", "sizuku", schemaPath, "-o", outputPath];
-
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(`💧 Generated DBML at: ${outputPath}`);
-    }
-    expect(fs.existsSync(outputPath)).toBe(true);
-    const content = fs.readFileSync(outputPath, "utf-8");
-    expect(content.includes("Table user {")).toBe(true);
-    expect(content.includes("Table order {")).toBe(true);
-    expect(content.includes("Table orderItem {")).toBe(true);
+  it("takes the flags in any order, before the input too", async () => {
+    const output = path.join(tmpdir, "first.dbml");
+    const { exit } = await cli(["-o", output, schemaPath]);
+    expect(Exit.isSuccess(exit)).toBe(true);
+    expect(fs.readFileSync(output, "utf-8")).toContain("Table user {");
   });
 
-  it("sizuku() generates Mermaid ER file via CLI args", async () => {
-    const schemaPath = path.join(tmpdir, "schema.ts");
-    const outputPath = path.join(tmpdir, "out", "ER.md");
-    process.argv = ["node", "sizuku", schemaPath, "-o", outputPath];
-
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(`💧 Generated Mermaid ER at: ${outputPath}`);
-    }
-    expect(fs.existsSync(outputPath)).toBe(true);
-    const content = fs.readFileSync(outputPath, "utf-8");
-    expect(content.includes("erDiagram")).toBe(true);
+  it("describes tables and columns from their JSDoc and // comments", async () => {
+    const described = path.join(tmpdir, "described.ts");
+    fs.writeFileSync(
+      described,
+      [
+        "/** Everyone who can sign in */",
+        "export const user = pgTable('user', {",
+        "  // The key",
+        "  id: uuid('id').primaryKey(),",
+        "})",
+      ].join("\n"),
+      "utf-8",
+    );
+    const output = path.join(tmpdir, "described.dbml");
+    await cli([described, "-o", output]);
+    const content = fs.readFileSync(output, "utf-8");
+    expect(content).toContain("id uuid [pk, note: 'The key']");
+    expect(content).toContain("Everyone who can sign in");
   });
 
-  it("sizuku() generates PNG file via CLI args", async () => {
-    const schemaPath = path.join(tmpdir, "schema.ts");
-    const outputPath = path.join(tmpdir, "out", "er.png");
-    process.argv = ["node", "sizuku", schemaPath, "-o", outputPath];
-
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toBe(`💧 Generated PNG at: ${outputPath}`);
-    }
-    expect(fs.existsSync(outputPath)).toBe(true);
-    const buffer = fs.readFileSync(outputPath);
-    expect(buffer[0]).toBe(0x89);
-    expect(buffer[1]).toBe(0x50);
+  it("generates DBML", async () => {
+    const output = path.join(tmpdir, "schema.dbml");
+    const { out } = await cli([schemaPath, "-o", output]);
+    expect(out).toBe(`💧 Generated DBML at: ${output}`);
+    const content = fs.readFileSync(output, "utf-8");
+    expect(content).toContain("Table user {");
+    expect(content).toContain("Table order {");
+    expect(content).toContain("Table orderItem {");
   });
 
-  it("sizuku() returns error for non-existent input file", async () => {
-    const outputPath = path.join(tmpdir, "out", "schema.dbml");
-    process.argv = ["node", "sizuku", "/tmp/does-not-exist-12345.ts", "-o", outputPath];
+  it("generates Mermaid ER", async () => {
+    const output = path.join(tmpdir, "ER.md");
+    const { out } = await cli([schemaPath, "-o", output]);
+    expect(out).toBe(`💧 Generated Mermaid ER at: ${output}`);
+    expect(fs.readFileSync(output, "utf-8")).toContain("erDiagram");
+  });
 
-    const { sizuku } = await import("./index.js");
-    const result = await sizuku();
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toBe(
-        "Failed to read input: ENOENT: no such file or directory, open '/tmp/does-not-exist-12345.ts'",
-      );
-    }
+  it("generates the PNG and the dark SVG ER diagram", async () => {
+    const png = path.join(tmpdir, "er.png");
+    expect((await cli([schemaPath, "-o", png])).out).toBe(`💧 Generated PNG ER diagram at: ${png}`);
+    const buffer = fs.readFileSync(png);
+    expect([buffer[0], buffer[1]]).toStrictEqual([0x89, 0x50]);
+    const svg = path.join(tmpdir, "er.svg");
+    await cli([schemaPath, "-o", svg, "--theme", "dark"]);
+    expect(fs.readFileSync(svg, "utf-8")).toContain("<svg");
   });
 });

@@ -1,3 +1,6 @@
+import { NodeServices } from "@effect/platform-node";
+import { Effect } from "effect";
+import type { FileSystem } from "effect";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
@@ -7,8 +10,14 @@ import { mermaidRelationSymbol } from "../generator/index.js";
 import { stripImports } from "../utils/index.js";
 import { sizukuMermaidER } from "./mermaid-er.js";
 
+/** Runs what a core function returns, on the real file system. */
+function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
+}
+
 const ecSchemaContent = `import { mysqlTable, varchar, int, decimal, timestamp } from 'drizzle-orm/mysql-core'
 import { relations } from 'drizzle-orm'
+
 
 export const user = mysqlTable('user', {
   id: varchar('id', { length: 36 }).primaryKey(),
@@ -197,7 +206,7 @@ describe("sizukuMermaidER", () => {
     }
   });
   it("sizukuMermaidER", async () => {
-    await sizukuMermaidER(TEST_CODE, "tmp-mermaid/mermaid-er-test.md");
+    await runEffect(sizukuMermaidER(TEST_CODE, "tmp-mermaid/mermaid-er-test.md"));
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
@@ -217,7 +226,7 @@ erDiagram
   });
 
   it("sizukuMermaidER without comments", async () => {
-    await sizukuMermaidER(TEST_CODE_WITHOUT_COMMENTS, "tmp-mermaid/mermaid-er-test.md");
+    await runEffect(sizukuMermaidER(TEST_CODE_WITHOUT_COMMENTS, "tmp-mermaid/mermaid-er-test.md"));
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
@@ -237,7 +246,7 @@ erDiagram
   });
 
   it("detects relations from foreignKey() constraints", async () => {
-    await sizukuMermaidER(TEST_CODE_WITH_FOREIGN_KEY, "tmp-mermaid/mermaid-er-test.md");
+    await runEffect(sizukuMermaidER(TEST_CODE_WITH_FOREIGN_KEY, "tmp-mermaid/mermaid-er-test.md"));
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
@@ -256,7 +265,9 @@ erDiagram
   });
 
   it("detects relations from relations() blocks", async () => {
-    await sizukuMermaidER(TEST_CODE_WITH_RELATIONS_BLOCK, "tmp-mermaid/mermaid-er-test.md");
+    await runEffect(
+      sizukuMermaidER(TEST_CODE_WITH_RELATIONS_BLOCK, "tmp-mermaid/mermaid-er-test.md"),
+    );
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
@@ -275,7 +286,7 @@ erDiagram
   });
 
   it("detects relations without imports (simulates real usage)", async () => {
-    await sizukuMermaidER(TEST_CODE_WITHOUT_IMPORTS, "tmp-mermaid/mermaid-er-test.md");
+    await runEffect(sizukuMermaidER(TEST_CODE_WITHOUT_IMPORTS, "tmp-mermaid/mermaid-er-test.md"));
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
@@ -312,7 +323,7 @@ erDiagram
       "})",
       "",
     ];
-    await sizukuMermaidER(code, "tmp-mermaid/mermaid-er-test.md");
+    await runEffect(sizukuMermaidER(code, "tmp-mermaid/mermaid-er-test.md"));
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
@@ -349,7 +360,7 @@ erDiagram
       "})",
       "",
     ];
-    await sizukuMermaidER(code, "tmp-mermaid/mermaid-er-test.md");
+    await runEffect(sizukuMermaidER(code, "tmp-mermaid/mermaid-er-test.md"));
     const result = await fsp.readFile("tmp-mermaid/mermaid-er-test.md", "utf-8");
     const expected = `\`\`\`mermaid
 erDiagram
@@ -384,9 +395,8 @@ describe("E2E: Mermaid ER generation", () => {
     const output = path.join(tmpdir, "output", "ER.md");
 
     const code = stripImports(ecSchemaContent);
-    const result = await sizukuMermaidER(code, output);
+    await runEffect(sizukuMermaidER(code, output));
 
-    expect(result.ok).toBe(true);
     expect(fs.existsSync(output)).toBe(true);
 
     const content = fs.readFileSync(output, "utf-8");
@@ -416,9 +426,8 @@ describe("E2E: Mermaid ER generation", () => {
     const output = path.join(tmpdir, "output", "ER.md");
 
     const code = stripImports(singleTableSchema);
-    const result = await sizukuMermaidER(code, output);
+    await runEffect(sizukuMermaidER(code, output));
 
-    expect(result.ok).toBe(true);
     const content = fs.readFileSync(output, "utf-8");
 
     expect(content.startsWith("```mermaid\nerDiagram")).toBe(true);
@@ -435,9 +444,8 @@ describe("E2E: Mermaid ER generation", () => {
     const output = path.join(tmpdir, "output", "ER.md");
 
     const code = stripImports(pgAuthSchema);
-    const result = await sizukuMermaidER(code, output);
+    await runEffect(sizukuMermaidER(code, output));
 
-    expect(result.ok).toBe(true);
     const content = fs.readFileSync(output, "utf-8");
 
     expect(content.includes("account {")).toBe(true);

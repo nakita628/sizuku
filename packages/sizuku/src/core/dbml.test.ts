@@ -1,3 +1,6 @@
+import { NodeServices } from "@effect/platform-node";
+import { Effect } from "effect";
+import type { FileSystem } from "effect";
 import { run } from "@softwaretechnik/dbml-renderer";
 import fs from "node:fs";
 import os from "node:os";
@@ -7,8 +10,14 @@ import { dbml } from "../generator/index.js";
 import { stripImports } from "../utils/index.js";
 import { sizukuDbml } from "./dbml.js";
 
+/** Runs what a core function returns, on the real file system. */
+function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)));
+}
+
 const ecSchemaContent = `import { mysqlTable, varchar, int, decimal, timestamp } from 'drizzle-orm/mysql-core'
 import { relations } from 'drizzle-orm'
+
 
 export const user = mysqlTable('user', {
   id: varchar('id', { length: 36 }).primaryKey(),
@@ -67,9 +76,8 @@ describe("E2E: DBML generation", () => {
     const output = path.join(tmpdir, "output", "schema.dbml");
 
     const code = stripImports(ecSchemaContent);
-    const result = await sizukuDbml(code, output);
+    await runEffect(sizukuDbml(code, output));
 
-    expect(result.ok).toBe(true);
     expect(fs.existsSync(output)).toBe(true);
 
     const content = fs.readFileSync(output, "utf-8");
@@ -107,9 +115,8 @@ describe("E2E: DBML generation", () => {
     const output = path.join(tmpdir, "output", "auth.dbml");
 
     const code = stripImports(pgAuthSchema);
-    const result = await sizukuDbml(code, output);
+    await runEffect(sizukuDbml(code, output));
 
-    expect(result.ok).toBe(true);
     const content = fs.readFileSync(output, "utf-8");
 
     expect(content.includes("Table account {")).toBe(true);
@@ -122,9 +129,8 @@ describe("E2E: DBML generation", () => {
     const output = path.join(tmpdir, "output", "config.dbml");
 
     const code = stripImports(singleTableSchema);
-    const result = await sizukuDbml(code, output);
+    await runEffect(sizukuDbml(code, output));
 
-    expect(result.ok).toBe(true);
     const content = fs.readFileSync(output, "utf-8");
 
     expect(content.includes("Table config {")).toBe(true);
@@ -141,7 +147,7 @@ describe("dbml relations", () => {
   // note is sourced from the nearest single `///` line, so even stacked `///`
   // comments collapse to one line; an apostrophe is escaped, and non-ASCII text
   // (full-width parens) passes through verbatim.
-  it("collapses stacked doc comments to a single-line single-quoted note", () => {
+  it("joins a comment of several lines into one single-quoted note", () => {
     const code = [
       "export const user = pgTable('user', {",
       "  /// first comment line",
@@ -153,7 +159,7 @@ describe("dbml relations", () => {
     ];
     expect(dbml(code)).toBe(
       `Table user {
-  id uuid [pk, note: 'second comment line']
+  id uuid [pk, note: 'first comment line second comment line']
   email varchar [note: 'User\\'s email （連絡先）']
 }`,
     );
@@ -295,8 +301,7 @@ describe("DBML output always parses (issue regression guard)", () => {
   // sizuku never emits a table-level `Note:`, and a column note is sourced from a
   // single `///` line, so every note stays single-line. This proves the generated
   // DBML parses even with the exact characters from the report — apostrophes,
-  // full-width parens, Japanese, and stacked `///` comments. The renderer is the
-  // same one core/dbml.ts uses for PNG output.
+  // full-width parens, Japanese, and stacked `///` comments.
   it("parses notes with apostrophes, full-width parens, and stacked comments", () => {
     const code = [
       "export const user = pgTable('user', {",
@@ -309,53 +314,5 @@ describe("DBML output always parses (issue regression guard)", () => {
     ];
 
     expect(() => run(dbml(code), "svg")).not.toThrow();
-  });
-});
-
-describe("E2E: PNG generation", () => {
-  let tmpdir: string;
-
-  beforeEach(() => {
-    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "sizuku-e2e-png-"));
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmpdir, { recursive: true, force: true });
-  });
-
-  it("generates valid PNG binary for EC schema", async () => {
-    fs.writeFileSync(path.join(tmpdir, "schema.ts"), ecSchemaContent, "utf-8");
-    const output = path.join(tmpdir, "output", "er.png");
-
-    const code = stripImports(ecSchemaContent);
-    const result = await sizukuDbml(code, output);
-
-    expect(result.ok).toBe(true);
-    expect(fs.existsSync(output)).toBe(true);
-
-    const buffer = fs.readFileSync(output);
-    // PNG magic bytes: 89 50 4E 47 (‰PNG)
-    expect(buffer[0]).toBe(0x89);
-    expect(buffer[1]).toBe(0x50);
-    expect(buffer[2]).toBe(0x4e);
-    expect(buffer[3]).toBe(0x47);
-    expect(buffer.length > 1000).toBe(true);
-  });
-
-  it("generates valid PNG for single-table schema", async () => {
-    fs.writeFileSync(path.join(tmpdir, "schema.ts"), singleTableSchema, "utf-8");
-    const output = path.join(tmpdir, "output", "config.png");
-
-    const code = stripImports(singleTableSchema);
-    const result = await sizukuDbml(code, output);
-
-    expect(result.ok).toBe(true);
-    expect(fs.existsSync(output)).toBe(true);
-
-    const buffer = fs.readFileSync(output);
-    expect(buffer[0]).toBe(0x89);
-    expect(buffer[1]).toBe(0x50);
-    expect(buffer[2]).toBe(0x4e);
-    expect(buffer[3]).toBe(0x47);
   });
 });

@@ -1,11 +1,7 @@
-// #!/usr/bin/env node
-
+#!/usr/bin/env node
+import { runMain } from "@effect/platform-node/NodeRuntime";
+import { layer as nodeServicesLayer } from "@effect/platform-node/NodeServices";
+import { Effect } from "effect";
 import { sizuku } from "./cli/index.js";
 
-sizuku().then((result) => {
-  if (result?.ok) {
-    console.log(result.value);
-  } else {
-    console.error(result?.error);
-  }
-});
+runMain(sizuku().pipe(Effect.provide(nodeServicesLayer)));

@@ -51,6 +51,7 @@ describe("parseTableInfo", () => {
     const expected = [
       {
         name: "user",
+        description: null,
         fields: [
           {
             name: "id",
@@ -68,6 +69,7 @@ describe("parseTableInfo", () => {
       },
       {
         name: "post",
+        description: null,
         fields: [
           {
             name: "id",
@@ -109,6 +111,7 @@ describe("parseTableInfo", () => {
     expect(result).toStrictEqual([
       {
         name: "order",
+        description: null,
         fields: [
           { name: "id", type: "serial", keyType: "PK", description: null },
           { name: "userId", type: "integer", keyType: "FK", description: null },
@@ -127,6 +130,7 @@ describe("parseTableInfo", () => {
     expect(result).toStrictEqual([
       {
         name: "config",
+        description: null,
         fields: [
           { name: "key", type: "text", keyType: "PK", description: null },
           { name: "value", type: "text", keyType: null, description: null },
@@ -372,6 +376,29 @@ describe("extractRelationsFromSchema", () => {
         toModel: "post",
         fromField: "id",
         toField: "userId",
+        isRequired: true,
+      },
+    ]);
+  });
+
+  it.concurrent("extracts foreignKey() from the array form of the constraints callback", () => {
+    const code = [
+      "export const user = pgTable('user', {",
+      "  id: uuid('id').primaryKey(),",
+      "})",
+      "export const post = pgTable('post', {",
+      "  authorId: uuid('author_id').notNull(),",
+      "}, (t) => [",
+      "  index('post_author_idx').on(t.authorId),",
+      "  foreignKey({ columns: [t.authorId], foreignColumns: [user.id] }),",
+      "])",
+    ];
+    expect(extractRelationsFromSchema(code)).toStrictEqual([
+      {
+        fromModel: "user",
+        toModel: "post",
+        fromField: "id",
+        toField: "authorId",
         isRequired: true,
       },
     ]);
