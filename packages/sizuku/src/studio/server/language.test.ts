@@ -36,10 +36,13 @@ describe("the editor's TypeScript", () => {
   let dir: string;
   let request: Awaited<ReturnType<typeof studioOn>>;
 
+  // The first question reads drizzle-orm's types; on a slow machine (CI with coverage) that
+  // alone takes seconds, so it is asked here, with room, and not in a test.
   beforeAll(async () => {
     dir = fs.mkdtempSync(path.join(import.meta.dirname, ".language-"));
     request = await studioOn(dir);
-  });
+    await request("/api/language/diagnostics", { source: schema });
+  }, 60_000);
 
   afterAll(() => {
     fs.rmSync(dir, { recursive: true, force: true });

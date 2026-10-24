@@ -161,28 +161,33 @@ throw new Error("stop here");`);
     fs.writeFileSync(file, schema);
   });
 
-  it("completes db and the tables in the query editor, against the saved schema", async () => {
-    const complete = async (source: string) => {
-      const res = await request("/api/language/complete", {
-        source,
-        offset: source.length,
-        document: "query",
-      });
-      return (await res.json()).items.map((item: { label: string }) => item.label);
-    };
-    expect(await complete("db.")).toEqual(
-      expect.arrayContaining(["select", "insert", "query", "$count"]),
-    );
-    expect(await complete("db.query.")).toEqual(expect.arrayContaining(["user", "post"]));
-    expect(await complete("db.select().from(post).where(eq(post.")).toEqual(
-      expect.arrayContaining(["authorId", "title", "published"]),
-    );
+  // The first question about a query reads drizzle-orm's types, which takes seconds on CI.
+  it(
+    "completes db and the tables in the query editor, against the saved schema",
+    { timeout: 60_000 },
+    async () => {
+      const complete = async (source: string) => {
+        const res = await request("/api/language/complete", {
+          source,
+          offset: source.length,
+          document: "query",
+        });
+        return (await res.json()).items.map((item: { label: string }) => item.label);
+      };
+      expect(await complete("db.")).toEqual(
+        expect.arrayContaining(["select", "insert", "query", "$count"]),
+      );
+      expect(await complete("db.query.")).toEqual(expect.arrayContaining(["user", "post"]));
+      expect(await complete("db.select().from(post).where(eq(post.")).toEqual(
+        expect.arrayContaining(["authorId", "title", "published"]),
+      );
 
-    const typo = "db.select().from(post).where(eq(post.titel, 1))";
-    const { diagnostics } = await (
-      await request("/api/language/diagnostics", { source: typo, document: "query" })
-    ).json();
-    expect(diagnostics.map((d: { message: string }) => d.message).join("\n")).toContain("titel");
-    expect(typo.slice(diagnostics[0].range.start, diagnostics[0].range.end)).toBe("titel");
-  });
+      const typo = "db.select().from(post).where(eq(post.titel, 1))";
+      const { diagnostics } = await (
+        await request("/api/language/diagnostics", { source: typo, document: "query" })
+      ).json();
+      expect(diagnostics.map((d: { message: string }) => d.message).join("\n")).toContain("titel");
+      expect(typo.slice(diagnostics[0].range.start, diagnostics[0].range.end)).toBe("titel");
+    },
+  );
 });
