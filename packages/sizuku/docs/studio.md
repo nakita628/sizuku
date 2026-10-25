@@ -29,6 +29,8 @@ the tables, relations and enums; **Show in diagram** on a table's page fits the 
   table is placed by the layout; one that left the schema is forgotten.
 - Clicking a card selects it and picks out its relations. The arrow on a card opens the table's
   or the enum's page.
+- An edge is a foreign key (`.references()` or `foreignKey()`), drawn solid, or a relation only a
+  `relations()` block declares, drawn dashed, since nothing in the database enforces it.
 - **SVG** / **PNG** download the diagram as it is laid out on the canvas, in the current theme.
 - Drag the background to pan, scroll to zoom, and use the controls and the minimap in the corners.
 
@@ -85,7 +87,7 @@ columns and enums (`/** … */` or `//`):
   `$defaultFn()`, ...), its description and the column it references;
 - indexes, unique and composite keys;
 - relations in both directions (**References** and **Referenced by**), with their cardinality and
-  `onDelete` / `onUpdate` actions. A relation declared only with an `@relation` tag is marked, since
+  `onDelete` / `onUpdate` actions. A relation declared only in a `relations()` block is marked, since
   no foreign key backs it;
 - every `pgEnum` and its values;
 - Drizzle queries to start from for each table, with nothing to fill in: **Select**

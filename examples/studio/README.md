@@ -8,7 +8,7 @@ Two Drizzle schemas to try `sizuku studio` on:
 - [db/schema.ts](db/schema.ts) — a PostgreSQL schema that uses everything the ER diagram draws:
   a `pgEnum`, a composite primary key, unique and plain indexes, `foreignKey()` and
   `.references()` with `onDelete` / `onUpdate`, a self reference, an array column, defaults,
-  `///` descriptions in Japanese, and a relation declared only by `/// @relation` (dashed).
+  `///` descriptions in Japanese, and a relation declared only by a `relations()` block (dashed).
 
 ## Try the studio
 
@@ -23,7 +23,9 @@ pnpm studio:diagram    # db/schema.ts without a database: Schema and Docs
 Both build sizuku and open <http://127.0.0.1:4983>. In a Dev Container or Codespace, open the
 forwarded port 4983 from the **Ports** tab. Stop the server with Ctrl+C.
 
-`pnpm studio` creates `sqlite/dev.db` the first time (Node.js 22.13 or newer, for `node:sqlite`).
+`pnpm studio` creates `sqlite/dev.db` the first time (Node.js 22.13 or newer, for `node:sqlite`):
+[sqlite/seed.mjs](sqlite/seed.mjs) creates the tables and `sizuku seed` fills them with the rows of
+[sizuku.config.ts](sizuku.config.ts), nested under their parents with no id written by hand.
 Then:
 
 - **Schema** — edit the schema; the diagram redraws as you type. Type `.` after
@@ -36,7 +38,9 @@ Then:
 - **SQL** — e.g. `SELECT * FROM posts WHERE published = 1`, then Ctrl/Cmd + Enter.
 
 Put everything back with `pnpm -F @examples/studio reset` (the schemas from git, and a fresh
-`sqlite/dev.db`); `pnpm -F @examples/studio seed` only rebuilds the database.
+`sqlite/dev.db`); `pnpm -F @examples/studio seed` only rebuilds the database. To fill it with
+made-up rows instead, give a table a `count` in `sizuku.config.ts` in place of its `data`, e.g.
+`comment: { count: 50 }`.
 
 See [the studio guide](../../packages/sizuku/docs/studio.md) for everything it does.
 

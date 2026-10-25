@@ -74,3 +74,17 @@ export const postRelations = relations(post, ({ one, many }) => ({
   comments: many(comment),
   tags: many(postTag),
 }));
+
+export const commentRelations = relations(comment, ({ one }) => ({
+  post: one(post, { fields: [comment.postId], references: [post.id] }),
+  author: one(user, { fields: [comment.authorId], references: [user.id] }),
+}));
+
+export const tagRelations = relations(tag, ({ many }) => ({
+  posts: many(postTag),
+}));
+
+export const postTagRelations = relations(postTag, ({ one }) => ({
+  post: one(post, { fields: [postTag.postId], references: [post.id] }),
+  tag: one(tag, { fields: [postTag.tagId], references: [tag.id] }),
+}));

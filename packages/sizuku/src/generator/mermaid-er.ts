@@ -27,7 +27,7 @@ export function mermaidRelationSymbol(r: {
 }
 
 // Builds a Mermaid erDiagram from the schema code. Relations come from a single
-// merged source (inferred FK + `/// @relation` annotations) and are rendered to
+// merged source (foreign keys + `relations()` blocks) and are rendered to
 // crow's-foot symbols here, at the output boundary.
 export function mermaidER(code: string[]) {
   const tables = parseTableInfo(code);

@@ -6,7 +6,7 @@ erDiagram
     organization ||--|{ post : "(id) - (organizationId)"
     post ||--|{ comment : "(id) - (postId)"
     comment ||--o{ comment : "(id) - (parentId)"
-    user ||--o{ auditLog : "(id) - (actorId)"
+    user ||..|{ auditLog : "(id) - (actorId)"
     user {
         uuid id PK "主キー"
         varchar email "ログインに使うメールアドレス"

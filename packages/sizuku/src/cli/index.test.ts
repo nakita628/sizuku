@@ -107,13 +107,13 @@ export const account = pgTable('account', {})`;
     expect(result[0]).toBe("export const account = pgTable('account', {})");
   });
 
-  it("preserves inline comment annotations after imports", () => {
+  it("preserves comments after imports", () => {
     const code = `import { sqliteTable } from 'drizzle-orm/sqlite-core'
 
-/// @relation user.id post.userId one-to-many
+/// Everyone who can sign in
 export const user = sqliteTable('user', {})`;
     const result = stripImports(code);
-    expect(result[0]).toBe("/// @relation user.id post.userId one-to-many");
+    expect(result[0]).toBe("/// Everyone who can sign in");
     expect(result[1]).toBe("export const user = sqliteTable('user', {})");
   });
 
@@ -164,7 +164,7 @@ export const post = mysqlTable('post', {
 // ============================================================================
 
 /**
- * Runs the CLI as `dist/index.mjs` does — same command, same platform services — with the
+ * Runs the CLI as `dist/cli.mjs` does — same command, same platform services — with the
  * arguments put in through `Stdio` and `console` recorded, which is everything a user would see.
  */
 async function cli(args: readonly string[]) {
@@ -200,7 +200,7 @@ describe("outputKind", () => {
 });
 
 describe("sizuku --help and --version", () => {
-  it("shows the usage, the generate flags and the studio subcommand", async () => {
+  it("shows the usage, the generate flags and the subcommands", async () => {
     // Without arguments the usage is the answer: shown as help (the binary exits 0), not as an error.
     for (const args of [[], ["--help"], ["-h"]]) {
       const { out, printed } = await cli(args);
@@ -210,6 +210,7 @@ describe("sizuku --help and --version", () => {
       expect(out).toContain("--theme");
       expect(out).not.toContain("--zod");
       expect(out).toContain("studio");
+      expect(out).toContain("seed");
     }
   });
 
@@ -221,6 +222,13 @@ describe("sizuku --help and --version", () => {
     const { out } = await cli(["studio", "--help"]);
     expect(out).toContain("--port");
     expect(out).toContain("--url");
+  });
+
+  it("shows the seed subcommand's own flags", async () => {
+    const { out } = await cli(["seed", "--help"]);
+    for (const flag of ["--config", "--url", "--sql", "--seed", "--count", "--locale", "--reset"]) {
+      expect(out).toContain(flag);
+    }
   });
 });
 
@@ -234,6 +242,8 @@ describe("sizuku rejects a command line it cannot run", () => {
     [["schema.ts", "-o", "a.dbml", "--zod"], "--zod"],
     [["studio"], "Missing required argument: input"],
     [["studio", "schema.ts", "--port", "70000"], "a port from 1 to 65535"],
+    [["seed", "--count", "-1"], "a count of 0 or more"],
+    [["seed", "--config", "/tmp/nonexistent-sizuku.config.ts"], "Config not found"],
   ] as const;
   for (const [args, message] of cases) {
     it(`sizuku ${args.join(" ")}`, async () => {

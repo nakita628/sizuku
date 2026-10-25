@@ -221,8 +221,8 @@ model CanvasRelation {
   /** A key for the edge: `from.field->to.field` */
   id: string;
 
-  /** Where it was found: a foreign key (`inferred`) or a `/// @relation` note (`annotated`) */
-  origin: "inferred" | "annotated" | "implicit-many-to-many";
+  /** Where it was found: a foreign key (`inferred`) or only a `relations()` block (`relations`) */
+  origin: "inferred" | "relations" | "implicit-many-to-many";
 
   /** Its name, when it has one */
   name: string | null;
@@ -358,7 +358,7 @@ model DocRelation {
   /** How it reads from this side: `one to many`, `many to one`, ... */
   kind: string;
 
-  /** Where it was found: a foreign key, a `relations()` block or a `/// @relation` note */
+  /** Where it was found: a foreign key (`inferred`) or only a `relations()` block (`relations`) */
   origin: string;
 
   /** The action on delete of the parent row */

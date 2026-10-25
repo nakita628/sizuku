@@ -3,7 +3,21 @@ import { Effect, Match } from "effect";
 import type { getDocsRoute } from "../routes";
 import * as DocsUseCase from "../usecases/docs.js";
 
-/** `GET /docs` handler. The documentation of the saved schema. */
+/**
+ * `GET /docs` handler. The documentation of the saved schema.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant U as DocsUseCase
+ *   C->>H: GET /docs
+ *   H->>U: readDocs()
+ *   U-->>H: Docs
+ *   H-->>C: 200 Docs
+ *   Note over H: on failure, Match.tag: FileReadError -> 500
+ * ```
+ */
 export const getDocsRouteHandler: RouteHandler<typeof getDocsRoute> = (c) =>
   Effect.runPromise(
     Effect.matchEffect(DocsUseCase.readDocs(), {

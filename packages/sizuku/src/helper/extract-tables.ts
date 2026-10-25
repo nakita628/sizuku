@@ -102,6 +102,7 @@ function extractRelationFromField(prop: ObjectProperty, tableName: string, text:
     fromField: refInfo.referencedField,
     toField: fieldName,
     isRequired,
+    enforced: true,
   };
 }
 
@@ -139,6 +140,7 @@ function extractRelationsFromForeignKeyConstraints(
         toField: columnsMatch[2],
         // For foreignKey constraints, we assume required unless explicitly nullable
         isRequired: !constraintText.includes(".nullable()"),
+        enforced: true,
       },
     ];
   });
@@ -149,8 +151,28 @@ function isFkLikeName(name: string) {
   return (lower.endsWith("id") && lower !== "id") || lower.endsWith("_id");
 }
 
+// Whether each `table.column` is `.notNull()`, so a relation that only a `relations()` block
+// declares still knows if its child side may be empty.
+function requiredColumns(program: Program, text: string) {
+  return new Map(
+    tableCalls(program, text).flatMap(({ varName, args }) => {
+      const objLit = args[1];
+      if (!isObject(objLit)) return [];
+      return objLit.properties.filter(isPropertyAssignment).flatMap((prop) => {
+        const fieldName = identifierKey(prop);
+        return fieldName === null
+          ? []
+          : [[`${varName}.${fieldName}`, isFieldRequired(textOf(text, prop.value))] as const];
+      });
+    }),
+  );
+}
+
 // Pattern: relations(TableRef, ({ one, many }) => ({ ... }))
+// A relation found here is not a database constraint (`enforced: false`); when a foreign key
+// backs the same pair, the foreign key's entry is kept instead.
 function extractRelationsFromRelationBlocks(program: Program, text: string) {
+  const required = requiredColumns(program, text);
   return exportedDeclarations(program).flatMap(({ declarator }) => {
     const varName = declaratorName(declarator);
     if (varName === null || !varName.toLowerCase().includes("relation")) return [];
@@ -195,26 +217,20 @@ function extractRelationsFromRelationBlocks(program: Program, text: string) {
       const refIsFk = isFkLikeName(refField);
 
       // FK direction: the side with FK-looking field name is the child; default to current.
-      if (!currentIsFk && refIsFk) {
-        return [
-          {
-            fromModel: tableName, // Parent
-            toModel: refTable, // Child
-            fromField: currentField, // PK in parent
-            toField: refField, // FK in child
-            isRequired: true,
-          },
-        ] as const;
-      }
+      const [fromModel, fromField, toModel, toField] =
+        !currentIsFk && refIsFk
+          ? [tableName, currentField, refTable, refField]
+          : [refTable, refField, tableName, currentField];
       return [
         {
-          fromModel: refTable,
-          toModel: tableName,
-          fromField: refField,
-          toField: currentField,
-          isRequired: true,
+          fromModel,
+          toModel,
+          fromField,
+          toField,
+          isRequired: required.get(`${toModel}.${toField}`) ?? true,
+          enforced: false,
         },
-      ] as const;
+      ];
     });
   });
 }
@@ -253,7 +269,8 @@ export function parseTableInfo(code: readonly string[]) {
   });
 }
 
-// Sources scanned: .references() calls, foreignKey() constraints, relations() blocks
+// Sources scanned: .references() calls, foreignKey() constraints, relations() blocks. A pair
+// found more than once keeps its first entry, so a foreign key wins over a relations() block.
 export function extractRelationsFromSchema(code: readonly string[]) {
   const { program, text } = parseSource(code);
 

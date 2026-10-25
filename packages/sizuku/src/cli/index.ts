@@ -135,10 +135,94 @@ function studio() {
   ).pipe(Command.withDescription("Edit the schema, its ER diagram, docs and data"));
 }
 
+const seedFlags = {
+  config: Flag.String("config").pipe(
+    Flag.withAlias("c"),
+    Flag.withDescription("The seed config (default: sizuku.config.ts)"),
+    Flag.withMetavar("path"),
+    Flag.optional,
+  ),
+  url: Flag.String("url").pipe(
+    Flag.withAlias("u"),
+    Flag.withDescription("Database to insert into (default: the config's url, then $DATABASE_URL)"),
+    Flag.withMetavar("database-url"),
+    Flag.optional,
+  ),
+  sql: Flag.String("sql").pipe(
+    Flag.withDescription("Write the rows as a SQL script instead of inserting them"),
+    Flag.withMetavar("seed.sql"),
+    Flag.optional,
+  ),
+  seed: Flag.Int("seed").pipe(
+    Flag.withDescription(
+      "The faker seed; the same seed always gives the same rows (left out: every run differs)",
+    ),
+    Flag.withMetavar("n"),
+    Flag.optional,
+  ),
+  count: Flag.Int("count").pipe(
+    Flag.withDescription(
+      "Rows for every faker model, over the per-model counts of the config; models given as data keep their rows",
+    ),
+    Flag.withMetavar("n"),
+    Flag.filter(
+      (count) => count >= 0,
+      () => "a count of 0 or more",
+    ),
+    Flag.optional,
+  ),
+  locale: Flag.String("locale").pipe(
+    Flag.withDescription("The faker locale, or several tried in order (ja,en)"),
+    Flag.withMetavar("locale"),
+    Flag.optional,
+  ),
+  reset: Flag.Boolean("reset").pipe(
+    Flag.withDescription("Delete every row of the seeded tables before inserting"),
+    Flag.withDefault(false),
+  ),
+};
+
+// The seeder pulls in faker with every locale, drizzle-orm and the database drivers, which
+// `--help`, `--version` and a rejected command line must not pay for.
+function seed() {
+  return Command.make("seed", seedFlags, (args) =>
+    Effect.gen(function* () {
+      const { runSeed, seedBanner } = yield* Effect.promise(() => import("../seed/run.js"));
+      const report = yield* runSeed(
+        {
+          config: Option.getOrNull(args.config),
+          url: Option.getOrNull(args.url),
+          output: Option.getOrNull(args.sql),
+          seed: Option.getOrNull(args.seed),
+          count: Option.getOrNull(args.count),
+          locale: Option.getOrNull(args.locale),
+          reset: args.reset,
+        },
+        process.cwd(),
+      ).pipe(Effect.mapError((error) => userError(error.message)));
+      yield* Console.log(seedBanner(report));
+    }),
+  ).pipe(
+    Command.withDescription("Fill the database with rows made from sizuku.config.ts"),
+    Command.withExamples([
+      { command: `${COMMAND_NAME} seed`, description: "Insert the rows the config describes" },
+      {
+        command: `${COMMAND_NAME} seed --sql seed.sql`,
+        description: "Write them as a SQL script instead",
+      },
+      {
+        command: `${COMMAND_NAME} seed --reset --seed 7 --count 100`,
+        description: "Empty the seeded tables first, then insert 100 rows per model from seed 7",
+      },
+      { command: `${COMMAND_NAME} seed --locale ja`, description: "Japanese names and addresses" },
+    ]),
+  );
+}
+
 function cli() {
   return Command.make(COMMAND_NAME, generateFlags, generate).pipe(
     Command.withDescription("💧 Drizzle ORM schema tools"),
-    Command.withSubcommands([studio()]),
+    Command.withSubcommands([studio(), seed()]),
   );
 }
 

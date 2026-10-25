@@ -167,7 +167,7 @@ function readEnums(program: Program, source: Parameters<typeof descriptionBefore
 /**
  * The Drizzle schema as the ER diagram draws it: a card per table with a row
  * per column, a card per `pgEnum`, and the relations `mergeRelations` finds
- * (foreign keys, `relations()` blocks and `@relation` comments); a table, column or enum is
+ * (foreign keys and `relations()` blocks); a table, column or enum is
  * described by the comment written above it.
  */
 export function diagramSchema(code: readonly string[]) {

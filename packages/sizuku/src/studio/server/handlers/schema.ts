@@ -7,7 +7,21 @@ import { WATCH_INTERVAL_MS } from "../constants/index.js";
 import { getStudio } from "../services/studio.js";
 import * as SchemaUseCase from "../usecases/schema.js";
 
-/** `GET /schema` handler. The schema file as it is on disk. */
+/**
+ * `GET /schema` handler. The schema file as it is on disk.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant U as SchemaUseCase
+ *   C->>H: GET /schema
+ *   H->>U: readSchema()
+ *   U-->>H: Snapshot
+ *   H-->>C: 200 Snapshot
+ *   Note over H: on failure, Match.tag: FileReadError -> 500
+ * ```
+ */
 export const getSchemaRouteHandler: RouteHandler<typeof getSchemaRoute> = (c) =>
   Effect.runPromise(
     Effect.matchEffect(SchemaUseCase.readSchema(), {
@@ -36,7 +50,21 @@ export const getSchemaRouteHandler: RouteHandler<typeof getSchemaRoute> = (c) =>
     }),
   );
 
-/** `PUT /schema` handler. Writes the schema file. */
+/**
+ * `PUT /schema` handler. Writes the schema file.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant U as SchemaUseCase
+ *   C->>H: PUT /schema { source }
+ *   H->>U: writeSchema({ source })
+ *   U-->>H: Snapshot
+ *   H-->>C: 200 Snapshot
+ *   Note over H: on failure, Match.tag: FileWriteError -> 500
+ * ```
+ */
 export const putSchemaRouteHandler: RouteHandler<typeof putSchemaRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
@@ -71,6 +99,22 @@ export const putSchemaRouteHandler: RouteHandler<typeof putSchemaRoute> = (c) =>
  * `GET /schema/events` handler. A `change` event whenever the schema file changes on disk, so
  * an edit made in another editor reaches the page. The file is polled: `fs.watch` misses writes
  * through bind mounts and editors that replace the file.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant F as fs.watchFile
+ *   C->>H: GET /schema/events
+ *   H->>F: watchFile(schemaPath, WATCH_INTERVAL_MS)
+ *   H-->>C: event: ready
+ *   loop while the stream is open
+ *     F-->>H: stats (mtime changed)
+ *     H-->>C: event: change
+ *   end
+ *   C-xH: abort
+ *   H->>F: unwatchFile(schemaPath)
+ * ```
  */
 export const getSchemaEventsRouteHandler: RouteHandler<typeof getSchemaEventsRoute> = (c) =>
   streamSSE(c, async (stream) => {

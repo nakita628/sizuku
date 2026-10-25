@@ -513,9 +513,9 @@ export const RelationEndSchema = z
 export const CanvasRelationSchema = z
   .object({
     id: z.string().openapi({ description: "A key for the edge: `from.field->to.field`" }),
-    origin: z.enum(["inferred", "annotated", "implicit-many-to-many"]).openapi({
+    origin: z.enum(["inferred", "relations", "implicit-many-to-many"]).openapi({
       description:
-        "Where it was found: a foreign key (`inferred`) or a `/// @relation` note (`annotated`)",
+        "Where it was found: a foreign key (`inferred`) or only a `relations()` block (`relations`)",
     }),
     name: z.string().nullable().openapi({ description: "Its name, when it has one" }),
     onDelete: z
@@ -750,7 +750,7 @@ export const DocRelationSchema = z
       .openapi({ description: "How it reads from this side: `one to many`, `many to one`, ..." }),
     origin: z.string().openapi({
       description:
-        "Where it was found: a foreign key, a `relations()` block or a `/// @relation` note",
+        "Where it was found: a foreign key (`inferred`) or only a `relations()` block (`relations`)",
     }),
     onDelete: z
       .string()

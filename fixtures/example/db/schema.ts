@@ -1,7 +1,6 @@
 import { relations } from "drizzle-orm";
 import { mysqlTable, varchar } from "drizzle-orm/mysql-core";
 
-/** @relation user.id post.userId one-to-zero-many */
 export const user = mysqlTable("user", {
   /** Primary key */
   id: varchar("id", { length: 36 }).primaryKey(),

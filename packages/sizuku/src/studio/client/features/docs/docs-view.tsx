@@ -145,9 +145,9 @@ function Relations({
                 on update {relation.onUpdate}
               </Chip>
             ) : null}
-            {relation.origin === "annotated" ? (
+            {relation.origin === "relations" ? (
               <Chip size="sm" color="accent" variant="soft">
-                {reverse ? "@relation" : "@relation (no foreign key)"}
+                {reverse ? "relations()" : "relations() (no foreign key)"}
               </Chip>
             ) : null}
           </li>

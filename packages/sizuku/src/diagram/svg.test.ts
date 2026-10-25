@@ -99,7 +99,7 @@ describe("renderDiagramSvg", () => {
     expect(svg).toContain(`L500 ${targetY}"`);
   });
 
-  it("joins the headers for implicit many-to-many relations and dashes annotated ones", () => {
+  it("joins the headers for implicit many-to-many relations and dashes them", () => {
     const svg = renderDiagramSvg({
       models: [user, post],
       relations: [
@@ -114,6 +114,17 @@ describe("renderDiagramSvg", () => {
     expect(svg).toContain(`d="M${NODE_WIDTH} ${NODE_HEADER_HEIGHT / 2}`);
     expect(svg).toContain('stroke-dasharray="5 4"');
     expect(svg).toContain(">many to many</text>");
+  });
+
+  it("dashes a relation only a relations() block declares, and draws a foreign key solid", () => {
+    const dashed = renderDiagramSvg({
+      models: [user, post],
+      relations: [relation({ origin: "relations" })],
+      positions,
+    });
+    const solid = renderDiagramSvg({ models: [user, post], relations: [relation()], positions });
+    expect(dashed).toContain('stroke-dasharray="5 4"');
+    expect(solid).not.toContain('stroke-dasharray="5 4"');
   });
 
   it("escapes markup in names and documentation", () => {

@@ -3,7 +3,23 @@ import { Effect, Match } from "effect";
 import type { postDrizzleRoute, postDrizzleTouchedRoute } from "../routes";
 import * as QueryUseCase from "../usecases/query.js";
 
-/** `POST /drizzle` handler. Runs Drizzle code; what it throws comes back in the result, while code or a schema that does not parse is a 422 and a missing database or TypeScript a 503. */
+/**
+ * `POST /drizzle` handler. Runs Drizzle code; what it throws comes back in the result, while
+ * code or a schema that does not parse is a 422 and a missing database or TypeScript a 503.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant U as QueryUseCase
+ *   C->>H: POST /drizzle { code }
+ *   H->>U: runQuery({ code })
+ *   U-->>H: QueryResult
+ *   H-->>C: 200 QueryResult
+ *   Note over U: what the code throws is part of the QueryResult, not a failure
+ *   Note over H: on failure, Match.tag: QueryError -> 422, SchemaParseError -> 422, DatabaseUnavailableError -> 503, LanguageUnavailableError -> 503, FileReadError -> 500
+ * ```
+ */
 export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(
@@ -98,7 +114,22 @@ export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c
   );
 };
 
-/** `POST /drizzle/touched` handler. The tables and columns Drizzle code touches; code that does not parse touches none. */
+/**
+ * `POST /drizzle/touched` handler. The tables and columns Drizzle code touches; code that does
+ * not parse touches none.
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant C as Client
+ *   participant H as Handler
+ *   participant U as QueryUseCase
+ *   C->>H: POST /drizzle/touched { code }
+ *   H->>U: touchedByQuery({ code })
+ *   U-->>H: QueryTouched
+ *   H-->>C: 200 QueryTouched
+ *   Note over H: on failure, Match.tag: FileReadError -> 500
+ * ```
+ */
 export const postDrizzleTouchedRouteHandler: RouteHandler<typeof postDrizzleTouchedRoute> = (c) => {
   const data = c.req.valid("json");
   return Effect.runPromise(

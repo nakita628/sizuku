@@ -66,7 +66,7 @@ export function dbml(code: string[]) {
     const left = `${r.to.model}.${r.to.field}`;
     const right = `${r.from.model}.${r.from.field}`;
     const op = dbmlOperator(isMany(r.to.cardinality), isMany(r.from.cardinality));
-    // Physical FKs keep the `_fk` suffix; logical (annotated) relations drop it,
+    // Physical FKs keep the `_fk` suffix; logical (`relations()`-only) ones drop it,
     // since they are not DB-enforced constraints.
     const suffix = r.origin === "inferred" ? "_fk" : "";
     const name = `${r.to.model}_${r.to.field}_${r.from.model}_${r.from.field}${suffix}`;
