@@ -21,7 +21,7 @@
     "better-auth": "^1.7.14",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "1.0.0-rc.5",
-    "vite-plus": "^1.4.0"
+    "vite-plus": "1.4.0"
   },
   "packageManager": "pnpm@11.6.0",
   "pnpm": {
