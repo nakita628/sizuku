@@ -1,6 +1,11 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { Effect, Match } from "effect";
-import type { postFormatRoute } from "../routes";
+import {
+  FormattedSchema,
+  InternalServerProblemSchema,
+  postFormatRoute,
+  ValidationProblemSchema,
+} from "../routes";
 import * as FormatUseCase from "../usecases/format.js";
 
 /**
@@ -22,20 +27,20 @@ export const postFormatRouteHandler: RouteHandler<typeof postFormatRoute> = (c) 
   const data = c.req.valid("json");
   return Effect.runPromise(
     Effect.matchEffect(FormatUseCase.formatText({ source: data.source }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(FormattedSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("FormatError", ({ message }) =>
             Effect.succeed(
               c.json(
-                {
+                ValidationProblemSchema.parse({
                   type: "/problems/validation-failed",
                   title: "Validation Failed",
                   status: 422,
                   detail: "The formatter could not format the source.",
                   instance: c.req.path,
                   errors: [{ field: "source", message }],
-                } as const,
+                }),
                 422,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -45,13 +50,13 @@ export const postFormatRouteHandler: RouteHandler<typeof postFormatRoute> = (c) 
             Effect.logError("cannot read the formatter config", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),

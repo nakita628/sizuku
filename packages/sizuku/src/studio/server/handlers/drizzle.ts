@@ -1,6 +1,14 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { Effect, Match } from "effect";
-import type { postDrizzleRoute, postDrizzleTouchedRoute } from "../routes";
+import {
+  InternalServerProblemSchema,
+  postDrizzleRoute,
+  postDrizzleTouchedRoute,
+  QueryResultSchema,
+  QueryTouchedSchema,
+  ServiceUnavailableProblemSchema,
+  ValidationProblemSchema,
+} from "../routes";
 import * as QueryUseCase from "../usecases/query.js";
 
 /**
@@ -24,13 +32,13 @@ export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c
   const data = c.req.valid("json");
   return Effect.runPromise(
     Effect.matchEffect(QueryUseCase.runQuery({ code: data.code }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(QueryResultSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("QueryError", ({ message, line, column }) =>
             Effect.succeed(
               c.json(
-                {
+                ValidationProblemSchema.parse({
                   type: "/problems/validation-failed",
                   title: "Validation Failed",
                   status: 422,
@@ -39,7 +47,7 @@ export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c
                   errors: [
                     { field: "code", message: `${message} (line ${line}, column ${column})` },
                   ],
-                } as const,
+                }),
                 422,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -48,14 +56,14 @@ export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c
           Match.tag("SchemaParseError", ({ message, line }) =>
             Effect.succeed(
               c.json(
-                {
+                ValidationProblemSchema.parse({
                   type: "/problems/validation-failed",
                   title: "Validation Failed",
                   status: 422,
                   detail: "The saved schema does not parse.",
                   instance: c.req.path,
                   errors: [{ field: "schema", message: `${message} (line ${line})` }],
-                } as const,
+                }),
                 422,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -64,13 +72,13 @@ export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c
           Match.tag("DatabaseUnavailableError", ({ reason }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: reason,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -79,13 +87,13 @@ export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c
           Match.tag("LanguageUnavailableError", ({ reason }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: reason,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -95,13 +103,13 @@ export const postDrizzleRouteHandler: RouteHandler<typeof postDrizzleRoute> = (c
             Effect.logError("cannot read the schema", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -134,20 +142,20 @@ export const postDrizzleTouchedRouteHandler: RouteHandler<typeof postDrizzleTouc
   const data = c.req.valid("json");
   return Effect.runPromise(
     Effect.matchEffect(QueryUseCase.touchedByQuery({ code: data.code }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(QueryTouchedSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("FileReadError", ({ path, cause }) =>
             Effect.logError("cannot read the schema", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),
