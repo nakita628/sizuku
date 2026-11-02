@@ -83,13 +83,15 @@ export const RelationFields = z
         table: z
           .string()
           .meta({ description: "The table the relation is declared on", example: "user" }),
-        name: z.string().meta({ description: "The name `relations()` gives it", example: "posts" }),
+        name: z
+          .string()
+          .meta({ description: "The name `defineRelations` gives it", example: "posts" }),
         target: z.string().meta({ description: "The table it points at", example: "post" }),
       })
       .readonly(),
   )
   .readonly()
-  .meta({ description: "The relations `relations()` declares, by the names queries use" });
+  .meta({ description: "The relations `defineRelations` declares, by the names queries use" });
 
 const MakeDocsInput = z
   .object({

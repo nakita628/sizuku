@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { defineRelations } from "drizzle-orm";
 import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -90,29 +90,22 @@ export const twoFactor = pgTable(
   ],
 );
 
-export const userRelations = relations(user, ({ many }) => ({
-  sessions: many(session),
-  accounts: many(account),
-  twoFactors: many(twoFactor),
-}));
-
-export const sessionRelations = relations(session, ({ one }) => ({
-  user: one(user, {
-    fields: [session.userId],
-    references: [user.id],
+export const relations = defineRelations(
+  { user, session, account, verification, twoFactor },
+  (r) => ({
+    user: {
+      sessions: r.many.session(),
+      accounts: r.many.account(),
+      twoFactors: r.many.twoFactor(),
+    },
+    session: {
+      user: r.one.user({ from: r.session.userId, to: r.user.id }),
+    },
+    account: {
+      user: r.one.user({ from: r.account.userId, to: r.user.id }),
+    },
+    twoFactor: {
+      user: r.one.user({ from: r.twoFactor.userId, to: r.user.id }),
+    },
   }),
-}));
-
-export const accountRelations = relations(account, ({ one }) => ({
-  user: one(user, {
-    fields: [account.userId],
-    references: [user.id],
-  }),
-}));
-
-export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
-  user: one(user, {
-    fields: [twoFactor.userId],
-    references: [user.id],
-  }),
-}));
+);

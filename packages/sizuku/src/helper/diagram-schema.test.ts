@@ -139,12 +139,14 @@ describe("diagramSchema", () => {
     ]);
   });
 
-  it("draws a relations()-only relation dashed by keeping its origin", () => {
+  it("draws a defineRelations-only relation dashed by keeping its origin", () => {
     const code = [
       "export const user = sqliteTable('user', { id: text('id').primaryKey() })",
       "export const post = sqliteTable('post', { authorId: text('author_id') })",
-      "export const postRelations = relations(post, ({ one }) => ({",
-      "  author: one(user, { fields: [post.authorId], references: [user.id] }),",
+      "export const postRelations = defineRelations({ post, user }, (r) => ({",
+      "  post: {",
+      "    author: r.one.user({ from: r.post.authorId, to: r.user.id }),",
+      "  },",
       "}))",
     ];
 

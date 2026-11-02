@@ -39,10 +39,21 @@ type ColumnLike = {
   readonly _: { readonly data: unknown; readonly notNull: boolean; readonly dataType: string };
 };
 
-/** A `relations(table, ...)` export: the table it is for and the relations it declares. */
-type RelationsLike = {
-  readonly table: { readonly _: { readonly name: string } };
-  readonly config: (...helpers: never[]) => object;
+/**
+ * A `defineRelations` or `defineRelationsPart` export: per table, the table and the relations it
+ * declares, each an `r.one` or `r.many` with the table it points at.
+ */
+type RelationalLike = {
+  readonly [key: string]: {
+    readonly table: { readonly _: { readonly name: string } };
+    readonly relations: object;
+  };
+};
+
+/** A relation as `defineRelations` types it. */
+type RelationLike = {
+  readonly relationType: "one" | "many";
+  readonly targetTableName: string;
 };
 
 /** The export names of a schema module that are tables: what `models` is keyed by. */
@@ -55,21 +66,39 @@ type TableOf<S, M> = M extends keyof S ? (S[M] extends TableLike ? S[M] : never)
 
 type ColumnsOf<S, M> = TableOf<S, M>["_"]["columns"];
 
-/** The export name of the table a relation points at, found by its database name. */
-type ModelByDbName<S, N> = {
-  [K in ModelName<S>]: TableOf<S, K>["_"]["name"] extends N ? K : never;
-}[ModelName<S>];
+/** The relations one relational export declares for the table of the database name `N`. */
+type RelationsIn<C, N> = {
+  [T in keyof C]: C[T] extends {
+    readonly table: { readonly _: { readonly name: N } };
+    readonly relations: infer R;
+  }
+    ? R
+    : never;
+}[keyof C];
 
-/** The relations the `relations()` exports declare for the model, by name. */
+/** The relations every relational export declares for the model, by name. */
 type DeclaredRelations<S, M> = {
-  [K in keyof S]: S[K] extends RelationsLike
-    ? S[K]["table"]["_"]["name"] extends TableOf<S, M>["_"]["name"]
-      ? ReturnType<S[K]["config"]>
-      : never
+  [K in keyof S]: S[K] extends RelationalLike
+    ? RelationsIn<S[K], TableOf<S, M>["_"]["name"]>
     : never;
 }[keyof S];
 
-type RelationsOf<S, M> = [DeclaredRelations<S, M>] extends [never] ? {} : DeclaredRelations<S, M>;
+type RelationsOf<S, M> = [DeclaredRelations<S, M>] extends [never]
+  ? {}
+  : UnionToIntersection<DeclaredRelations<S, M>>;
+
+type UnionToIntersection<U> = (U extends unknown ? (union: U) => void : never) extends (
+  intersection: infer I,
+) => void
+  ? I
+  : never;
+
+/** The export name of the table a relation points at; `targetTableName` is that export's name. */
+type TargetOf<S, R> = R extends { readonly targetTableName: infer T }
+  ? T extends ModelName<S>
+    ? T
+    : never
+  : never;
 
 /** What a rule may put in a column: its data type, or null when the column is nullable. */
 export type FieldValue<C extends ColumnLike> =
@@ -91,21 +120,18 @@ export type KeyOf<S, M> = {
 /**
  * A real row as the config gives it. Any column may be there; one left out takes its default, a
  * key to a parent is picked from the rows that exist, and a required column with neither is
- * reported before anything is inserted. Relations need no ids: a `many()` relation nests the child
- * rows (`posts: [{ title }]`) and a `one()` relation names its parent by a unique key
+ * reported before anything is inserted. Relations need no ids: an `r.many` relation nests the child
+ * rows (`posts: [{ title }]`) and an `r.one` relation names its parent by a unique key
  * (`author: { email }`).
  */
 export type DataRow<S, M> = {
   readonly [K in keyof TableOf<S, M>["$inferInsert"]]?: TableOf<S, M>["$inferInsert"][K];
 } & {
-  readonly [R in keyof RelationsOf<S, M>]?: RelationsOf<S, M>[R] extends {
-    readonly isNullable: boolean;
-    readonly referencedTableName: infer N;
-  }
-    ? KeyOf<S, ModelByDbName<S, N>> | DataRow<S, ModelByDbName<S, N>>
-    : RelationsOf<S, M>[R] extends { readonly referencedTableName: infer N }
-      ? readonly DataRow<S, ModelByDbName<S, N>>[]
-      : never;
+  readonly [R in keyof RelationsOf<S, M>]?: RelationsOf<S, M>[R] extends RelationLike
+    ? RelationsOf<S, M>[R]["relationType"] extends "one"
+      ? KeyOf<S, TargetOf<S, RelationsOf<S, M>[R]>> | DataRow<S, TargetOf<S, RelationsOf<S, M>[R]>>
+      : readonly DataRow<S, TargetOf<S, RelationsOf<S, M>[R]>>[]
+    : never;
 };
 
 /** One real row of the named model, for a row kept in its own variable. */
@@ -129,13 +155,15 @@ export function defineData<const S, M extends ModelName<S>>(
 
 type LengthRule = { readonly length?: number | { readonly min: number; readonly max: number } };
 
-type Bounds<C extends ColumnLike> = (C["_"]["dataType"] extends "array"
+// Drizzle names a column's type as its broad type and what it narrows to: `number int32`,
+// `object date`, `string uuid`. An array column holds its element's type with a list as data.
+type Bounds<C extends ColumnLike> = (C["_"]["data"] extends readonly unknown[]
   ? { readonly min?: number; readonly max?: number } & LengthRule
-  : C["_"]["dataType"] extends "number" | "bigint"
+  : C["_"]["dataType"] extends `number${string}` | `bigint${string}`
     ? { readonly min?: number; readonly max?: number }
-    : C["_"]["dataType"] extends "date"
+    : C["_"]["dataType"] extends "object date"
       ? { readonly from?: Date | string; readonly to?: Date | string }
-      : C["_"]["dataType"] extends "string"
+      : C["_"]["dataType"] extends `string${string}`
         ? LengthRule
         : unknown) &
   (C["_"]["notNull"] extends true ? unknown : { readonly nullRate?: number });
@@ -155,7 +183,7 @@ export type FieldRule<S, M, C extends ColumnLike> =
     } & Bounds<C>);
 
 /**
- * How many child rows each row must have, per `many()` relation (`min: 1` makes one required).
+ * How many child rows each row must have, per `r.many` relation (`min: 1` makes one required).
  * Real rows are checked against it; faker rows are dealt out to satisfy it.
  */
 export type RelationRule = {
@@ -163,11 +191,11 @@ export type RelationRule = {
   readonly max?: number;
 };
 
-/** The `many()` relations of the model: a `one()` has `isNullable`, a `many()` does not. */
+/** The `r.many` relations of the model. */
 type ManyNames<S, M> = {
-  [R in keyof RelationsOf<S, M>]: RelationsOf<S, M>[R] extends { readonly isNullable: boolean }
-    ? never
-    : R;
+  [R in keyof RelationsOf<S, M>]: RelationsOf<S, M>[R] extends { readonly relationType: "many" }
+    ? R
+    : never;
 }[keyof RelationsOf<S, M>];
 
 type FieldRules<S, M> = {
@@ -186,7 +214,7 @@ export type ModelRule<S, M> =
       readonly data: readonly DataRow<S, M>[];
       readonly count?: never;
       readonly fields?: never;
-      /** How many child rows each real row must have, per `many()` relation. */
+      /** How many child rows each real row must have, per `r.many` relation. */
       readonly relations?: { readonly [R in ManyNames<S, M>]?: RelationRule };
     }
   | {
@@ -195,7 +223,7 @@ export type ModelRule<S, M> =
       readonly count?: number;
       /** Rules per column. */
       readonly fields?: FieldRules<S, M>;
-      /** How many child rows each faker row gets, per `many()` relation (`posts`). */
+      /** How many child rows each faker row gets, per `r.many` relation (`posts`). */
       readonly relations?: { readonly [R in ManyNames<S, M>]?: RelationRule };
     };
 

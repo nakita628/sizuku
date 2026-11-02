@@ -167,7 +167,7 @@ function readEnums(program: Program, source: Parameters<typeof descriptionBefore
 /**
  * The Drizzle schema as the ER diagram draws it: a card per table with a row
  * per column, a card per `pgEnum`, and the relations `mergeRelations` finds
- * (foreign keys and `relations()` blocks); a table, column or enum is
+ * (foreign keys and `defineRelations` exports); a table, column or enum is
  * described by the comment written above it.
  */
 export function diagramSchema(code: readonly string[]) {
@@ -231,16 +231,14 @@ export function diagramSchema(code: readonly string[]) {
     ];
   });
 
-  const relations = merged.map(
-    (r): SchemaRelation => ({
-      origin: r.origin,
-      name: null,
-      onDelete: actions.get(`${r.to.model}.${r.to.field}`)?.onDelete ?? null,
-      onUpdate: actions.get(`${r.to.model}.${r.to.field}`)?.onUpdate ?? null,
-      from: r.from,
-      to: r.to,
-    }),
-  );
+  const relations = merged.map((r): SchemaRelation => ({
+    origin: r.origin,
+    name: null,
+    onDelete: actions.get(`${r.to.model}.${r.to.field}`)?.onDelete ?? null,
+    onUpdate: actions.get(`${r.to.model}.${r.to.field}`)?.onUpdate ?? null,
+    from: r.from,
+    to: r.to,
+  }));
 
   return { models, relations, enums };
 }

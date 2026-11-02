@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { runSeed, seedBanner } from "./run.js";
 import type { SeedOverrides } from "./run.js";
 
-const SCHEMA = `import { relations } from "drizzle-orm";
+const SCHEMA = `import { defineRelations } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const user = sqliteTable("users", {
@@ -24,9 +24,9 @@ export const post = sqliteTable("posts", {
   title: text("title").notNull(),
 });
 
-export const userRelations = relations(user, ({ many }) => ({ posts: many(post) }));
-export const postRelations = relations(post, ({ one }) => ({
-  author: one(user, { fields: [post.authorId], references: [user.id] }),
+export const relations = defineRelations({ user, post }, (r) => ({
+  user: { posts: r.many.post() },
+  post: { author: r.one.user({ from: r.post.authorId, to: r.user.id }) },
 }));
 `;
 

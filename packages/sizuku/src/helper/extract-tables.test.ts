@@ -34,15 +34,16 @@ describe("parseTableInfo", () => {
       "  userId: varchar('user_id', { length: 36 }).notNull(),",
       "})",
       "",
-      "export const userRelations = relations(user, ({ many }) => ({",
-      "  posts: many(post),",
+      "export const userRelations = defineRelations({ user, post }, (r) => ({",
+      "  user: {",
+      "    posts: r.many.post(),",
+      "  },",
       "}))",
       "",
-      "export const postRelations = relations(post, ({ one }) => ({",
-      "  user: one(user, {",
-      "    fields: [post.userId],",
-      "    references: [user.id],",
-      "  }),",
+      "export const postRelations = defineRelations({ post, user }, (r) => ({",
+      "  post: {",
+      "    user: r.one.user({ from: r.post.userId, to: r.user.id }),",
+      "  },",
       "}))",
       "",
     ]);
@@ -149,8 +150,10 @@ describe("parseTableInfo", () => {
       "  id: varchar('id', { length: 36 }).primaryKey(),",
       "})",
       "",
-      "export const userRelations = relations(user, ({ many }) => ({",
-      "  posts: many(post),",
+      "export const userRelations = defineRelations({ user, post }, (r) => ({",
+      "  user: {",
+      "    posts: r.many.post(),",
+      "  },",
       "}))",
     ]);
     expect(result.length).toBe(1);
@@ -195,7 +198,7 @@ describe("extractRelationsFromSchema", () => {
     ]);
   });
 
-  it.concurrent("extracts relations from relations() blocks", () => {
+  it.concurrent("extracts relations from defineRelations exports", () => {
     const code = [
       "export const User = sqliteTable('User', {",
       "  id: text('id').notNull().primaryKey(),",
@@ -206,11 +209,10 @@ describe("extractRelationsFromSchema", () => {
       "  userId: text('userId').notNull(),",
       "})",
       "",
-      "export const PostRelations = relations(Post, ({ one }) => ({",
-      "  user: one(User, {",
-      "    fields: [Post.userId],",
-      "    references: [User.id],",
-      "  }),",
+      "export const PostRelations = defineRelations({ Post, User }, (r) => ({",
+      "  Post: {",
+      "    user: r.one.User({ from: r.Post.userId, to: r.User.id }),",
+      "  },",
       "}))",
     ];
 
@@ -224,6 +226,58 @@ describe("extractRelationsFromSchema", () => {
         isRequired: true,
         enforced: false,
       },
+    ]);
+  });
+
+  it.concurrent("reads which side of a v2 relation holds the key, whatever `from` is", () => {
+    const code = [
+      "export const users = pgTable('users', {",
+      "  id: integer('id').primaryKey(),",
+      "  invitedBy: integer('invited_by'),",
+      "})",
+      "export const profileInfo = pgTable('profile_info', {",
+      "  id: integer('id').primaryKey(),",
+      "  userId: integer('user_id').notNull(),",
+      "})",
+      "export const groups = pgTable('groups', { id: integer('id').primaryKey() })",
+      "export const usersToGroups = pgTable('users_to_groups', {",
+      "  userId: integer('user_id').notNull(),",
+      "  groupId: integer('group_id').notNull(),",
+      "})",
+      "export const posts = pgTable('posts', {",
+      "  id: integer('id').primaryKey(),",
+      "  authorId: integer('author_id'),",
+      "  reviewerId: integer('reviewer_id'),",
+      "})",
+      "export const relations = defineRelations(schema, (r) => ({",
+      "  users: {",
+      "    profileInfo: r.one.profileInfo({ from: r.users.id, to: r.profileInfo.userId }),",
+      "    invitee: r.one.users({ from: r.users.invitedBy, to: r.users.id }),",
+      "    groups: r.many.groups({",
+      "      from: r.users.id.through(r.usersToGroups.userId),",
+      "      to: r.groups.id.through(r.usersToGroups.groupId),",
+      "    }),",
+      "    posts: r.many.posts({ alias: 'author' }),",
+      "  },",
+      "}))",
+      "export const part = defineRelationsPart(schema, (r) => ({",
+      "  posts: {",
+      "    author: r.one.users({ from: r.posts.authorId, to: r.users.id, alias: 'author' }),",
+      "    reviewer: r.one.users({ from: r.posts.reviewerId, to: r.users.id, optional: false }),",
+      "  },",
+      "}))",
+    ];
+
+    const pairs = extractRelationsFromSchema(code).map(
+      (r) => `${r.fromModel}.${r.fromField} -> ${r.toModel}.${r.toField} ${r.isRequired}`,
+    );
+    expect(pairs).toStrictEqual([
+      "users.id -> profileInfo.userId true",
+      "users.id -> users.invitedBy false",
+      "users.id -> usersToGroups.userId true",
+      "groups.id -> usersToGroups.groupId true",
+      "users.id -> posts.authorId false",
+      "users.id -> posts.reviewerId true",
     ]);
   });
 
@@ -298,11 +352,10 @@ describe("extractRelationsFromSchema", () => {
       "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id),",
       "})",
       "",
-      "export const postRelations = relations(post, ({ one }) => ({",
-      "  user: one(user, {",
-      "    fields: [post.userId],",
-      "    references: [user.id],",
-      "  }),",
+      "export const postRelations = defineRelations({ post, user }, (r) => ({",
+      "  post: {",
+      "    user: r.one.user({ from: r.post.userId, to: r.user.id }),",
+      "  },",
       "}))",
     ];
     const relations = extractRelationsFromSchema(code);

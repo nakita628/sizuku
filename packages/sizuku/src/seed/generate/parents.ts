@@ -46,7 +46,7 @@ function findParentByKey(input: RowInput, fk: ForeignKey, key: SeedRow) {
   });
 }
 
-/** The rule the parent model sets on the `many()` relation this key is the other end of. */
+/** The rule the parent model sets on the `r.many` relation this key is the other end of. */
 function parentBound(context: Context, table: ModelTable, fk: ForeignKey) {
   const side = modelTable(context.tables, fk.toModel)?.parents.find(
     (parent) => parent.child === table.name && parent.key === fk.field,

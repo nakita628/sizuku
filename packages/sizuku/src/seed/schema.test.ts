@@ -1,4 +1,4 @@
-import { relations, sql } from "drizzle-orm";
+import { defineRelations, defineRelationsPart, sql } from "drizzle-orm";
 import {
   boolean,
   integer,
@@ -60,26 +60,15 @@ const member = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.postId] })],
 );
 
-const userRelations = relations(user, ({ many }) => ({
-  posts: many(post),
-  logs: many(auditLog),
-}));
-const postRelations = relations(post, ({ one }) => ({
-  author: one(user, { fields: [post.authorId], references: [user.id] }),
-}));
-const auditLogRelations = relations(auditLog, ({ one }) => ({
-  actor: one(user, { fields: [auditLog.actorId], references: [user.id] }),
-}));
+const tables = { role, user, post, auditLog, member };
 
 const schema = {
-  role,
-  user,
-  post,
-  auditLog,
-  member,
-  userRelations,
-  postRelations,
-  auditLogRelations,
+  ...tables,
+  relations: defineRelations(tables, (r) => ({
+    user: { posts: r.many.post(), logs: r.many.auditLog() },
+    post: { author: r.one.user({ from: r.post.authorId, to: r.user.id }) },
+    auditLog: { actor: r.one.user({ from: r.auditLog.actorId, to: r.user.id }) },
+  })),
 };
 
 describe("readSchema", () => {
@@ -126,6 +115,59 @@ describe("readSchema", () => {
     ]);
   });
 
+  it("reads keys only relations declare: a one-to-one from the parent, a junction, a part", () => {
+    const account = sqliteTable("accounts", { id: sqliteInteger("id").primaryKey() });
+    /** No foreign keys: the relations say every key. */
+    const profile = sqliteTable("profiles", {
+      id: sqliteInteger("id").primaryKey(),
+      accountId: sqliteInteger("account_id").notNull().unique(),
+    });
+    const group = sqliteTable("groups", { id: sqliteInteger("id").primaryKey() });
+    const membership = sqliteTable("memberships", {
+      accountId: sqliteInteger("account_id").notNull(),
+      groupId: sqliteInteger("group_id").notNull(),
+    });
+    const tables = { account, profile, group, membership };
+    const read = Effect.runSync(
+      readSchema({
+        ...tables,
+        // `from` is the parent here: the key is on the target.
+        relations: defineRelations(tables, (r) => ({
+          account: {
+            profile: r.one.profile({ from: r.account.id, to: r.profile.accountId }),
+            groups: r.many.group({
+              from: r.account.id.through(r.membership.accountId),
+              to: r.group.id.through(r.membership.groupId),
+            }),
+          },
+        })),
+        part: defineRelationsPart(tables, (r) => ({
+          profile: { owner: r.one.account({ from: r.profile.accountId, to: r.account.id }) },
+        })),
+      }),
+    );
+    const [a, p, , m] = read.tables;
+    expect(p?.foreignKeys).toStrictEqual([
+      {
+        field: "owner",
+        fromFields: ["accountId"],
+        toModel: "account",
+        toFields: ["id"],
+        required: true,
+        oneToOne: true,
+        self: false,
+        enforced: false,
+      },
+    ]);
+    expect(a?.parents).toStrictEqual([
+      { name: "profile", child: "profile", key: "owner", isList: false },
+    ]);
+    expect(m?.foreignKeys.map((fk) => [fk.fromFields, fk.toModel])).toStrictEqual([
+      [["accountId"], "account"],
+      [["groupId"], "group"],
+    ]);
+  });
+
   it("orders the models parents first", () => {
     const read = Effect.runSync(readSchema(schema));
     const plan = Effect.runSync(makeSeedPlan([...read.tables].reverse()));
@@ -158,7 +200,7 @@ describe("readSchema", () => {
     const read = Effect.runSync(readSchema({ tag }));
     expect(read.dialect).toBe("sqlite");
     expect(read.tables[0]?.columns[0]?.autoincrement).toBe(true);
-    const error = Effect.runSync(Effect.flip(readSchema({ relations })));
+    const error = Effect.runSync(Effect.flip(readSchema({ relations: defineRelations({}) })));
     expect(error.message).toContain("The schema exports no tables");
   });
 });

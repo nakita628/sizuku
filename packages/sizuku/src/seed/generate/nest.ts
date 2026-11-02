@@ -5,7 +5,7 @@ import type { ModelTable, ParentSide } from "../schema.js";
 import type { Context } from "./context.js";
 import { childKey, describeValue, isKeyObject, isSeedList } from "./context.js";
 
-/** Queues the rows nested under one `many()` relation, each with its key to the parent filled. */
+/** Queues the rows nested under one `r.many` relation, each with its key to the parent filled. */
 function nestRelation(
   context: Context,
   table: ModelTable,

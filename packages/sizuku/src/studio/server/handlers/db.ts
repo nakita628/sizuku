@@ -1,15 +1,26 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { Effect, Match } from "effect";
-import type {
+import {
+  AffectedSchema,
+  AnalysisSchema,
+  CountsSchema,
+  DbStatusSchema,
   deleteDbRowsTableNameRoute,
   getDbCountsRoute,
   getDbRoute,
   getDbRowsTableNameRoute,
+  InternalServerProblemSchema,
+  NotFoundProblemSchema,
   patchDbRowsTableNameRoute,
+  PlanSchema,
   postDbAnalyzeRoute,
   postDbExplainRoute,
   postDbRowsTableNameRoute,
   postDbSqlRoute,
+  RowsSchema,
+  ServiceUnavailableProblemSchema,
+  SqlResultSchema,
+  ValidationProblemSchema,
 } from "../routes";
 import * as DbUseCase from "../usecases/db.js";
 
@@ -31,20 +42,20 @@ import * as DbUseCase from "../usecases/db.js";
 export const getDbRouteHandler: RouteHandler<typeof getDbRoute> = (c) => {
   return Effect.runPromise(
     Effect.matchEffect(DbUseCase.readStatus(), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(DbStatusSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("FileReadError", ({ path, cause }) =>
             Effect.logError("cannot read the schema", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -75,19 +86,19 @@ export const getDbRouteHandler: RouteHandler<typeof getDbRoute> = (c) => {
 export const getDbCountsRouteHandler: RouteHandler<typeof getDbCountsRoute> = (c) => {
   return Effect.runPromise(
     Effect.matchEffect(DbUseCase.readCounts(), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(CountsSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("DatabaseUnavailableError", ({ reason }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: reason,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -97,13 +108,13 @@ export const getDbCountsRouteHandler: RouteHandler<typeof getDbCountsRoute> = (c
             Effect.logError("cannot read the schema", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -142,19 +153,19 @@ export const getDbRowsTableNameRouteHandler: RouteHandler<typeof getDbRowsTableN
         search: data.search ?? "",
       }),
       {
-        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+        onSuccess: (value) => Effect.succeed(c.json(RowsSchema.parse(value), 200)),
         onFailure: (error) =>
           Match.value(error).pipe(
             Match.tag("UnknownTableError", ({ table }) =>
               Effect.succeed(
                 c.json(
-                  {
+                  NotFoundProblemSchema.parse({
                     type: "/problems/not-found",
                     title: "Not Found",
                     status: 404,
                     detail: `Unknown table "${table}".`,
                     instance: c.req.path,
-                  } as const,
+                  }),
                   404,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -163,13 +174,13 @@ export const getDbRowsTableNameRouteHandler: RouteHandler<typeof getDbRowsTableN
             Match.tag("DatabaseUnavailableError", ({ reason }) =>
               Effect.succeed(
                 c.json(
-                  {
+                  ServiceUnavailableProblemSchema.parse({
                     type: "/problems/service-unavailable",
                     title: "Service Unavailable",
                     status: 503,
                     detail: reason,
                     instance: c.req.path,
-                  } as const,
+                  }),
                   503,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -178,13 +189,13 @@ export const getDbRowsTableNameRouteHandler: RouteHandler<typeof getDbRowsTableN
             Match.tag("DatabaseError", ({ cause }) =>
               Effect.succeed(
                 c.json(
-                  {
+                  ServiceUnavailableProblemSchema.parse({
                     type: "/problems/service-unavailable",
                     title: "Service Unavailable",
                     status: 503,
                     detail: cause,
                     instance: c.req.path,
-                  } as const,
+                  }),
                   503,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -194,13 +205,13 @@ export const getDbRowsTableNameRouteHandler: RouteHandler<typeof getDbRowsTableN
               Effect.logError("cannot read the schema", path, cause).pipe(
                 Effect.as(
                   c.json(
-                    {
+                    InternalServerProblemSchema.parse({
                       type: "/problems/internal-server-error",
                       title: "Internal Server Error",
                       status: 500,
                       detail: "An unexpected error occurred.",
                       instance: c.req.path,
-                    } as const,
+                    }),
                     500,
                     { "Content-Type": "application/problem+json" },
                   ),
@@ -235,19 +246,19 @@ export const postDbRowsTableNameRouteHandler: RouteHandler<typeof postDbRowsTabl
   const data = { ...c.req.valid("param"), ...c.req.valid("json") };
   return Effect.runPromise(
     Effect.matchEffect(DbUseCase.insertRow({ table: data.tableName, values: data.values }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(AffectedSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("UnknownTableError", ({ table }) =>
             Effect.succeed(
               c.json(
-                {
+                NotFoundProblemSchema.parse({
                   type: "/problems/not-found",
                   title: "Not Found",
                   status: 404,
                   detail: `Unknown table "${table}".`,
                   instance: c.req.path,
-                } as const,
+                }),
                 404,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -256,14 +267,14 @@ export const postDbRowsTableNameRouteHandler: RouteHandler<typeof postDbRowsTabl
           Match.tag("InvalidInputError", ({ field, message }) =>
             Effect.succeed(
               c.json(
-                {
+                ValidationProblemSchema.parse({
                   type: "/problems/validation-failed",
                   title: "Validation Failed",
                   status: 422,
                   detail: message,
                   instance: c.req.path,
                   errors: [{ field: field, message: message }],
-                } as const,
+                }),
                 422,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -272,13 +283,13 @@ export const postDbRowsTableNameRouteHandler: RouteHandler<typeof postDbRowsTabl
           Match.tag("DatabaseUnavailableError", ({ reason }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: reason,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -287,13 +298,13 @@ export const postDbRowsTableNameRouteHandler: RouteHandler<typeof postDbRowsTabl
           Match.tag("DatabaseError", ({ cause }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: cause,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -303,13 +314,13 @@ export const postDbRowsTableNameRouteHandler: RouteHandler<typeof postDbRowsTabl
             Effect.logError("cannot read the schema", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -345,19 +356,19 @@ export const patchDbRowsTableNameRouteHandler: RouteHandler<typeof patchDbRowsTa
     Effect.matchEffect(
       DbUseCase.updateRow({ table: data.tableName, where: data.where, values: data.values }),
       {
-        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+        onSuccess: (value) => Effect.succeed(c.json(AffectedSchema.parse(value), 200)),
         onFailure: (error) =>
           Match.value(error).pipe(
             Match.tag("UnknownTableError", ({ table }) =>
               Effect.succeed(
                 c.json(
-                  {
+                  NotFoundProblemSchema.parse({
                     type: "/problems/not-found",
                     title: "Not Found",
                     status: 404,
                     detail: `Unknown table "${table}".`,
                     instance: c.req.path,
-                  } as const,
+                  }),
                   404,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -366,14 +377,14 @@ export const patchDbRowsTableNameRouteHandler: RouteHandler<typeof patchDbRowsTa
             Match.tag("InvalidInputError", ({ field, message }) =>
               Effect.succeed(
                 c.json(
-                  {
+                  ValidationProblemSchema.parse({
                     type: "/problems/validation-failed",
                     title: "Validation Failed",
                     status: 422,
                     detail: message,
                     instance: c.req.path,
                     errors: [{ field: field, message: message }],
-                  } as const,
+                  }),
                   422,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -382,13 +393,13 @@ export const patchDbRowsTableNameRouteHandler: RouteHandler<typeof patchDbRowsTa
             Match.tag("DatabaseUnavailableError", ({ reason }) =>
               Effect.succeed(
                 c.json(
-                  {
+                  ServiceUnavailableProblemSchema.parse({
                     type: "/problems/service-unavailable",
                     title: "Service Unavailable",
                     status: 503,
                     detail: reason,
                     instance: c.req.path,
-                  } as const,
+                  }),
                   503,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -397,13 +408,13 @@ export const patchDbRowsTableNameRouteHandler: RouteHandler<typeof patchDbRowsTa
             Match.tag("DatabaseError", ({ cause }) =>
               Effect.succeed(
                 c.json(
-                  {
+                  ServiceUnavailableProblemSchema.parse({
                     type: "/problems/service-unavailable",
                     title: "Service Unavailable",
                     status: 503,
                     detail: cause,
                     instance: c.req.path,
-                  } as const,
+                  }),
                   503,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -413,13 +424,13 @@ export const patchDbRowsTableNameRouteHandler: RouteHandler<typeof patchDbRowsTa
               Effect.logError("cannot read the schema", path, cause).pipe(
                 Effect.as(
                   c.json(
-                    {
+                    InternalServerProblemSchema.parse({
                       type: "/problems/internal-server-error",
                       title: "Internal Server Error",
                       status: 500,
                       detail: "An unexpected error occurred.",
                       instance: c.req.path,
-                    } as const,
+                    }),
                     500,
                     { "Content-Type": "application/problem+json" },
                   ),
@@ -454,19 +465,19 @@ export const deleteDbRowsTableNameRouteHandler: RouteHandler<typeof deleteDbRows
   const data = { ...c.req.valid("param"), ...c.req.valid("json") };
   return Effect.runPromise(
     Effect.matchEffect(DbUseCase.deleteRow({ table: data.tableName, where: data.where }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(AffectedSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("UnknownTableError", ({ table }) =>
             Effect.succeed(
               c.json(
-                {
+                NotFoundProblemSchema.parse({
                   type: "/problems/not-found",
                   title: "Not Found",
                   status: 404,
                   detail: `Unknown table "${table}".`,
                   instance: c.req.path,
-                } as const,
+                }),
                 404,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -475,14 +486,14 @@ export const deleteDbRowsTableNameRouteHandler: RouteHandler<typeof deleteDbRows
           Match.tag("InvalidInputError", ({ field, message }) =>
             Effect.succeed(
               c.json(
-                {
+                ValidationProblemSchema.parse({
                   type: "/problems/validation-failed",
                   title: "Validation Failed",
                   status: 422,
                   detail: message,
                   instance: c.req.path,
                   errors: [{ field: field, message: message }],
-                } as const,
+                }),
                 422,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -491,13 +502,13 @@ export const deleteDbRowsTableNameRouteHandler: RouteHandler<typeof deleteDbRows
           Match.tag("DatabaseUnavailableError", ({ reason }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: reason,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -506,13 +517,13 @@ export const deleteDbRowsTableNameRouteHandler: RouteHandler<typeof deleteDbRows
           Match.tag("DatabaseError", ({ cause }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: cause,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -522,13 +533,13 @@ export const deleteDbRowsTableNameRouteHandler: RouteHandler<typeof deleteDbRows
             Effect.logError("cannot read the schema", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -561,20 +572,20 @@ export const postDbSqlRouteHandler: RouteHandler<typeof postDbSqlRoute> = (c) =>
   const data = c.req.valid("json");
   return Effect.runPromise(
     Effect.matchEffect(DbUseCase.runSql({ sql: data.sql, params: data.params ?? [] }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(SqlResultSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("InvalidInputError", ({ field, message }) =>
             Effect.succeed(
               c.json(
-                {
+                ValidationProblemSchema.parse({
                   type: "/problems/validation-failed",
                   title: "Validation Failed",
                   status: 422,
                   detail: message,
                   instance: c.req.path,
                   errors: [{ field: field, message: message }],
-                } as const,
+                }),
                 422,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -583,13 +594,13 @@ export const postDbSqlRouteHandler: RouteHandler<typeof postDbSqlRoute> = (c) =>
           Match.tag("DatabaseUnavailableError", ({ reason }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: reason,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -598,13 +609,13 @@ export const postDbSqlRouteHandler: RouteHandler<typeof postDbSqlRoute> = (c) =>
           Match.tag("DatabaseError", ({ cause }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: cause,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -635,20 +646,20 @@ export const postDbExplainRouteHandler: RouteHandler<typeof postDbExplainRoute> 
   const data = c.req.valid("json");
   return Effect.runPromise(
     Effect.matchEffect(DbUseCase.explainSql({ sql: data.sql, params: data.params ?? [] }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(PlanSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("InvalidInputError", ({ field, message }) =>
             Effect.succeed(
               c.json(
-                {
+                ValidationProblemSchema.parse({
                   type: "/problems/validation-failed",
                   title: "Validation Failed",
                   status: 422,
                   detail: message,
                   instance: c.req.path,
                   errors: [{ field: field, message: message }],
-                } as const,
+                }),
                 422,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -657,13 +668,13 @@ export const postDbExplainRouteHandler: RouteHandler<typeof postDbExplainRoute> 
           Match.tag("DatabaseUnavailableError", ({ reason }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: reason,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -672,13 +683,13 @@ export const postDbExplainRouteHandler: RouteHandler<typeof postDbExplainRoute> 
           Match.tag("DatabaseError", ({ cause }) =>
             Effect.succeed(
               c.json(
-                {
+                ServiceUnavailableProblemSchema.parse({
                   type: "/problems/service-unavailable",
                   title: "Service Unavailable",
                   status: 503,
                   detail: cause,
                   instance: c.req.path,
-                } as const,
+                }),
                 503,
                 { "Content-Type": "application/problem+json" },
               ),
@@ -709,20 +720,20 @@ export const postDbAnalyzeRouteHandler: RouteHandler<typeof postDbAnalyzeRoute> 
   const data = c.req.valid("json");
   return Effect.runPromise(
     Effect.matchEffect(DbUseCase.analyzeSql({ sql: data.sql }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(AnalysisSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("FileReadError", ({ path, cause }) =>
             Effect.logError("cannot read the schema", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),

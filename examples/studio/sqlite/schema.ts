@@ -1,4 +1,4 @@
-import { relations, sql } from "drizzle-orm";
+import { defineRelations, sql } from "drizzle-orm";
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /** サインインするユーザー */
@@ -64,27 +64,25 @@ export const postTag = sqliteTable(
   (t) => [primaryKey({ columns: [t.postId, t.tagId] })],
 );
 
-export const userRelations = relations(user, ({ many }) => ({
-  posts: many(post),
-  comments: many(comment),
-}));
-
-export const postRelations = relations(post, ({ one, many }) => ({
-  author: one(user, { fields: [post.authorId], references: [user.id] }),
-  comments: many(comment),
-  tags: many(postTag),
-}));
-
-export const commentRelations = relations(comment, ({ one }) => ({
-  post: one(post, { fields: [comment.postId], references: [post.id] }),
-  author: one(user, { fields: [comment.authorId], references: [user.id] }),
-}));
-
-export const tagRelations = relations(tag, ({ many }) => ({
-  posts: many(postTag),
-}));
-
-export const postTagRelations = relations(postTag, ({ one }) => ({
-  post: one(post, { fields: [postTag.postId], references: [post.id] }),
-  tag: one(tag, { fields: [postTag.tagId], references: [tag.id] }),
+export const relations = defineRelations({ user, post, comment, tag, postTag }, (r) => ({
+  user: {
+    posts: r.many.post(),
+    comments: r.many.comment(),
+  },
+  post: {
+    author: r.one.user({ from: r.post.authorId, to: r.user.id }),
+    comments: r.many.comment(),
+    tags: r.many.postTag(),
+  },
+  comment: {
+    post: r.one.post({ from: r.comment.postId, to: r.post.id }),
+    author: r.one.user({ from: r.comment.authorId, to: r.user.id }),
+  },
+  tag: {
+    posts: r.many.postTag(),
+  },
+  postTag: {
+    post: r.one.post({ from: r.postTag.postId, to: r.post.id }),
+    tag: r.one.tag({ from: r.postTag.tagId, to: r.tag.id }),
+  },
 }));

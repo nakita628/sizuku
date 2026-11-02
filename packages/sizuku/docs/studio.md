@@ -29,8 +29,8 @@ the tables, relations and enums; **Show in diagram** on a table's page fits the 
   table is placed by the layout; one that left the schema is forgotten.
 - Clicking a card selects it and picks out its relations. The arrow on a card opens the table's
   or the enum's page.
-- An edge is a foreign key (`.references()` or `foreignKey()`), drawn solid, or a relation only a
-  `relations()` block declares, drawn dashed, since nothing in the database enforces it.
+- An edge is a foreign key (`.references()` or `foreignKey()`), drawn solid, or a relation only
+  `defineRelations` declares, drawn dashed, since nothing in the database enforces it.
 - **SVG** / **PNG** download the diagram as it is laid out on the canvas, in the current theme.
 - Drag the background to pan, scroll to zoom, and use the controls and the minimap in the corners.
 
@@ -87,7 +87,7 @@ columns and enums (`/** … */` or `//`):
   `$defaultFn()`, ...), its description and the column it references;
 - indexes, unique and composite keys;
 - relations in both directions (**References** and **Referenced by**), with their cardinality and
-  `onDelete` / `onUpdate` actions. A relation declared only in a `relations()` block is marked, since
+  `onDelete` / `onUpdate` actions. A relation declared only by `defineRelations` is marked, since
   no foreign key backs it;
 - every `pgEnum` and its values;
 - Drizzle queries to start from for each table, with nothing to fill in: **Select**
@@ -138,8 +138,9 @@ const [added] = await db.insert(tag).values({ name: "drizzle" }).returning();
 return { added, total: await db.$count(tag) };
 ```
 
-- `db` is Drizzle over the studio's own connection, with the schema, so the relational API
-  (`db.query.*`) works. The schema's exports (tables, relations) and drizzle-orm's operators
+- `db` is Drizzle over the studio's own connection, with the schema's `defineRelations` (and any
+  `defineRelationsPart`) exports, so the relational API (`db.query.*`, relations v2) works on every
+  table: `db.query.post.findFirst({ where: { id: 1 }, with: { author: true } })`. The schema's exports (tables, relations) and drizzle-orm's operators
   (`eq`, `and`, `or`, `not`, `inArray`, `like`, `isNull`, `asc`, `desc`, `sql`, `count`, `sum`,
   ...) are in scope without an import.
 - The code is the body of an async function: `await` works, and the last expression is the
@@ -156,7 +157,7 @@ return { added, total: await db.$count(tag) };
 - Completion, hovers, signature help and type errors work as in the schema editor, with `db`
   typed by the schema: `db.query.` offers the tables, `post.` their columns.
 - Beside the editor, the saved schema's diagram lights up the tables the code touches as you
-  type — named (`post`), through `db.query.user`, or reached by a `with` through `relations()` —
+  type — named (`post`), through `db.query.user`, or reached by a `with` through `defineRelations` —
   marks the columns it names (`post.title`), and dims the rest. Its cards are where the Schema
   page left them.
 - A write refreshes the row counts in the sidebar. The code is kept in the browser.

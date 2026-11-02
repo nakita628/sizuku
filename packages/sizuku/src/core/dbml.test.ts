@@ -16,7 +16,7 @@ function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
 }
 
 const ecSchemaContent = `import { mysqlTable, varchar, int, decimal, timestamp } from 'drizzle-orm/mysql-core'
-import { relations } from 'drizzle-orm'
+import { defineRelations } from 'drizzle-orm'
 
 
 export const user = mysqlTable('user', {
@@ -165,10 +165,10 @@ describe("dbml relations", () => {
     );
   });
 
-  // A relations()-only relation (no physical FK) is reflected in DBML, mirroring
+  // A defineRelations-only relation (no physical FK) is reflected in DBML, mirroring
   // the Mermaid generator. Logical relations drop the `_fk` suffix that physical
   // FKs carry, since they are not DB-enforced constraints.
-  it("emits a relations()-only relation as a logical Ref (no _fk suffix)", () => {
+  it("emits a defineRelations-only relation as a logical Ref (no _fk suffix)", () => {
     const code = [
       "export const user = mysqlTable('user', {",
       "  id: varchar('id', { length: 36 }).primaryKey(),",
@@ -182,8 +182,10 @@ describe("dbml relations", () => {
       "  id: varchar('id', { length: 36 }).primaryKey(),",
       "  user_id: varchar('user_id', { length: 36 }).notNull(),",
       "})",
-      "export const profileRelations = relations(profile, ({ one }) => ({",
-      "  user: one(user, { fields: [profile.user_id], references: [user.id] }),",
+      "export const profileRelations = defineRelations({ profile, user }, (r) => ({",
+      "  profile: {",
+      "    user: r.one.user({ from: r.profile.user_id, to: r.user.id }),",
+      "  },",
       "}))",
     ];
     expect(dbml(code)).toBe(

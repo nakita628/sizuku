@@ -10,7 +10,7 @@
     "reset": "git checkout -- db/schema.ts sqlite/schema.ts && node sqlite/seed.mjs"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "1.0.0-rc.5",
     "sizuku": "workspace:^"
   },
   "devDependencies": {

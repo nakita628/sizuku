@@ -181,15 +181,13 @@ export function renderDiagramSvg(input: DiagramInput) {
     ],
     cards,
   );
-  const edges = relations.map(
-    ({ relation, loops }, index): Edge => ({
-      relation,
-      points: wired[index]?.points ?? [],
-      // Dashed is "no foreign key backs this", not "many to many" — see `RelationOrigin`.
-      dashed: relation.origin === "relations" || relation.origin === "implicit-many-to-many",
-      targetTowards: loops ? "left" : "right",
-    }),
-  );
+  const edges = relations.map(({ relation, loops }, index): Edge => ({
+    relation,
+    points: wired[index]?.points ?? [],
+    // Dashed is "no foreign key backs this", not "many to many" — see `RelationOrigin`.
+    dashed: relation.origin === "relations" || relation.origin === "implicit-many-to-many",
+    targetTowards: loops ? "left" : "right",
+  }));
   const links = wired.slice(relations.length).map((laid) => laid.points);
   // The captions are laid out before the drawing is sized, so none of them falls outside it.
   const captions = wired.flatMap(({ wire, caption }) =>

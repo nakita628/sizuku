@@ -136,11 +136,12 @@ type Executed = {
 };
 
 /**
- * The callback Drizzle's proxy driver for the dialect calls with each statement, answered from
- * the studio's connection in the shape that driver expects. Every statement is logged.
+ * What Drizzle's proxy driver for the dialect is handed, answered from the studio's connection in
+ * the shape that driver expects: SQLite's takes `all`, `get` and `run`, PostgreSQL's and MySQL's
+ * one callback. Every statement is logged.
  */
-function makeCallback(driver: Driver, executed: Executed[]) {
-  return async (sql: string, params: unknown[], method: string) => {
+function makeExecutor(driver: Driver, executed: Executed[]) {
+  const run = async (sql: string, params: readonly unknown[]) => {
     const started = performance.now();
     const result = await Effect.runPromise(
       driver
@@ -158,19 +159,40 @@ function makeCallback(driver: Driver, executed: Executed[]) {
       rowCount: result.rowCount,
       durationMs: Math.round((performance.now() - started) * 100) / 100,
     });
-    if (driver.dialect === "sqlite") {
-      if (method === "get") return { rows: result.rows[0] };
-      return { rows: method === "run" ? [] : result.rows };
-    }
-    if (method !== "execute") return { rows: result.rows };
-    if (driver.dialect === "mysql") {
-      return { rows: [{ affectedRows: result.rowCount, insertId: result.insertId ?? 0 }] };
-    }
+    return result;
+  };
+  const objects = (result: Awaited<ReturnType<typeof run>>) =>
+    result.rows.map((row) =>
+      Object.fromEntries(result.columns.map((column, i) => [column, row[i]])),
+    );
+  if (driver.dialect === "sqlite") {
     return {
-      rows: result.rows.map((row) =>
-        Object.fromEntries(result.columns.map((column, i) => [column, row[i]])),
-      ),
+      all: async (sql: string, params: unknown[], rowMode?: "array" | "object") => {
+        const result = await run(sql, params);
+        return rowMode === "object" ? objects(result) : result.rows;
+      },
+      get: async (sql: string, params: unknown[], rowMode?: "array" | "object") => {
+        const result = await run(sql, params);
+        return (rowMode === "object" ? objects(result) : result.rows)[0];
+      },
+      run: async (sql: string, params: unknown[]) => {
+        const result = await run(sql, params);
+        return { changes: result.rowCount, lastInsertRowid: result.insertId ?? 0 };
+      },
     };
+  }
+  return async (sql: string, params: unknown[], method: "all" | "execute") => {
+    const result = await run(sql, params);
+    if (method === "all") return { rows: result.rows };
+    // MySQL's answers rows as mysql2 does, in a list with the write's counts beside it.
+    if (driver.dialect === "mysql") {
+      return {
+        rows: [objects(result)],
+        affectedRows: result.rowCount,
+        insertId: result.insertId ?? 0,
+      };
+    }
+    return { rows: objects(result) };
   };
 }
 
@@ -225,7 +247,7 @@ export function runQuery(input: {
           ).unref();
         });
         const value = await Promise.race([
-          loaded.default(makeCallback(input.driver, executed)),
+          loaded.default(makeExecutor(input.driver, executed)),
           timeout,
         ]);
         return { result: QueryDomain.makeJsonValue(value), error: null };

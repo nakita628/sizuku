@@ -47,10 +47,24 @@ export const OPERATORS = [
   "getTableColumns",
 ] as const;
 
+// A proxy driver decodes nothing on its own (`1` stays `1` for a boolean column); it is given the
+// codecs of the driver the studio connects with: node:sqlite, pg and mysql2.
 const PROXIES = {
-  sqlite: { module: "drizzle-orm/sqlite-proxy", type: "SqliteRemoteDatabase" },
-  postgresql: { module: "drizzle-orm/pg-proxy", type: "PgRemoteDatabase" },
-  mysql: { module: "drizzle-orm/mysql-proxy", type: "MySqlRemoteDatabase" },
+  sqlite: {
+    module: "drizzle-orm/sqlite-proxy",
+    type: "SqliteRemoteDatabase",
+    codecs: { module: "drizzle-orm/node-sqlite/codecs", name: "nodeSQLiteCodecs" },
+  },
+  postgresql: {
+    module: "drizzle-orm/pg-proxy",
+    type: "PgRemoteDatabase",
+    codecs: { module: "drizzle-orm/node-postgres/codecs", name: "nodePgCodecs" },
+  },
+  mysql: {
+    module: "drizzle-orm/mysql-proxy",
+    type: "MySqlRemoteDatabase",
+    codecs: { module: "drizzle-orm/mysql2/codecs", name: "mysql2Codecs" },
+  },
 } as const;
 
 const MakeSchemaDialectInput = z
@@ -149,12 +163,19 @@ const MakeTypePreambleInput = z
 export function makeTypePreamble(input: z.infer<typeof MakeTypePreambleInput>) {
   const proxy = PROXIES[input.dialect];
   const { tables, operators } = scope(input.names);
+  // `db.query` has every table, with the relations the schema's `defineRelations` and
+  // `defineRelationsPart` exports declare, as the runtime module merges them.
+  const relations = "__Every & __UnionToIntersection<__Declared<typeof __schema>>";
   const lines = [
     `import type { ${proxy.type} } from "${proxy.module}";`,
+    `import type { ExtractTablesFromSchema, ExtractTablesWithRelations } from "drizzle-orm";`,
     `import * as __schema from "${input.schemaImport}";`,
     `import { ${operators.join(", ")} } from "drizzle-orm";`,
     ...(tables.length > 0 ? [`import { ${tables.join(", ")} } from "${input.schemaImport}";`] : []),
-    `declare const db: ${proxy.type}<typeof __schema>;`,
+    `type __Every = ExtractTablesWithRelations<{}, ExtractTablesFromSchema<typeof __schema>>;`,
+    `type __Declared<S> = { [K in keyof S]: S[K] extends { readonly [table: string]: { readonly table: unknown; readonly name: string; readonly relations: object } } ? S[K] : never }[keyof S];`,
+    `type __UnionToIntersection<U> = [U] extends [never] ? {} : (U extends unknown ? (u: U) => void : never) extends (i: infer I) => void ? I : never;`,
+    `declare const db: ${proxy.type}<${input.dialect === "sqlite" ? "unknown, " : ""}${relations}>;`,
     `export default async function __sizuku_query() {`,
     "",
   ];
@@ -178,15 +199,26 @@ const MakeRuntimeModuleInput = z
 export function makeRuntimeModule(input: z.infer<typeof MakeRuntimeModuleInput>) {
   const proxy = PROXIES[input.dialect];
   const { tables, operators } = scope(input.names);
-  // MySQL's relational queries need to be told the server is not PlanetScale.
-  const config =
-    input.dialect === "mysql" ? `{ schema: __schema, mode: "default" }` : "{ schema: __schema }";
   return [
     `import { drizzle as __drizzle } from "${proxy.module}";`,
+    `import { ${proxy.codecs.name} as __codecs } from "${proxy.codecs.module}";`,
     `import * as __schema from "${input.schemaUrl}";`,
     `import * as __orm from "drizzle-orm";`,
-    `export default async function (__callback) {`,
-    `  const db = __drizzle(__callback, ${config});`,
+    // Every table is queryable; the schema's `defineRelations` export and its parts add their
+    // relations, the main one (with the most tables) first, each table's relations merged.
+    `const __isRelational = (v) => v !== null && typeof v === "object" && !__orm.is(v, __orm.Table) &&`,
+    `  Object.values(v).length > 0 && Object.values(v).every((e) => e !== null && typeof e === "object" &&`,
+    `  __orm.is(e.table, __orm.Table) && typeof e.relations === "object");`,
+    `const __relations = [__orm.defineRelations(__schema), ...Object.values(__schema)`,
+    `  .filter(__isRelational).sort((a, b) => Object.keys(b).length - Object.keys(a).length)]`,
+    `  .reduce((all, config) => {`,
+    `    for (const [key, entry] of Object.entries(config)) {`,
+    `      all[key] = all[key] === undefined ? entry : { ...entry, relations: { ...all[key].relations, ...entry.relations } };`,
+    `    }`,
+    `    return all;`,
+    `  }, {});`,
+    `export default async function (__executor) {`,
+    `  const db = __drizzle(__executor, { relations: __relations, codecs: __codecs });`,
     `  const { ${operators.join(", ")} } = __orm;`,
     ...(tables.length > 0 ? [`  const { ${tables.join(", ")} } = __schema;`] : []),
     input.body,

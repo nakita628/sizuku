@@ -2,7 +2,13 @@ import fs from "node:fs";
 import type { RouteHandler } from "@hono/zod-openapi";
 import { Effect, Match } from "effect";
 import { streamSSE } from "hono/streaming";
-import type { getSchemaEventsRoute, getSchemaRoute, putSchemaRoute } from "../routes";
+import {
+  getSchemaEventsRoute,
+  getSchemaRoute,
+  InternalServerProblemSchema,
+  putSchemaRoute,
+  SnapshotSchema,
+} from "../routes";
 import { WATCH_INTERVAL_MS } from "../constants/index.js";
 import { getStudio } from "../services/studio.js";
 import * as SchemaUseCase from "../usecases/schema.js";
@@ -25,20 +31,20 @@ import * as SchemaUseCase from "../usecases/schema.js";
 export const getSchemaRouteHandler: RouteHandler<typeof getSchemaRoute> = (c) =>
   Effect.runPromise(
     Effect.matchEffect(SchemaUseCase.readSchema(), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(SnapshotSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("FileReadError", ({ path, cause }) =>
             Effect.logError("cannot read the schema", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -69,20 +75,20 @@ export const putSchemaRouteHandler: RouteHandler<typeof putSchemaRoute> = (c) =>
   const data = c.req.valid("json");
   return Effect.runPromise(
     Effect.matchEffect(SchemaUseCase.writeSchema({ source: data.source }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(SnapshotSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("FileWriteError", ({ path, cause }) =>
             Effect.logError("cannot write the schema", path, cause).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),

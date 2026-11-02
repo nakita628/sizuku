@@ -1,6 +1,15 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { Effect, Match } from "effect";
-import type { postDiagramPngRoute, postDiagramSchemaRoute, postDiagramSvgRoute } from "../routes";
+import {
+  DiagramDataSchema,
+  DiagramSchema,
+  InternalServerProblemSchema,
+  PngSchema,
+  postDiagramPngRoute,
+  postDiagramSchemaRoute,
+  postDiagramSvgRoute,
+  ValidationProblemSchema,
+} from "../routes";
 import * as DiagramUseCase from "../usecases/diagram.js";
 
 /**
@@ -25,20 +34,20 @@ export const postDiagramSvgRouteHandler: RouteHandler<typeof postDiagramSvgRoute
     Effect.matchEffect(
       DiagramUseCase.drawSvg({ source: data.source, theme: data.theme ?? "light" }),
       {
-        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+        onSuccess: (value) => Effect.succeed(c.json(DiagramSchema.parse(value), 200)),
         onFailure: (error) =>
           Match.value(error).pipe(
             Match.tag("RenderError", ({ message }) =>
               Effect.logError("cannot draw", message).pipe(
                 Effect.as(
                   c.json(
-                    {
+                    InternalServerProblemSchema.parse({
                       type: "/problems/internal-server-error",
                       title: "Internal Server Error",
                       status: 500,
                       detail: "An unexpected error occurred.",
                       instance: c.req.path,
-                    } as const,
+                    }),
                     500,
                     { "Content-Type": "application/problem+json" },
                   ),
@@ -73,13 +82,13 @@ export const postDiagramPngRouteHandler: RouteHandler<typeof postDiagramPngRoute
     Effect.matchEffect(
       DiagramUseCase.drawPng({ source: data.source, theme: data.theme ?? "light" }),
       {
-        onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+        onSuccess: (value) => Effect.succeed(c.json(PngSchema.parse(value), 200)),
         onFailure: (error) =>
           Match.value(error).pipe(
             Match.tag("SchemaParseError", ({ message, line, column }) =>
               Effect.succeed(
                 c.json(
-                  {
+                  ValidationProblemSchema.parse({
                     type: "/problems/validation-failed",
                     title: "Validation Failed",
                     status: 422,
@@ -88,7 +97,7 @@ export const postDiagramPngRouteHandler: RouteHandler<typeof postDiagramPngRoute
                     errors: [
                       { field: "source", message: `${message} (line ${line}, column ${column})` },
                     ],
-                  } as const,
+                  }),
                   422,
                   { "Content-Type": "application/problem+json" },
                 ),
@@ -98,13 +107,13 @@ export const postDiagramPngRouteHandler: RouteHandler<typeof postDiagramPngRoute
               Effect.logError("cannot draw", message).pipe(
                 Effect.as(
                   c.json(
-                    {
+                    InternalServerProblemSchema.parse({
                       type: "/problems/internal-server-error",
                       title: "Internal Server Error",
                       status: 500,
                       detail: "An unexpected error occurred.",
                       instance: c.req.path,
-                    } as const,
+                    }),
                     500,
                     { "Content-Type": "application/problem+json" },
                   ),
@@ -138,20 +147,20 @@ export const postDiagramSchemaRouteHandler: RouteHandler<typeof postDiagramSchem
   const data = c.req.valid("json");
   return Effect.runPromise(
     Effect.matchEffect(DiagramUseCase.drawSchema({ source: data.source }), {
-      onSuccess: (value) => Effect.succeed(c.json(value, 200)),
+      onSuccess: (value) => Effect.succeed(c.json(DiagramDataSchema.parse(value), 200)),
       onFailure: (error) =>
         Match.value(error).pipe(
           Match.tag("RenderError", ({ message }) =>
             Effect.logError("cannot draw", message).pipe(
               Effect.as(
                 c.json(
-                  {
+                  InternalServerProblemSchema.parse({
                     type: "/problems/internal-server-error",
                     title: "Internal Server Error",
                     status: 500,
                     detail: "An unexpected error occurred.",
                     instance: c.req.path,
-                  } as const,
+                  }),
                   500,
                   { "Content-Type": "application/problem+json" },
                 ),

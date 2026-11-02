@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { defineRelations } from "drizzle-orm";
 import { mysqlTable, varchar } from "drizzle-orm/mysql-core";
 
 export const user = mysqlTable("user", {
@@ -21,13 +21,11 @@ export const post = mysqlTable("post", {
     .references(() => user.id),
 });
 
-export const userRelations = relations(user, ({ many }) => ({
-  posts: many(post),
-}));
-
-export const postRelations = relations(post, ({ one }) => ({
-  user: one(user, {
-    fields: [post.userId],
-    references: [user.id],
-  }),
+export const relations = defineRelations({ user, post }, (r) => ({
+  user: {
+    posts: r.many.post(),
+  },
+  post: {
+    user: r.one.user({ from: r.post.userId, to: r.user.id }),
+  },
 }));
