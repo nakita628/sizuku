@@ -118,13 +118,11 @@ function namespaceOf(tables: readonly EditorTable[]): SQLNamespace {
       table.name,
       {
         self: { label: table.name, detail: table.detail, type: "class" } satisfies Completion,
-        children: table.columns.map(
-          (column): Completion => ({
-            label: column.name,
-            detail: column.detail,
-            type: "property",
-          }),
-        ),
+        children: table.columns.map((column): Completion => ({
+          label: column.name,
+          detail: column.detail,
+          type: "property",
+        })),
       },
     ]),
   );

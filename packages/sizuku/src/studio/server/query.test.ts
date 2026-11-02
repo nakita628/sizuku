@@ -15,7 +15,7 @@ const columns = `import { integer } from "drizzle-orm/sqlite-core";
 export const id = () => integer("id").primaryKey({ autoIncrement: true });
 `;
 
-const schema = `import { relations } from "drizzle-orm";
+const schema = `import { defineRelations } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { id } from "./columns";
@@ -32,9 +32,9 @@ export const post = sqliteTable("posts", {
   published: integer("published", { mode: "boolean" }).notNull().default(false),
 });
 
-export const userRelations = relations(user, ({ many }) => ({ posts: many(post) }));
-export const postRelations = relations(post, ({ one }) => ({
-  author: one(user, { fields: [post.authorId], references: [user.id] }),
+export const relations = defineRelations({ user, post }, (r) => ({
+  user: { posts: r.many.post() },
+  post: { author: r.one.user({ from: r.post.authorId, to: r.user.id }) },
 }));
 `;
 
@@ -99,9 +99,7 @@ describe("running Drizzle against the database", () => {
   });
 
   it("runs relational queries", async () => {
-    const out = await run(
-      "db.query.post.findFirst({ where: eq(post.id, 2), with: { author: true } })",
-    );
+    const out = await run("db.query.post.findFirst({ where: { id: 2 }, with: { author: true } })");
     expect(out.error).toBeNull();
     expect(out.result).toMatchObject({ title: "Kernels", author: { name: "Linus" } });
   });

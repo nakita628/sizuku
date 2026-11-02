@@ -92,7 +92,7 @@ function checkModel(name: string, rule: LooseModelRule, tables: readonly ModelTa
           ]
         : []
       : [
-          `models.${name}.relations.${field}: ${name} has no relation named ${field} that a rule can bound (a many() whose child points back by a key).`,
+          `models.${name}.relations.${field}: ${name} has no relation named ${field} that a rule can bound (an r.many whose child points back by a key).`,
         ],
   );
   const count =

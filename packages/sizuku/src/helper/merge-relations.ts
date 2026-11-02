@@ -6,7 +6,7 @@ import { extractRelationsFromSchema } from "./extract-tables.js";
 // notation at the output boundary.
 //
 // `origin` records whether a physical FK backs the relation: a `.references()`
-// or `foreignKey()` pair is `inferred`, a pair only a `relations()` block
+// or `foreignKey()` pair is `inferred`, a pair only `defineRelations`
 // declares is `relations` (logical, no constraint in the database). A logical
 // relation is non-identifying, so every output draws it dashed.
 export function mergeRelations(code: readonly string[]) {

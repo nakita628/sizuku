@@ -63,7 +63,7 @@ export type Cardinality = "zero-one" | "one" | "zero-many" | "many";
  * Where a relation came from, which is what the drawings dash an edge on — not its cardinality.
  *
  * - `inferred` — a real foreign key column. Drawn solid.
- * - `relations` — declared in a Drizzle `relations()` block and backed by no foreign key, so no
+ * - `relations` — declared only by Drizzle's `defineRelations` and backed by no foreign key, so no
  *   constraint enforces it. Drawn dashed.
  * - `implicit-many-to-many` — both ends are lists without `@relation(fields:)`, so Prisma keeps
  *   the pairs in a join table of its own and neither model has a column for the other. Drawn

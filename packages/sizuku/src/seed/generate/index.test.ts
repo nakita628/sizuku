@@ -1,5 +1,5 @@
 import { Faker, en } from "@faker-js/faker";
-import { relations } from "drizzle-orm";
+import { defineRelations } from "drizzle-orm";
 import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { Effect } from "effect";
 import { describe, expect, it } from "vite-plus/test";
@@ -46,17 +46,14 @@ const auditLog = sqliteTable("audit_logs", {
   action: text("action").notNull(),
 });
 
+const tables = { user, post, profile, auditLog };
+
 const schema = {
-  user,
-  post,
-  profile,
-  auditLog,
-  userRelations: relations(user, ({ many }) => ({ posts: many(post), logs: many(auditLog) })),
-  postRelations: relations(post, ({ one }) => ({
-    author: one(user, { fields: [post.authorId], references: [user.id] }),
-  })),
-  auditLogRelations: relations(auditLog, ({ one }) => ({
-    actor: one(user, { fields: [auditLog.actorId], references: [user.id] }),
+  ...tables,
+  relations: defineRelations(tables, (r) => ({
+    user: { posts: r.many.post(), logs: r.many.auditLog() },
+    post: { author: r.one.user({ from: r.post.authorId, to: r.user.id }) },
+    auditLog: { actor: r.one.user({ from: r.auditLog.actorId, to: r.user.id }) },
   })),
 };
 

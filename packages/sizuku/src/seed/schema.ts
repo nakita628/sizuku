@@ -1,15 +1,5 @@
-import type { Column } from "drizzle-orm";
-import {
-  createTableRelationsHelpers,
-  extractTablesRelationalConfig,
-  getTableColumns,
-  is,
-  Many,
-  normalizeRelation,
-  One,
-  SQL,
-  Table,
-} from "drizzle-orm";
+import type { Column, TablesRelationalConfig } from "drizzle-orm";
+import { getTableColumns, is, Many, Relation, SQL, Table } from "drizzle-orm";
 import { getTableConfig as mysqlTableConfig, MySqlTable } from "drizzle-orm/mysql-core";
 import { getTableConfig as pgTableConfig, PgTable } from "drizzle-orm/pg-core";
 import { getTableConfig as sqliteTableConfig, SQLiteTable } from "drizzle-orm/sqlite-core";
@@ -86,7 +76,7 @@ export type SeedColumn = {
 
 /** A key of a model to another: the columns it is stored in and the columns it points at. */
 export type ForeignKey = {
-  /** The `one()` relation that names it (`author`), else its first column (`authorId`). */
+  /** The `r.one` relation that names it (`author`), else its first column (`authorId`). */
   readonly field: string;
   readonly fromFields: readonly string[];
   readonly toModel: string;
@@ -95,11 +85,11 @@ export type ForeignKey = {
   /** The from-fields are a unique key of the model, so every parent may be used once. */
   readonly oneToOne: boolean;
   readonly self: boolean;
-  /** A foreign key in the database; false for a relation only a `relations()` block declares. */
+  /** A foreign key in the database; false for a relation only `defineRelations` declares. */
   readonly enforced: boolean;
 };
 
-/** A relation from the parent side (`posts: many(post)`): the child model and the key it points back by. */
+/** A relation from the parent side (`posts: r.many.post()`): the child model and the key it points back by. */
 export type ParentSide = {
   readonly name: string;
   readonly child: string;
@@ -130,27 +120,32 @@ type AnyColumn = Column & {
   readonly precision?: number;
   readonly scale?: number;
   readonly unsigned?: boolean;
-  readonly baseColumn?: Column;
+  readonly dimensions?: number;
 };
 
 const INT = 2_147_483_647;
 const SAFE = Number.MAX_SAFE_INTEGER;
 
-/** The range of an integer column, by its Drizzle type; unsigned MySQL types start at 0. */
+/** The broad type of a column and what it narrows to: `number int32`, `string uuid`, `object date`. */
+function dataTypeOf(column: Column) {
+  const [type = "", constraint = ""] = column.dataType.split(" ");
+  return { type, constraint };
+}
+
+/** The bound of each signed integer width Drizzle names (`int8`, `int16`, `int24`, `int32`). */
+const INT_BITS: Readonly<Record<string, number>> = {
+  int8: 127,
+  int16: 32_767,
+  int24: 8_388_607,
+  int32: INT,
+};
+
+/** The range of an integer column, by the width its data type names; a `u` width starts at 0. */
 function intRange(column: AnyColumn) {
-  const type = column.columnType;
-  const bits = /TinyInt/u.test(type)
-    ? 127
-    : /SmallInt|SmallSerial/u.test(type)
-      ? 32_767
-      : /MediumInt/u.test(type)
-        ? 8_388_607
-        : /^(PgInteger|PgSerial|MySqlInt)$/u.test(type)
-          ? INT
-          : SAFE;
-  if (column.unsigned === true || type === "MySqlSerial") {
-    return { min: 0, max: bits === SAFE ? SAFE : bits * 2 + 1 };
-  }
+  const { constraint } = dataTypeOf(column);
+  const unsigned = constraint.startsWith("u") || column.unsigned === true;
+  const bits = INT_BITS[unsigned ? constraint.slice(1) : constraint] ?? SAFE;
+  if (unsigned) return { min: 0, max: bits === SAFE ? SAFE : bits * 2 + 1 };
   return { min: bits === SAFE ? -SAFE : -bits - 1, max: bits };
 }
 
@@ -158,34 +153,56 @@ function kindOf(column: AnyColumn): {
   readonly kind: ColumnKind;
   readonly format: SeedColumn["format"];
 } {
-  const type = column.columnType;
+  const { type, constraint } = dataTypeOf(column);
   const plain = (kind: ColumnKind) => ({ kind, format: null });
-  if ((column.enumValues ?? []).length > 0 && column.dataType === "string") return plain("enum");
-  switch (column.dataType) {
+  if ((column.enumValues ?? []).length > 0 && type === "string") return plain("enum");
+  switch (type) {
     case "boolean":
       return plain("boolean");
-    case "date":
-      return plain("date");
     case "bigint":
       return plain("bigint");
-    case "json":
-      return plain("json");
-    case "buffer":
-      return plain("bytes");
     case "number":
-      return plain(/Real|Double|Float|Numeric|Decimal/u.test(type) ? "float" : "int");
-    case "string": {
-      if (type === "PgUUID") return plain("uuid");
-      if (/Numeric|Decimal/u.test(type)) return plain("decimal");
-      if (type === "PgInet") return plain("inet");
-      if (type === "PgCidr") return plain("cidr");
-      if (/Macaddr/u.test(type)) return plain("mac");
-      if (type === "PgInterval") return plain("interval");
-      if (/Timestamp|DateTime/u.test(type)) return { kind: "dateString", format: "timestamp" };
-      if (/Date(String)?$/u.test(type)) return { kind: "dateString", format: "date" };
-      if (type.endsWith("Time")) return { kind: "dateString", format: "time" };
-      return plain("string");
-    }
+      return plain(
+        ["float", "ufloat", "double", "udouble"].includes(constraint) ||
+          /Real|Double|Float|Numeric|Decimal/u.test(column.columnType)
+          ? "float"
+          : "int",
+      );
+    case "object":
+      return constraint === "date"
+        ? plain("date")
+        : constraint === "json"
+          ? plain("json")
+          : constraint === "buffer"
+            ? plain("bytes")
+            : plain("unknown");
+    case "string":
+      switch (constraint) {
+        case "uuid":
+          return plain("uuid");
+        case "numeric":
+        case "unumeric":
+          return plain("decimal");
+        case "inet":
+          return plain("inet");
+        case "cidr":
+          return plain("cidr");
+        case "macaddr":
+        case "macaddr8":
+          return plain("mac");
+        case "interval":
+          return plain("interval");
+        case "timestamp":
+        case "datetime":
+          return { kind: "dateString", format: "timestamp" };
+        case "date":
+          return { kind: "dateString", format: "date" };
+        case "time":
+          return { kind: "dateString", format: "time" };
+        default:
+          // Text, and what the driver takes as text: a binary string, a 64-bit integer string.
+          return plain("string");
+      }
     default:
       return plain("unknown");
   }
@@ -212,23 +229,25 @@ function isAutoincrement(column: AnyColumn, onlyKey: boolean) {
 
 /** The column as the seeder reads it: its kind, bounds, defaults and the driver's mapping. */
 function makeColumn(field: string, column: AnyColumn, onlyKey: boolean): SeedColumn {
-  const list = column.dataType === "array" && column.baseColumn !== undefined;
-  const base: AnyColumn = list && column.baseColumn !== undefined ? column.baseColumn : column;
-  const { kind, format } = kindOf(base);
+  // A PostgreSQL array is its element's column with `dimensions`: one is a list, more the
+  // seeder cannot make.
+  const dimensions = column.dimensions ?? 0;
+  const list = dimensions === 1;
+  const { kind, format } = kindOf(column);
   return {
     field,
     column: column.name,
     type: column.columnType,
-    kind: column.dataType === "array" && !list ? "unknown" : kind,
+    kind: dimensions > 1 ? "unknown" : kind,
     format,
     isList: list,
     isRequired: column.notNull,
     isId: column.primary,
-    enumValues: (base.enumValues ?? []).length > 0 ? (base.enumValues ?? []) : null,
-    length: typeof base.length === "number" && base.length > 0 ? base.length : null,
-    precision: typeof base.precision === "number" ? base.precision : null,
-    scale: typeof base.scale === "number" ? base.scale : null,
-    range: kind === "int" ? intRange(base) : null,
+    enumValues: (column.enumValues ?? []).length > 0 ? (column.enumValues ?? []) : null,
+    length: typeof column.length === "number" && column.length > 0 ? column.length : null,
+    precision: typeof column.precision === "number" ? column.precision : null,
+    scale: typeof column.scale === "number" ? column.scale : null,
+    range: kind === "int" ? intRange(column) : null,
     autoincrement: kind === "int" && isAutoincrement(column, onlyKey),
     identityAlways: column.generatedIdentity?.type === "always",
     default: defaultOf(column),
@@ -289,8 +308,8 @@ function sameSet(a: readonly string[], b: readonly string[]) {
 
 /**
  * The tables of a Drizzle schema module as the seeder reads them: every exported table with its
- * insertable columns, its foreign keys (in the database, or declared by a `one()` relation alone),
- * its unique keys and the `many()` relations other models point back by. All tables must be of
+ * insertable columns, its foreign keys (in the database, or declared by `defineRelations` alone),
+ * its unique keys and the relations other models point back by. All tables must be of
  * one dialect.
  */
 export function readSchema(schema: Readonly<Record<string, unknown>>) {
@@ -333,7 +352,7 @@ export function readSchema(schema: Readonly<Record<string, unknown>>) {
             : Object.entries(getTableColumns(table)).find(([, c]) => c.name === column.name)?.[0];
         return named === undefined ? [] : [named];
       });
-    const relational = extractTablesRelationalConfig(schema, createTableRelationsHelpers);
+    const links = relationLinks(schema, nameOf);
 
     const shapes = entries.map((entry) => {
       const config = tableConfig(entry.table, dialect);
@@ -351,14 +370,36 @@ export function readSchema(schema: Readonly<Record<string, unknown>>) {
       return { entry, config, columns, uniques };
     });
 
+    const shapeOf = new Map(shapes.map((shape) => [shape.entry.name, shape] as const));
+    const uniquesOf = (model: string) => shapeOf.get(model)?.uniques ?? [];
+    // Whether the database has a foreign key from `child`'s fields to `parent`'s.
+    const constrained = (
+      child: string,
+      from: readonly string[],
+      parent: string,
+      to: readonly string[],
+    ) => {
+      const shape = shapeOf.get(child);
+      return (shape?.config.foreignKeys ?? []).some(
+        (fk) =>
+          nameOf.get(fk.foreignTable) === parent &&
+          sameKey(fields(fk.columns, shape?.entry.table), from) &&
+          sameKey(fields(fk.foreignColumns, fk.foreignTable), to),
+      );
+    };
+    const keys = keysOf(links, { constrained, uniquesOf });
+
     // Columns other models' keys point at must hold the values the seeder hands out.
     const referenced = new Set<Column>([
       ...shapes.flatMap((shape) => shape.config.foreignKeys.flatMap((fk) => fk.foreignColumns)),
-      ...Object.values(relational.tables).flatMap((t) =>
-        Object.values(t.relations).flatMap((relation): Column[] =>
-          is(relation, One) && relation.config !== undefined ? relation.config.references : [],
-        ),
-      ),
+      ...keys.flatMap((key) => {
+        const parent = shapeOf.get(key.parent)?.entry.table;
+        const columns = parent === undefined ? {} : getTableColumns(parent);
+        return key.parentFields.flatMap((field) => {
+          const column = (columns as Record<string, Column | undefined>)[field];
+          return column === undefined ? [] : [column];
+        });
+      }),
     ]);
 
     const tables = shapes.map((shape): ModelTable => {
@@ -366,34 +407,29 @@ export function readSchema(schema: Readonly<Record<string, unknown>>) {
       const required = (keys: readonly string[]) =>
         keys.every((key) => columns.find(([field]) => field === key)?.[1].notNull === true);
       const oneToOne = (keys: readonly string[]) => uniques.some((set) => sameSet(set, keys));
-      const relations = Object.entries(relational.tables[entry.name]?.relations ?? {});
-      const owning = relations.flatMap(([relationName, relation]) => {
-        if (!is(relation, One) || relation.config === undefined) return [];
-        const toModel = nameOf.get(relation.referencedTable);
-        if (toModel === undefined) return [];
-        return [
-          {
-            relationName,
-            fromFields: fields(relation.config.fields),
-            toModel,
-            toFields: fields(relation.config.references),
-          },
-        ];
-      });
+      // The `one` relation of this model that names a key: `author` for `authorId`.
+      const nameOfKey = (
+        fromFields: readonly string[],
+        toModel: string,
+        toFields: readonly string[],
+      ) =>
+        links.find(
+          (link) =>
+            link.owner === entry.name &&
+            link.kind === "one" &&
+            link.through === null &&
+            link.target === toModel &&
+            sameKey(link.from, fromFields) &&
+            sameKey(link.to, toFields),
+        )?.name;
       const enforced = config.foreignKeys.flatMap((fk): ForeignKey[] => {
         const toModel = nameOf.get(fk.foreignTable);
         if (toModel === undefined) return [];
         const fromFields = fields(fk.columns, entry.table);
         const toFields = fields(fk.foreignColumns, fk.foreignTable);
-        const named = owning.find(
-          (o) =>
-            o.toModel === toModel &&
-            sameKey(o.fromFields, fromFields) &&
-            sameKey(o.toFields, toFields),
-        );
         return [
           {
-            field: named?.relationName ?? fromFields[0] ?? "",
+            field: nameOfKey(fromFields, toModel, toFields) ?? fromFields[0] ?? "",
             fromFields,
             toModel,
             toFields,
@@ -404,25 +440,25 @@ export function readSchema(schema: Readonly<Record<string, unknown>>) {
           },
         ];
       });
-      const logical = owning
+      const logical = keys
         .filter(
-          (o) =>
+          (key) =>
+            key.child === entry.name &&
             !enforced.some(
-              (fk) => fk.toModel === o.toModel && sameKey(fk.fromFields, o.fromFields),
+              (fk) => fk.toModel === key.parent && sameKey(fk.fromFields, key.childFields),
             ),
         )
-        .map(
-          (o): ForeignKey => ({
-            field: o.relationName,
-            fromFields: o.fromFields,
-            toModel: o.toModel,
-            toFields: o.toFields,
-            required: required(o.fromFields),
-            oneToOne: oneToOne(o.fromFields),
-            self: o.toModel === entry.name,
-            enforced: false,
-          }),
-        );
+        .map((key): ForeignKey => ({
+          field:
+            nameOfKey(key.childFields, key.parent, key.parentFields) ?? key.childFields[0] ?? "",
+          fromFields: key.childFields,
+          toModel: key.parent,
+          toFields: key.parentFields,
+          required: required(key.childFields),
+          oneToOne: oneToOne(key.childFields),
+          self: key.parent === entry.name,
+          enforced: false,
+        }));
       const keyed = new Set(primaryColumnsOf(columns));
       const seedColumns = columns.flatMap(([field, column]) => {
         // A generated column is the database's. A SQL default the database fills, unless the
@@ -447,36 +483,223 @@ export function readSchema(schema: Readonly<Record<string, unknown>>) {
       };
     });
 
-    // The parent side of each key: `posts: many(post)` on user, matched to post's key back to user
-    // by Drizzle's own pairing, or, when that cannot tell, by the one key the child has to it.
+    // The parent side of each key: `posts: r.many.post()` on user, matched to post's key back to
+    // user by its columns, which Drizzle has filled in on both sides of the pair.
     const withParents = tables.map((table): ModelTable => {
-      const relations = Object.entries(relational.tables[table.name]?.relations ?? {});
-      const parents = relations.flatMap(([name, relation]): ParentSide[] => {
-        const isList = is(relation, Many);
-        if (!isList && !(is(relation, One) && relation.config === undefined)) return [];
-        const child = tables.find((t) => t.name === nameOf.get(relation.referencedTable));
-        if (child === undefined) return [];
-        const back = child.foreignKeys.filter((fk) => fk.toModel === table.name);
-        const paired = (() => {
-          try {
-            const normalized = normalizeRelation(
-              relational.tables,
-              relational.tableNamesMap,
-              relation,
-            );
-            const from = fields(normalized.references);
-            return back.find((fk) => sameKey(fk.fromFields, from)) ?? null;
-          } catch {
-            return back.length === 1 ? (back[0] ?? null) : null;
-          }
-        })();
-        return paired === null ? [] : [{ name, child: child.name, key: paired.field, isList }];
+      const parents = links.flatMap((link): ParentSide[] => {
+        if (link.owner !== table.name || link.through !== null) return [];
+        const child = tables.find((t) => t.name === link.target);
+        const key = child?.foreignKeys.find(
+          (fk) =>
+            fk.toModel === table.name &&
+            sameKey(fk.fromFields, link.to) &&
+            sameKey(fk.toFields, link.from),
+        );
+        if (child === undefined || key === undefined) return [];
+        return [
+          { name: link.name, child: child.name, key: key.field, isList: link.kind === "many" },
+        ];
       });
       return { ...table, parents };
     });
 
     return { dialect, tables: withParents };
   });
+}
+
+/** A relation as `defineRelations` builds it: on which model, to which, by which fields. */
+type Link = {
+  readonly owner: string;
+  readonly name: string;
+  readonly kind: "one" | "many";
+  readonly target: string;
+  readonly from: readonly string[];
+  readonly to: readonly string[];
+  /** A many-to-many kept in a junction model: its fields matching `from` and `to`. */
+  readonly through: {
+    readonly model: string;
+    readonly from: readonly string[];
+    readonly to: readonly string[];
+  } | null;
+  /** Written in the schema, not the reverse side Drizzle filled in from the other. */
+  readonly declared: boolean;
+};
+
+/** A key from a child model's fields to a parent model's, as relations alone may declare it. */
+type Key = {
+  readonly child: string;
+  readonly childFields: readonly string[];
+  readonly parent: string;
+  readonly parentFields: readonly string[];
+};
+
+/**
+ * The `defineRelations` and `defineRelationsPart` results a schema module exports, whatever they
+ * are named: objects of `{ table, name, relations }` per table.
+ */
+function relationalConfigs(schema: Readonly<Record<string, unknown>>) {
+  return Object.values(schema).filter(
+    (value): value is TablesRelationalConfig =>
+      typeof value === "object" &&
+      value !== null &&
+      !is(value, Table) &&
+      Object.values(value).length > 0 &&
+      Object.values(value).every(
+        (entry: unknown) =>
+          typeof entry === "object" &&
+          entry !== null &&
+          "table" in entry &&
+          "relations" in entry &&
+          is(entry.table, Table) &&
+          typeof entry.relations === "object",
+      ),
+  );
+}
+
+/**
+ * Every relation the module's relational configs declare, each once: a main config and its parts
+ * may name the same table, and their relations are read together.
+ */
+function relationLinks(
+  schema: Readonly<Record<string, unknown>>,
+  nameOf: ReadonlyMap<Table, string>,
+) {
+  const all = relationalConfigs(schema).flatMap((config) =>
+    Object.values(config).flatMap((tableConfig) =>
+      Object.entries(tableConfig.relations).flatMap(([name, relation]): Link[] => {
+        if (!is(relation, Relation)) return [];
+        const owner = nameOf.get(tableConfig.table as Table);
+        const target = nameOf.get(relation.targetTable as Table);
+        if (owner === undefined || target === undefined) return [];
+        const keys = (columns: readonly { readonly _: { readonly key: string } }[] | undefined) =>
+          (columns ?? []).map((column) => column._.key);
+        const junction =
+          relation.throughTable === undefined
+            ? undefined
+            : nameOf.get(relation.throughTable as Table);
+        return [
+          {
+            owner,
+            name,
+            kind: is(relation, Many) ? "many" : "one",
+            target,
+            from: keys(relation.sourceColumns),
+            to: keys(relation.targetColumns),
+            through:
+              junction === undefined || relation.through === undefined
+                ? null
+                : {
+                    model: junction,
+                    from: keys(relation.through.source),
+                    to: keys(relation.through.target),
+                  },
+            // Drizzle sets this only on a side it reversed from the other.
+            declared: relation.isFilterReversed === undefined,
+          },
+        ];
+      }),
+    ),
+  );
+  return all.filter(
+    (link, at) => all.findIndex((o) => o.owner === link.owner && o.name === link.name) === at,
+  );
+}
+
+function isKeyLikeName(name: string) {
+  const lower = name.toLowerCase();
+  return (lower.endsWith("id") && lower !== "id") || lower.endsWith("_id");
+}
+
+/**
+ * The keys the relations declare, each once. In v2 `from` is not always the side that holds the
+ * key (`profile: r.one.profile({ from: r.user.id, to: r.profile.userId })`), so the child is the
+ * side a database foreign key starts from; else the target of a `many`, or the source of a `one`
+ * a `many` answers; else the side that is not a unique key; else the one with an `...Id` name;
+ * else the source of the side written in the schema. A many-to-many is a key from the junction
+ * to each end.
+ */
+function keysOf(
+  links: readonly Link[],
+  schema: {
+    readonly constrained: (
+      child: string,
+      from: readonly string[],
+      parent: string,
+      to: readonly string[],
+    ) => boolean;
+    readonly uniquesOf: (model: string) => readonly (readonly string[])[];
+  },
+) {
+  const keyed = (model: string, fields: readonly string[]) =>
+    schema.uniquesOf(model).some((set) => sameSet(set, fields));
+  const sourceIsChild = (link: Link) => {
+    const { owner, target, from, to } = link;
+    if (schema.constrained(owner, from, target, to)) return true;
+    if (schema.constrained(target, to, owner, from)) return false;
+    if (link.kind === "many") return false;
+    const answered = links.some(
+      (other) =>
+        other.kind === "many" &&
+        other.owner === target &&
+        other.target === owner &&
+        sameKey(other.from, to) &&
+        sameKey(other.to, from),
+    );
+    if (answered) return true;
+    const sourceKeyed = keyed(owner, from);
+    if (sourceKeyed !== keyed(target, to)) return !sourceKeyed;
+    const sourceNamed = from.some(isKeyLikeName);
+    if (sourceNamed !== to.some(isKeyLikeName)) return sourceNamed;
+    return link.declared;
+  };
+  const found = [...links]
+    .sort((a, b) => Number(b.declared) - Number(a.declared))
+    .flatMap((link): Key[] => {
+      if (link.from.length === 0 || link.to.length === 0) return [];
+      if (link.through !== null) {
+        return [
+          {
+            child: link.through.model,
+            childFields: link.through.from,
+            parent: link.owner,
+            parentFields: link.from,
+          },
+          {
+            child: link.through.model,
+            childFields: link.through.to,
+            parent: link.target,
+            parentFields: link.to,
+          },
+        ];
+      }
+      return sourceIsChild(link)
+        ? [
+            {
+              child: link.owner,
+              childFields: link.from,
+              parent: link.target,
+              parentFields: link.to,
+            },
+          ]
+        : [
+            {
+              child: link.target,
+              childFields: link.to,
+              parent: link.owner,
+              parentFields: link.from,
+            },
+          ];
+    });
+  return found.filter(
+    (key, at) =>
+      found.findIndex(
+        (other) =>
+          other.child === key.child &&
+          other.parent === key.parent &&
+          sameKey(other.childFields, key.childFields) &&
+          sameKey(other.parentFields, key.parentFields),
+      ) === at,
+  );
 }
 
 /**

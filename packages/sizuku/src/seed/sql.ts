@@ -29,6 +29,25 @@ function timestamp(date: Date) {
 }
 
 /**
+ * A list as PostgreSQL's array literal, `{"a","b"}`: Drizzle passes an array column's value on as
+ * it is, and a driver given text needs it in this form.
+ */
+function pgArray(values: readonly unknown[]): string {
+  const element = (value: unknown): string => {
+    if (value === null || value === undefined) return "NULL";
+    if (Array.isArray(value)) return pgArray(value);
+    const text =
+      value instanceof Date
+        ? value.toISOString()
+        : typeof value === "object"
+          ? JSON.stringify(value)
+          : String(value);
+    return `"${text.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+  };
+  return `{${values.map(element).join(",")}}`;
+}
+
+/**
  * The value as the driver binds it: Drizzle's own mapping of the column first (a boolean to 0 / 1
  * on SQLite, a date to the text or number its mode stores, JSON to text), then what is left made
  * bindable for the dialect.
@@ -41,6 +60,7 @@ export function driverValue(dialect: Dialect, column: SeedColumn, value: SeedVal
   if (typeof mapped === "bigint") return dialect === "sqlite" ? mapped : mapped.toString();
   if (mapped instanceof Date) return dialect === "mysql" ? timestamp(mapped) : mapped.toISOString();
   if (mapped instanceof Uint8Array) return dialect === "sqlite" ? mapped : Buffer.from(mapped);
+  if (column.isList && Array.isArray(mapped)) return pgArray(mapped);
   if (typeof mapped === "object") return JSON.stringify(mapped);
   return mapped;
 }

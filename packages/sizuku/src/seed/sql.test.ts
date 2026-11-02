@@ -1,6 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { Faker, en } from "@faker-js/faker";
-import { relations } from "drizzle-orm";
+import { defineRelations } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -46,13 +46,13 @@ const book = pgTable("books", {
   meta: jsonb("meta"),
 });
 
+const tables = { status, author, book };
+
 const schema = {
-  status,
-  author,
-  book,
-  authorRelations: relations(author, ({ many }) => ({ books: many(book) })),
-  bookRelations: relations(book, ({ one }) => ({
-    author: one(author, { fields: [book.authorId], references: [author.id] }),
+  ...tables,
+  relations: defineRelations(tables, (r) => ({
+    author: { books: r.many.book() },
+    book: { author: r.one.author({ from: r.book.authorId, to: r.author.id }) },
   })),
 };
 

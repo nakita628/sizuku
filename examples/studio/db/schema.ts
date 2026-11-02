@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { defineRelations } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
@@ -93,7 +93,7 @@ export const comment = pgTable("comments", {
   likes: integer("likes").notNull().default(0),
 });
 
-/** 操作の記録。外部キーは張らず、関係は relations() で示す */
+/** 操作の記録。外部キーは張らず、関係は defineRelations で示す */
 export const auditLog = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
   /** 操作したユーザー（外部キーなし） */
@@ -102,16 +102,25 @@ export const auditLog = pgTable("audit_logs", {
   at: timestamp("at").notNull().defaultNow(),
 });
 
-export const userRelations = relations(user, ({ many }) => ({
-  posts: many(post),
-  memberships: many(member),
-}));
-
-export const postRelations = relations(post, ({ one, many }) => ({
-  author: one(user, { fields: [post.authorId], references: [user.id] }),
-  comments: many(comment),
-}));
-
-export const auditLogRelations = relations(auditLog, ({ one }) => ({
-  actor: one(user, { fields: [auditLog.actorId], references: [user.id] }),
-}));
+export const relations = defineRelations(
+  { user, organization, member, post, comment, auditLog },
+  (r) => ({
+    user: {
+      posts: r.many.post(),
+      memberships: r.many.member(),
+    },
+    member: {
+      user: r.one.user({ from: r.member.userId, to: r.user.id }),
+    },
+    post: {
+      author: r.one.user({ from: r.post.authorId, to: r.user.id }),
+      comments: r.many.comment(),
+    },
+    comment: {
+      post: r.one.post({ from: r.comment.postId, to: r.post.id }),
+    },
+    auditLog: {
+      actor: r.one.user({ from: r.auditLog.actorId, to: r.user.id }),
+    },
+  }),
+);

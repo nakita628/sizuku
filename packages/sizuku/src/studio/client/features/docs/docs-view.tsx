@@ -147,7 +147,7 @@ function Relations({
             ) : null}
             {relation.origin === "relations" ? (
               <Chip size="sm" color="accent" variant="soft">
-                {reverse ? "relations()" : "relations() (no foreign key)"}
+                {reverse ? "defineRelations" : "defineRelations (no foreign key)"}
               </Chip>
             ) : null}
           </li>

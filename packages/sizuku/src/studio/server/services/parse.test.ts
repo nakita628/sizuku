@@ -8,7 +8,7 @@ import {
 } from "./parse.js";
 
 const schema = `import { integer, sqliteTable } from "drizzle-orm/sqlite-core";
-import { relations } from "drizzle-orm";
+import { defineRelations, defineRelationsPart } from "drizzle-orm";
 
 export const user = sqliteTable("users", {
   id: integer("id").primaryKey(),
@@ -19,8 +19,28 @@ export const post = sqliteTable("posts", {
   authorId: integer("author_id").notNull(),
 });
 
-export const userRelations = relations(user, ({ many }) => ({
-  posts: many(post),
+export const tag = sqliteTable("tags", {
+  id: integer("id").primaryKey(),
+});
+
+export const postTag = sqliteTable("post_tags", {
+  postId: integer("post_id").notNull(),
+  tagId: integer("tag_id").notNull(),
+});
+
+export const relations = defineRelations({ user, post, tag, postTag }, (r) => ({
+  user: { posts: r.many.post() },
+  post: {
+    author: r.one.user({ from: r.post.authorId, to: r.user.id }),
+    tags: r.many.tag({
+      from: r.post.id.through(r.postTag.postId),
+      to: r.tag.id.through(r.postTag.tagId),
+    }),
+  },
+}));
+
+export const extra = defineRelationsPart({ tag, post, postTag }, (r) => ({
+  tag: { posts: r.many.post() },
 }));
 `;
 
@@ -34,7 +54,7 @@ describe("findSyntaxError", () => {
 describe("findTableSpans", () => {
   it("spans each exported table from `export` to the end of its statement", () => {
     const spans = findTableSpans(schema);
-    expect(spans.map((s) => s.name)).toStrictEqual(["user", "post"]);
+    expect(spans.map((s) => s.name)).toStrictEqual(["user", "post", "tag", "postTag"]);
     const user = spans[0];
     expect(schema.slice(user?.start, user?.end)).toBe(
       'export const user = sqliteTable("users", {\n  id: integer("id").primaryKey(),\n});',
@@ -43,9 +63,12 @@ describe("findTableSpans", () => {
 });
 
 describe("readRelationFields", () => {
-  it("names each table's relations as relations() gives them, with the table they point at", () => {
+  it("names each relation defineRelations and its parts declare, with the table it points at", () => {
     expect(readRelationFields(schema)).toStrictEqual([
       { table: "user", name: "posts", target: "post" },
+      { table: "post", name: "author", target: "user" },
+      { table: "post", name: "tags", target: "tag" },
+      { table: "tag", name: "posts", target: "post" },
     ]);
   });
 });

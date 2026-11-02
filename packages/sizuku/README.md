@@ -140,7 +140,7 @@ the primary key, foreign keys, `UK` for unique columns, `?` for nullable ones, d
 (`.default()`, `.defaultNow()`, `$defaultFn()`, `$onUpdate()`), the comments' descriptions and the
 indexes, unique and composite key constraints of the table. `pgEnum`s get a card of their own.
 Edges use crow's-foot notation and name the relation and its `onDelete` / `onUpdate` action;
-an edge declared only by a `relations()` block is dashed, since nothing in the database backs it.
+an edge declared only by `defineRelations` is dashed, since nothing in the database backs it.
 
 ## Studio
 
@@ -214,15 +214,15 @@ row no id is written by hand:
 
 - a column left out takes its default (`.default()`, `$defaultFn()`, the next number of a serial or
   autoincrement), and one with a SQL default (`` sql`CURRENT_TIMESTAMP` ``) is left to the database;
-- a `many()` relation nests the child rows, whose key to the parent is filled in
+- an `r.many` relation nests the child rows, whose key to the parent is filled in
   (`posts: [{ title: "Hello" }]`);
-- a `one()` relation names the parent by a unique key (`author: { email: "ann@example.com" }`);
+- an `r.one` relation names the parent by a unique key (`author: { email: "ann@example.com" }`);
   left out, a required one is linked to a row that exists.
 
 `defineData(schema, "user", [...])` types rows kept in their own file.
 
 The tables are filled parents first, and every foreign key, unique key, enum, length and
-nullability is respected; a relation that only a `relations()` block declares is filled like a
+nullability is respected; a relation that only `defineRelations` declares is filled like a
 foreign key. Every row is checked against its columns before anything is written, and the rows
 go in one transaction (on PostgreSQL, the sequences are moved past them). The seeder fills tables
 that exist; create them first, with drizzle-kit or your migrations.
@@ -238,7 +238,7 @@ that exist; create them first, with drizzle-kit or your migrations.
 | `output`                   | Write SQL to this file instead of inserting                                                                                         |
 | `reset`                    | Delete every row of the seeded tables first                                                                                         |
 | `models.<table>.fields`    | Per column: a function `(faker, { index, row }) => value`, or `value`, `values`, `min` / `max`, `from` / `to`, `length`, `nullRate` |
-| `models.<table>.relations` | Per `many()` relation: how many children each row has (`min` / `max`)                                                               |
+| `models.<table>.relations` | Per `r.many` relation: how many children each row has (`min` / `max`)                                                               |
 
 The command line overrides the config: `--url`, `--sql <file>`, `--seed <n>`, `--count <n>`,
 `--locale ja,en`, `--reset` and `--config <path>`. SQLite is written through `node:sqlite`,
@@ -265,24 +265,36 @@ export const post = pgTable('post', { ... }, (t) => [
 
 The older object form, `(t) => ({ fk: foreignKey(...) })`, is read as well.
 
-### 3. `relations()` block (no foreign key required)
+### 3. `defineRelations` (no foreign key required)
+
+Relations are read as Drizzle's [relations v2](https://orm.drizzle.team/docs/relations) declare
+them: every `defineRelations` and `defineRelationsPart` export, whatever it is named.
 
 ```ts
+import { defineRelations } from "drizzle-orm";
+
 export const post = pgTable("post", {
   id: uuid("id").primaryKey(),
   userId: uuid("user_id").notNull(), // no .references()
 });
 
-export const postRelations = relations(post, ({ one }) => ({
-  user: one(user, { fields: [post.userId], references: [user.id] }),
+export const relations = defineRelations({ user, post }, (r) => ({
+  post: { author: r.one.user({ from: r.post.userId, to: r.user.id }) },
+  user: { posts: r.many.post() },
 }));
 ```
 
-Drizzle's `relations()` are not database constraints, so a `one()` with `fields` and `references`
-is drawn even when no foreign key backs it. Such an edge is dashed; when a `.references()` or
-`foreignKey()` backs the same pair, it is drawn solid as that foreign key. The child side is
-"one or more" when its column is `.notNull()`, else "zero or more". `many()` adds nothing on its
-own, since it names no columns.
+Relations are not database constraints, so a relation with `from` and `to` is drawn even when no
+foreign key backs it. Such an edge is dashed; when a `.references()` or `foreignKey()` backs the
+same pair, it is drawn solid as that foreign key. The child side is "one or more" when its column
+is `.notNull()` (or the `r.one` is `optional: false`), else "zero or more".
+
+`from` is not always the side that holds the key (`r.one.profile({ from: r.user.id, to:
+r.profile.userId })`), so the child is the side whose column is a foreign key to the other; else
+the side that is not a primary or unique key; else the one with an `...Id` name; else `from`.
+A many-to-many through a junction table (`r.user.id.through(r.member.userId)`) is drawn as a key
+from the junction to each end. A relation with no `from` / `to` adds nothing on its own: it is the
+reverse side of a pair the other table declares.
 
 ## License
 

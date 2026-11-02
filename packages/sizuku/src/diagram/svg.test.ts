@@ -116,7 +116,7 @@ describe("renderDiagramSvg", () => {
     expect(svg).toContain(">many to many</text>");
   });
 
-  it("dashes a relation only a relations() block declares, and draws a foreign key solid", () => {
+  it("dashes a relation only defineRelations declares, and draws a foreign key solid", () => {
     const dashed = renderDiagramSvg({
       models: [user, post],
       relations: [relation({ origin: "relations" })],

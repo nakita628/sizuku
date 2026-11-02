@@ -16,7 +16,7 @@ function runEffect<A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) {
 }
 
 const ecSchemaContent = `import { mysqlTable, varchar, int, decimal, timestamp } from 'drizzle-orm/mysql-core'
-import { relations } from 'drizzle-orm'
+import { defineRelations } from 'drizzle-orm'
 
 
 export const user = mysqlTable('user', {
@@ -137,9 +137,9 @@ const TEST_CODE_WITH_FOREIGN_KEY = [
   "",
 ];
 
-// Test code with relations() blocks
+// Test code with a defineRelations export
 const TEST_CODE_WITH_RELATIONS_BLOCK = [
-  "import { relations } from 'drizzle-orm'",
+  "import { defineRelations } from 'drizzle-orm'",
   "import { sqliteTable, text } from 'drizzle-orm/sqlite-core'",
   "",
   "export const User = sqliteTable('User', {",
@@ -153,11 +153,10 @@ const TEST_CODE_WITH_RELATIONS_BLOCK = [
   "  userId: text('userId').notNull(),",
   "})",
   "",
-  "export const PostRelations = relations(Post, ({ one }) => ({",
-  "  user: one(User, {",
-  "    fields: [Post.userId],",
-  "    references: [User.id],",
-  "  }),",
+  "export const PostRelations = defineRelations({ Post, User }, (r) => ({",
+  "  Post: {",
+  "    user: r.one.User({ from: r.Post.userId, to: r.User.id }),",
+  "  },",
   "}))",
   "",
 ];
@@ -187,11 +186,10 @@ const TEST_CODE_WITHOUT_IMPORTS = [
   "  }),",
   ")",
   "",
-  "export const PostRelations = relations(Post, ({ one }) => ({",
-  "  user: one(User, {",
-  "    fields: [Post.userId],",
-  "    references: [User.id],",
-  "  }),",
+  "export const PostRelations = defineRelations({ Post, User }, (r) => ({",
+  "  Post: {",
+  "    user: r.one.User({ from: r.Post.userId, to: r.User.id }),",
+  "  },",
   "}))",
   "",
 ];
@@ -264,7 +262,7 @@ erDiagram
     expect(result).toBe(expected);
   });
 
-  it("detects relations from relations() blocks", async () => {
+  it("detects relations from defineRelations exports", async () => {
     await runEffect(
       sizukuMermaidER(TEST_CODE_WITH_RELATIONS_BLOCK, "tmp-mermaid/mermaid-er-test.md"),
     );

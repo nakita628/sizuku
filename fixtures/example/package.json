@@ -6,7 +6,7 @@
     "sizuku": "sizuku"
   },
   "dependencies": {
-    "drizzle-orm": "^0.40.1",
+    "drizzle-orm": "1.0.0-rc.5",
     "sizuku": "workspace:^"
   }
 }

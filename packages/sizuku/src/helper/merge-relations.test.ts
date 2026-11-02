@@ -42,7 +42,7 @@ describe("mergeRelations", () => {
     ]);
   });
 
-  it("maps a relations()-only pair (no FK) to a non-identifying relation, origin relations", () => {
+  it("maps a defineRelations-only pair (no FK) to a non-identifying relation, origin relations", () => {
     const code = [
       "export const User = sqliteTable('User', {",
       "  id: text('id').notNull().primaryKey(),",
@@ -51,8 +51,10 @@ describe("mergeRelations", () => {
       "  id: text('id').notNull().primaryKey(),",
       "  user_id: text('user_id'),",
       "})",
-      "export const profileRelations = relations(Profile, ({ one }) => ({",
-      "  user: one(User, { fields: [Profile.user_id], references: [User.id] }),",
+      "export const profileRelations = defineRelations({ Profile, User }, (r) => ({",
+      "  Profile: {",
+      "    user: r.one.User({ from: r.Profile.user_id, to: r.User.id }),",
+      "  },",
       "}))",
     ];
     expect(mergeRelations(code)).toStrictEqual([
@@ -65,7 +67,7 @@ describe("mergeRelations", () => {
     ]);
   });
 
-  it("keeps a relations() pair a FK also backs as the FK (origin inferred)", () => {
+  it("keeps a defineRelations pair a FK also backs as the FK (origin inferred)", () => {
     const code = [
       "export const user = mysqlTable('user', {",
       "  id: varchar('id', { length: 36 }).primaryKey(),",
@@ -74,8 +76,10 @@ describe("mergeRelations", () => {
       "  id: varchar('id', { length: 36 }).primaryKey(),",
       "  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id),",
       "})",
-      "export const postRelations = relations(post, ({ one }) => ({",
-      "  user: one(user, { fields: [post.userId], references: [user.id] }),",
+      "export const postRelations = defineRelations({ post, user }, (r) => ({",
+      "  post: {",
+      "    user: r.one.user({ from: r.post.userId, to: r.user.id }),",
+      "  },",
       "}))",
     ];
     expect(mergeRelations(code)).toStrictEqual([
@@ -118,10 +122,12 @@ describe("mergeRelations", () => {
     ]);
   });
 
-  it("orders FK relations first and appends relations()-only ones last", () => {
+  it("orders FK relations first and appends defineRelations-only ones last", () => {
     const code = [
-      "export const articleRelations = relations(Article, ({ one }) => ({",
-      "  tag: one(Tag, { fields: [Article.tag_id], references: [Tag.id] }),",
+      "export const articleRelations = defineRelations({ Article, Tag }, (r) => ({",
+      "  Article: {",
+      "    tag: r.one.Tag({ from: r.Article.tag_id, to: r.Tag.id }),",
+      "  },",
       "}))",
       "export const user = mysqlTable('user', {",
       "  id: varchar('id', { length: 36 }).primaryKey(),",
